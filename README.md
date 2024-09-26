@@ -1,2 +1,3 @@
 # hyrex-python
-Hyrex Python SDK
+
+Hyrex is a Postgres-based task queue. This is the Python SDK.
