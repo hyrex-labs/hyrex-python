@@ -1,7 +1,8 @@
 import functools
-from typing import Callable, Any
 import logging
-from hyrex.async_worker import AsyncWorkerManager, TaskWrapper, TaskRegistry, T
+from typing import Any, Callable
+
+from hyrex.async_worker import AsyncWorkerManager, T, TaskRegistry, TaskWrapper
 
 
 class Hyrex:
@@ -55,7 +56,7 @@ class Hyrex:
         for task in self.task_registry.values():
             task.schedule()
 
-    def run_workers(
+    def run_worker(
         self,
         queue: str = "default",
         num_threads: int = 8,
