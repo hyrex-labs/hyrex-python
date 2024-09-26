@@ -1,9 +1,10 @@
-from sqlmodel import Field, SQLModel, Relationship, Column, create_engine, DateTime
-from sqlalchemy import Index
-from enum import StrEnum
 from datetime import datetime
-from sqlalchemy import JSON
+from enum import StrEnum
 from uuid import UUID
+
+from sqlalchemy import JSON, Index
+from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
+                      create_engine)
 from uuid_extensions import uuid7
 
 
