@@ -9,7 +9,7 @@ description = "Hyrex is a Postgres-based task queue"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Trevor Reed", email = "trevor@usekura.com" }
+    { name = "Trevor Reed", email = "trevor@usekura.com" },
     { name = "Mark Dawson", email = "mark@usekura.com" }
 ]
 keywords = ["hyrex", "task", "queue", "async"]
