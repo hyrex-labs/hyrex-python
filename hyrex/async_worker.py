@@ -1,25 +1,24 @@
-import threading
+import asyncio
+import json
 import logging
+import random
+import re
+import signal
 import string
+import threading
+import time
+import traceback
+from inspect import signature
+from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
 import psycopg_pool
-import time
-
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine
+from sqlmodel import Session, select
 
 from hyrex import sql
-import signal
-import traceback
-from hyrex.models import create_engine, HyrexTask, StatusEnum, HyrexTaskResult
-from typing import Callable, Any, TypeVar, Generic, get_type_hints
-from inspect import signature
-from pydantic import BaseModel, ValidationError
-from sqlmodel import select, Session
-import json
-import asyncio
-import random
-import re
+from hyrex.models import HyrexTask, HyrexTaskResult, StatusEnum, create_engine
 
 T = TypeVar("T", bound=BaseModel)
 

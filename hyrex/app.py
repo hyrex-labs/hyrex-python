@@ -1,7 +1,8 @@
 import functools
-from typing import Callable, Any
 import logging
-from hyrex.async_worker import AsyncWorkerManager, TaskWrapper, TaskRegistry, T
+from typing import Any, Callable
+
+from hyrex.async_worker import AsyncWorkerManager, T, TaskRegistry, TaskWrapper
 
 
 class Hyrex:
