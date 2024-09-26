@@ -1,4 +1,5 @@
 import importlib
+import os
 import pkgutil
 import sys
 from pathlib import Path
@@ -45,11 +46,24 @@ def run_worker(
 
 
 @cli.command()
-def init(conn_string: str = typer.Argument(..., help="Database connection string")):
+def init(
+    database_string: str = typer.Option(
+        os.getenv("HYREX_DATABASE_URL"),
+        "--database-string",
+        help="Database connection string",
+    )
+):
     """
     Creates the tables for hyrex tasks/workers in the given Postgres database
     """
-    create_tables(conn_string)
+    if database_string:
+        create_tables(database_string)
+        typer.echo("Hyrex tables initialized.")
+        return
+
+    typer.echo(
+        "Error: Database connection string must be provided either through the --database-string flag or the HYREX_DATABASE_URL env variable."
+    )
 
 
 if __name__ == "__main__":
