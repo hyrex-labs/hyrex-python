@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyrex"
+version = "0.1.0"
+description = "Hyrex is a Postgres-based task queue"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Trevor Reed", email = "trevor@usekura.com" }
+    { name = "Mark Dawson", email = "mark@usekura.com" }
+]
+keywords = ["hyrex", "task", "queue", "async"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent"
+] 
+requires-python = ">=3.11"
+dependencies = [
+    "annotated-types>=0.7.0",
+    "psycopg>=3.2.1",
+    "psycopg2-binary>=2.9.9",
+    "pydantic>=2.8.2",
+    "pydantic_core>=2.20.1",
+    "SQLAlchemy>=2.0.31",
+    "sqlmodel>=0.0.21",
+    "typing_extensions>=4.12.2",
+    "uuid7>=0.1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=22.3.0",  # For code formatting
+]
+
+[project.urls]
+"Homepage" = "https://github.com/hyrex-labs/hyrex-python"
+"Source Code" = "https://github.com/hyrex-labs/hyrex-python"
