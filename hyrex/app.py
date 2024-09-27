@@ -1,15 +1,28 @@
 import functools
 import logging
+import os
 from typing import Any, Callable
 
 from hyrex.async_worker import AsyncWorkerManager, T, TaskRegistry, TaskWrapper
 
 
+class EnvVars:
+    DATABASE_URL = "HYREX_DATABASE_URL"
+    API_KEY = "HYREX_API_KEY"
+
+
 class Hyrex:
-    def __init__(self, app_id: str, conn: str, error_callback: Callable = None):
+    def __init__(
+        self,
+        app_id: str,
+        conn: str = os.getenv(EnvVars.DATABASE_URL),
+        api_key: str = os.getenv(EnvVars.API_KEY),
+        error_callback: Callable = None,
+    ):
         self.app_id = app_id
         self.task_registry: TaskRegistry = TaskRegistry()
         self.conn = conn
+        self.api_key = api_key
         self.error_callback = error_callback
 
     def task(self, func=None, *, queue="default", cron=None) -> TaskWrapper:
