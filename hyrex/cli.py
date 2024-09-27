@@ -3,8 +3,8 @@ import logging
 import os
 import pkgutil
 import sys
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 
 import typer
 
