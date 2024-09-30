@@ -394,6 +394,14 @@ class AsyncWorker:
             session.add(worker)
             session.commit()
 
+    def _set_finished_time(self):
+        engine = create_engine(self.conn)
+        with Session(engine) as session:
+            worker = session.get(HyrexWorker, self.id)
+            worker.finished = datetime.now(timezone.utc)
+            session.add(worker)
+            session.commit()
+
     def run(self):
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self.signal_handler)
@@ -423,4 +431,5 @@ class AsyncWorker:
 
         # Clean up
         self.close()
+        self._set_finished_time()
         logging.info("All worker threads have been successfully exited!")
