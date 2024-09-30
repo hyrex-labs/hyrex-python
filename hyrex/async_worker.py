@@ -237,6 +237,7 @@ class WorkerThread(threading.Thread):
         self._stop_event = asyncio.Event()
 
         self.queue = queue
+        self.worker_id = worker_id
         self.pool = pg_pool
         self.task_registry = task_registry
         self.error_callback = error_callback
@@ -259,9 +260,9 @@ class WorkerThread(threading.Thread):
             with self.pool.connection() as conn:
                 with conn.cursor() as cur:
                     if self.queue == "default":
-                        cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE)
+                        cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [self.worker_id])
                     else:
-                        cur.execute(sql.FETCH_TASK, [self.queue])
+                        cur.execute(sql.FETCH_TASK, [self.queue, self.worker_id])
                     row = cur.fetchone()
                     if row is None:
                         # No unprocessed items, wait a bit before trying again
@@ -332,7 +333,7 @@ class WorkerThread(threading.Thread):
             logging.info("No current task to be found")
 
 
-def generate_worker_name(self):
+def generate_worker_name():
     hostname = socket.gethostname()
     pid = os.getpid()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
@@ -389,6 +390,7 @@ class AsyncWorker:
         self.threads = [
             WorkerThread(
                 name=f"WorkerThread{i}",
+                worker_id=self.id,
                 pg_pool=self.pool,
                 queue=self.queue,
                 task_registry=self.task_registry,

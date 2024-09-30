@@ -10,7 +10,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = %s
 WHERE id = next_task.id
 RETURNING id, task_name, args;
 """
@@ -25,7 +25,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = %s
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
