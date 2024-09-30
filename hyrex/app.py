@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Any, Callable
 
-from hyrex.async_worker import AsyncWorkerManager, T, TaskRegistry, TaskWrapper
+from hyrex.async_worker import AsyncWorker, T, TaskRegistry, TaskWrapper
 
 
 class EnvVars:
@@ -77,12 +77,12 @@ class Hyrex:
     ):
         logging.basicConfig(level=log_level)
 
-        manager = AsyncWorkerManager(
+        worker = AsyncWorker(
             conn=self.conn,
             queue=queue,
             task_registry=self.task_registry,
-            num_workers=num_threads,
+            num_threads=num_threads,
             error_callback=self.error_callback,
         )
 
-        manager.run()
+        worker.run()
