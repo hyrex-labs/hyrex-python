@@ -28,7 +28,7 @@ class HyrexWorker(SQLModel, table=True):
     started: datetime | None = Field(
         sa_column=DateTime(timezone=True), default_factory=utcnow
     )
-    finished: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
+    stopped: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
 
 
 class HyrexTask(SQLModel, table=True):

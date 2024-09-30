@@ -280,8 +280,12 @@ class WorkerThread(threading.Thread):
             result = await self.process_item(task_name, args)
 
             if result is not None:
-                if isinstance(result, dict):
+                if isinstance(result, BaseModel):
+                    result = result.model_dump_json()
+                elif isinstance(result, dict):
                     result = json.dumps(result)
+                else:
+                    raise TypeError("Return value must be JSON-serializable.")
 
                 with self.pool.connection() as conn:
                     conn.execute(sql.SAVE_RESULTS, [task_id, result])
@@ -393,11 +397,11 @@ class AsyncWorker:
             session.add(worker)
             session.commit()
 
-    def _set_finished_time(self):
+    def _set_stopped_time(self):
         engine = create_engine(self.conn)
         with Session(engine) as session:
             worker = session.get(HyrexWorker, self.id)
-            worker.finished = datetime.now(timezone.utc)
+            worker.stopped = datetime.now(timezone.utc)
             session.add(worker)
             session.commit()
 
@@ -430,5 +434,5 @@ class AsyncWorker:
 
         # Clean up
         self.close()
-        self._set_finished_time()
+        self._set_stopped_time()
         logging.info("All worker threads have been successfully exited!")
