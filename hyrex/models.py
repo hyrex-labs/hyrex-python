@@ -3,8 +3,7 @@ from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import JSON, Index
-from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
-                      create_engine)
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
 from uuid_extensions import uuid7
 
 
@@ -24,7 +23,11 @@ class HyrexWorker(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid7, primary_key=True)
     name: str
 
-    started: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
+    queue: str
+
+    started: datetime | None = Field(
+        sa_column=DateTime(timezone=True), default_factory=utcnow
+    )
     finished: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
 
 

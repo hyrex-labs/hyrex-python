@@ -77,7 +77,7 @@ class Hyrex:
     ):
         logging.basicConfig(level=log_level)
 
-        manager = AsyncWorker(
+        worker = AsyncWorker(
             conn=self.conn,
             queue=queue,
             task_registry=self.task_registry,
@@ -85,4 +85,4 @@ class Hyrex:
             error_callback=self.error_callback,
         )
 
-        manager.run()
+        worker.run()

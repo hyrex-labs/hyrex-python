@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime, timezone
 import json
 import logging
 import os
@@ -11,6 +10,7 @@ import string
 import threading
 import time
 import traceback
+from datetime import datetime, timezone
 from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
@@ -22,7 +22,13 @@ from sqlmodel import Session, select
 from uuid_extensions import uuid7str
 
 from hyrex import sql
-from hyrex.models import HyrexTask, HyrexTaskResult, StatusEnum, create_engine
+from hyrex.models import (
+    HyrexTask,
+    HyrexTaskResult,
+    HyrexWorker,
+    StatusEnum,
+    create_engine,
+)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -381,11 +387,19 @@ class AsyncWorker:
         for thread in self.threads:
             thread.stop()
 
+    def _add_to_db(self):
+        engine = create_engine(self.conn)
+        with Session(engine) as session:
+            worker = HyrexWorker(id=self.id, name=self.name, queue=self.queue)
+            session.add(worker)
+            session.commit()
+
     def run(self):
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self.signal_handler)
 
         self.connect()
+        self._add_to_db()
 
         self.threads = [
             WorkerThread(
