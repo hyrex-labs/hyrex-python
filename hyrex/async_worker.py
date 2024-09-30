@@ -296,8 +296,7 @@ class WorkerThread(threading.Thread):
             logging.info(
                 f"Worker {self.name}: Processing of item {task_id} was interrupted"
             )
-            # Here you might want to update the item status back to 'pending'
-            # so it can be picked up again later
+            # Update the item status back to 'queued' so it can be picked up again later
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_QUEUED, [task_id])
 

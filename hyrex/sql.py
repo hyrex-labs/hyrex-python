@@ -40,7 +40,7 @@ MARK_TASK_SUCCESS = """
 
 MARK_TASK_QUEUED = """
    UPDATE hyrextask 
-   SET status = 'queued' 
+   SET status = 'queued', worker_id = NULL
    WHERE id = %s
 """
 
