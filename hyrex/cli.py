@@ -52,7 +52,7 @@ def run_worker(
 
     try:
         # Import the hyrex module
-        hyrex_module = importlib.import_module(f"{task_path}.hyrex")
+        hyrex_module = importlib.import_module(f"{task_path}.hyrex_init")
 
         # Convert the task module path to a directory path
         spec = importlib.util.find_spec(task_path)
