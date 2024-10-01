@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.3.1"
+version = "0.3.2"
 description = "Hyrex is a Postgres-based task queue"
 readme = "README.md"
 license = { file = "LICENSE" }
