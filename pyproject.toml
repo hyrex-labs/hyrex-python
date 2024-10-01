@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.3.0"
+version = "0.3.1"
 description = "Hyrex is a Postgres-based task queue"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -21,7 +21,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "annotated-types>=0.7.0",
-    "psycopg>=3.2.1",
+    "psycopg[binary,pool]>=3.2.1",
     "psycopg2-binary>=2.9.9",
     "pydantic>=2.8.2",
     "pydantic_core>=2.20.1",
