@@ -1,11 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import JSON, Index
-from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
-                      create_engine)
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
 from uuid_extensions import uuid7
+
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 
 class StatusEnum(StrEnum):
@@ -20,8 +23,12 @@ class HyrexWorker(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid7, primary_key=True)
     name: str
 
-    started: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
-    finished: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
+    queue: str
+
+    started: datetime | None = Field(
+        sa_column=DateTime(timezone=True), default_factory=utcnow
+    )
+    stopped: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
 
 
 class HyrexTask(SQLModel, table=True):
@@ -37,8 +44,8 @@ class HyrexTask(SQLModel, table=True):
 
     worker_id: UUID | None
 
-    created: datetime | None = Field(
-        sa_column=Column(DateTime(timezone=True)), default=None
+    queued: datetime | None = Field(
+        sa_column=Column(DateTime(timezone=True)), default_factory=utcnow
     )
     started: datetime | None = Field(
         sa_column=Column(DateTime(timezone=True)), default=None
