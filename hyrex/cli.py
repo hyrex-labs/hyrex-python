@@ -24,7 +24,7 @@ class LogLevel(str, Enum):
 
 @cli.command()
 def run_worker(
-    task_path: str = typer.Argument(..., help="Task module path (i.e. my-app.tasks)"),
+    app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
     queue: str = typer.Option(
         "default", "--queue", "-q", help="The name of the queue to process"
     ),
@@ -51,22 +51,10 @@ def run_worker(
     sys.path.append(str(Path.cwd()))
 
     try:
+        module_path, instance_name = app.split(":")
         # Import the hyrex module
-        hyrex_module = importlib.import_module(f"{task_path}.hyrex_init")
-
-        # Convert the task module path to a directory path
-        spec = importlib.util.find_spec(task_path)
-        if spec is None or spec.submodule_search_locations is None:
-            raise ImportError(f"Could not find module path for '{task_path}'")
-        task_directory = spec.submodule_search_locations[0]
-
-        # Import and register all task modules
-        for _, module_name, _ in pkgutil.iter_modules([task_directory]):
-            if module_name != "hyrex":  # Skip the hyrex config itself
-                importlib.import_module(f"{task_path}.{module_name}")
-
-        # Now that all tasks are registered, start the worker
-        hyrex_instance = hyrex_module.hy
+        hyrex_module = importlib.import_module(module_path)
+        hyrex_instance = getattr(hyrex_module, instance_name)
         hyrex_instance.run_worker(
             num_threads=num_threads, log_level=getattr(logging, log_level.upper())
         )
