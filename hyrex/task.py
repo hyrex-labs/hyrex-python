@@ -94,8 +94,9 @@ class TaskWrapper(Generic[T]):
         self._task_instance_id = None
 
     def set_conn(self, conn):
-        self.conn = conn
-        self.engine = create_engine(conn)
+        if not self.conn and not self.engine:
+            self.conn = conn
+            self.engine = create_engine(conn)
 
     def _get_conn(self):
         if self.conn is None:
