@@ -3,7 +3,9 @@ import logging
 import os
 from typing import Any, Callable
 
-from hyrex.async_worker import AsyncWorker, T, TaskRegistry, TaskWrapper
+from hyrex.async_worker import AsyncWorker
+from hyrex.task import TaskWrapper
+from hyrex.task_registry import TaskRegistry
 
 
 class EnvVars:
@@ -20,54 +22,25 @@ class Hyrex:
         error_callback: Callable = None,
     ):
         self.app_id = app_id
-        self.task_registry: TaskRegistry = TaskRegistry()
         self.conn = conn
         self.api_key = api_key
         self.error_callback = error_callback
+        self.task_registry = TaskRegistry()
 
     def task(self, func=None, *, queue="default", cron=None) -> TaskWrapper:
         """
-        Create task decorator
+        Task decorator
         """
-        if func is None:
-            # Decorator called with parentheses
-            def decorator(func: Callable[[T], Any]) -> Callable[[T], Any]:
-                task_identifier = func.__name__
-                task_wrapper = TaskWrapper(
-                    task_identifier=task_identifier,
-                    func=func,
-                    queue=queue,
-                    conn=self.conn,
-                    cron=cron,
-                )
-                self.task_registry[task_identifier] = task_wrapper
+        task_wrapper = self.task_registry.task(func, queue=queue, cron=cron)
+        self.task_registry.set_connection(self.conn)
+        return task_wrapper
 
-                @functools.wraps(func)
-                def wrapper(context: T) -> TaskWrapper:
-                    return task_wrapper(context)
-
-                wrapper.send = task_wrapper.send
-                return wrapper
-
-            return decorator
-        else:
-            # Decorator called without parentheses
-            task_identifier = func.__name__
-            task_wrapper = TaskWrapper(
-                task_identifier, func, "default", self.conn, cron
-            )
-            self.task_registry[task_identifier] = task_wrapper
-
-            @functools.wraps(func)
-            def wrapper(context: T) -> Any:
-                return task_wrapper(context)
-
-            wrapper.send = task_wrapper.send
-            return wrapper
+    def add_registry(self, registry: TaskRegistry):
+        self.task_registry.add_registry(registry)
+        self.task_registry.set_connection(self.conn)
 
     def schedule(self):
-        for task in self.task_registry.values():
-            task.schedule()
+        self.task_registry.schedule()
 
     def run_worker(
         self,
