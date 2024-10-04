@@ -56,7 +56,9 @@ def run_worker(
         hyrex_module = importlib.import_module(module_path)
         hyrex_instance = getattr(hyrex_module, instance_name)
         hyrex_instance.run_worker(
-            num_threads=num_threads, log_level=getattr(logging, log_level.upper())
+            num_threads=num_threads,
+            queue=queue,
+            log_level=getattr(logging, log_level.upper()),
         )
 
     except ModuleNotFoundError as e:
