@@ -51,6 +51,15 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
         for key, val in task_registry.items():
             self[key] = val
 
-    def set_connection(self, conn: str):
+    def set_connection(self, conn: str, api_key: str, api_base_url: str):
         for task_wrapper in self.values():
-            task_wrapper.set_conn(conn)
+            if conn:
+                task_wrapper.set_conn(conn)
+            if api_key:
+                task_wrapper.set_api_key(api_key)
+            if api_base_url:
+                task_wrapper.set_api_base_url(api_base_url)
+
+    def schedule(self):
+        for task_wrapper in self.values():
+            task_wrapper.schedule()
