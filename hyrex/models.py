@@ -58,20 +58,9 @@ class HyrexTask(SQLModel, table=True):
 
     args: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
-    results: list["HyrexTaskResult"] = Relationship(back_populates="task")
-
     __table_args__ = (
         Index("index_queue_status", "status", "queue", "scheduled_start", "task_name"),
     )
-
-
-class HyrexTaskResult(SQLModel, table=True):
-    id: int = Field(primary_key=True)
-
-    task_id: UUID | None = Field(foreign_key="hyrextask.id")
-    task: HyrexTask | None = Relationship(back_populates="results")
-
-    results: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
 
 def create_tables(conn_string):

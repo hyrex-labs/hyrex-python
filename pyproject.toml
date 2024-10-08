@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.4.0"
-description = "Hyrex is a Postgres-based task queue"
+version = "0.5.0"
+description = "Hyrex is a modern, open-source task orchestration framework."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -20,11 +20,13 @@ classifiers = [
 ] 
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.10.9",
     "annotated-types>=0.7.0",
     "psycopg[binary,pool]>=3.2.1",
     "psycopg2-binary>=2.9.9",
     "pydantic>=2.8.2",
     "pydantic_core>=2.20.1",
+    "requests>=2.32.3",
     "SQLAlchemy>=2.0.31",
     "sqlmodel>=0.0.21",
     "typer>=0.12.5",

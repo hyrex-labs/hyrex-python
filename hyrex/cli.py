@@ -44,8 +44,10 @@ def run_worker(
     """
     Run the worker using the specified task module path
     """
-    if EnvVars.DATABASE_URL not in os.environ:
-        typer.echo(f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker.")
+    if EnvVars.DATABASE_URL not in os.environ and EnvVars.API_KEY not in os.environ:
+        typer.echo(
+            f"{EnvVars.API_KEY} or {EnvVars.DATABASE_URL} must be set to run Hyrex worker."
+        )
         return
 
     sys.path.append(str(Path.cwd()))
@@ -56,7 +58,9 @@ def run_worker(
         hyrex_module = importlib.import_module(module_path)
         hyrex_instance = getattr(hyrex_module, instance_name)
         hyrex_instance.run_worker(
-            num_threads=num_threads, log_level=getattr(logging, log_level.upper())
+            num_threads=num_threads,
+            queue=queue,
+            log_level=getattr(logging, log_level.upper()),
         )
 
     except ModuleNotFoundError as e:

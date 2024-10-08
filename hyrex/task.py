@@ -6,11 +6,13 @@ from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
+import requests
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine, create_engine
 from sqlmodel import Session, select
+from uuid_extensions import uuid7
 
-from hyrex.models import HyrexTask, HyrexTaskResult, StatusEnum
+from hyrex.models import HyrexTask, StatusEnum
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -25,14 +27,28 @@ class UnboundTaskException(Exception):
 
 class TaskRun:
     def __init__(
-        self, engine: Engine, task_name: str, task_run_id: str, status: StatusEnum
+        self,
+        task_name: str,
+        task_run_id: str,
+        status: StatusEnum,
+        api_key: str = None,
+        api_base_url: str = None,
+        engine: Engine = None,
     ):
         self.task_name = task_name
         self.task_run_id = task_run_id
-        self.engine = engine
         self.status = status
+        self.api_key = api_key
+        self.api_base_url = api_base_url
+        self.engine = engine
 
+    # TODO: Implement for API
     def wait(self, timeout=30, interval=1):
+        if self.api_key:
+            raise NotImplementedError(
+                "Hyrex platform does not yet support waiting for tasks"
+            )
+
         start = time.time()
         elapsed = 0
         while self.status in [StatusEnum.queued, StatusEnum.running]:
@@ -49,24 +65,13 @@ class TaskRun:
             time.sleep(interval)
             elapsed = time.time() - start
 
-    def get_result(self) -> dict:
-        with Session(self.engine) as session:
-            statement = (
-                select(HyrexTaskResult)
-                .join(HyrexTask)
-                .where(HyrexTask.id == self.task_run_id)
-            )
-            task_result = session.exec(statement).first()
-            if not task_result:
-                raise Exception(f"Result not found for task id: {self.task_run_id}")
-
-            return task_result.results
-
     def __repr__(self):
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
 
 
 class TaskWrapper(Generic[T]):
+    ENQUEUE_TASK_PATH = "/connect/enqueue-task"
+
     def __init__(
         self,
         task_identifier: str,
@@ -82,6 +87,8 @@ class TaskWrapper(Generic[T]):
         self.cron = cron
         self.conn = None
         self.engine = None
+        self.api_key = None
+        self.api_base_url = None
 
         try:
             context_klass = next(iter(self.type_hints.values()))
@@ -91,9 +98,14 @@ class TaskWrapper(Generic[T]):
             )
 
         self.context_klass = context_klass
-        self._task_instance_id = None
 
-    def set_conn(self, conn):
+    def set_api_key(self, api_key: str):
+        self.api_key = api_key
+
+    def set_api_base_url(self, api_base_url: str):
+        self.api_base_url = api_base_url
+
+    def set_conn(self, conn: str):
         if not self.conn and not self.engine:
             self.conn = conn
             self.engine = create_engine(conn)
@@ -125,6 +137,11 @@ class TaskWrapper(Generic[T]):
         return self.func(context)
 
     def schedule(self):
+        if self.api_key:
+            raise NotImplementedError(
+                "Task crons are not yet supported by the Hyrex platform."
+            )
+
         if not self.cron:
             self._unschedule()
             return
@@ -170,12 +187,21 @@ class TaskWrapper(Generic[T]):
 
         task = self._enqueue(context)
         logging.info(f"Task sent off to queue: {context}")
-        return TaskRun(
-            engine=self._get_engine(),
-            task_name=self.task_identifier,
-            task_run_id=task.id,
-            status=task.status,
-        )
+        if self.api_key:
+            return TaskRun(
+                api_key=self.api_key,
+                api_base_url=self.api_base_url,
+                task_name=self.task_identifier,
+                task_run_id=task.id,
+                status=task.status,
+            )
+        else:
+            return TaskRun(
+                engine=self._get_engine(),
+                task_name=self.task_identifier,
+                task_run_id=task.id,
+                status=task.status,
+            )
 
     def _check_type(self, context: T):
         expected_type = next(iter(self.type_hints.values()))
@@ -191,22 +217,51 @@ class TaskWrapper(Generic[T]):
             )
 
     def _enqueue(self, context: T):
-        try:
-            with Session(self._get_engine()) as session:
-                task_instance = HyrexTask(
-                    task_name=self.task_identifier,
-                    queue=self.queue,
-                    args=context.model_dump(),
+        task_instance = HyrexTask(
+            id=uuid7(),
+            task_name=self.task_identifier,
+            queue=self.queue,
+            args=context.model_dump_json(),
+        )
+        if self.api_key and self.api_base_url:
+            # Enqueue task using API
+            enqueue_url = f"{self.api_base_url}{self.ENQUEUE_TASK_PATH}"
+            headers = {
+                "x-project-api-key": self.api_key,
+            }
+            data = {
+                "tasks": [
+                    {
+                        "id": str(task_instance.id),
+                        "task_name": task_instance.task_name,
+                        "queue": task_instance.queue,
+                        "args": task_instance.args,
+                    }
+                ]
+            }
+            try:
+                response = requests.post(enqueue_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    # Successfully enqueued
+                    return task_instance
+                else:
+                    logging.error(f"Error enqueuing task: {response.status_code}")
+                    logging.error(f"Response body: {response.text}")
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error enqueuing task via API: {str(e)}")
+                raise RuntimeError(f"Failed to enqueue task via API: {e}")
+        else:
+            # Enqueue task using database
+            try:
+                with Session(self._get_engine()) as session:
+                    session.add(task_instance)
+                    session.commit()
+                    session.refresh(task_instance)
+                    return task_instance
+            except TypeError as e:
+                raise RuntimeError(
+                    "Task does not have a connection. If it's in a secondary register, make sure it's added to the main Hyrex instance."
                 )
-                session.add(task_instance)
-                session.commit()
-                session.refresh(task_instance)
-                self._task_instance_id = task_instance.id
-                return task_instance
-        except TypeError as e:
-            raise RuntimeError(
-                "Task does not have a connection. If it's in a secondary register, make sure the "
-            )
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
