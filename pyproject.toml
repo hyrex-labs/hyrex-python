@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.4.0"
+version = "0.5.0"
 description = "Hyrex is a modern, open-source task orchestration framework."
 readme = "README.md"
 license = { file = "LICENSE" }
