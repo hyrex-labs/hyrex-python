@@ -1,4 +1,4 @@
-# hyrex-python
+# hyrex-sdk
 
 Hyrex is a modern, open-source task orchestration framework.
 
