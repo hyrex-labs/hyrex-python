@@ -43,6 +43,7 @@ say_name.send(NameContext(name="Bob"))
 
 #### Step 3: Run your worker(s)
 
+- Make sure `HYREX_DATABASE_URL` is set.
 - Update this command with the module path to your Hyrex instance:
 
 ```
