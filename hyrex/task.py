@@ -137,6 +137,11 @@ class TaskWrapper(Generic[T]):
         return self.func(context)
 
     def schedule(self):
+        if self.api_key:
+            raise NotImplementedError(
+                "Task crons are not yet supported by the Hyrex platform."
+            )
+
         if not self.cron:
             self._unschedule()
             return

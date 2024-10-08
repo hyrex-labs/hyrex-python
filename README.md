@@ -10,8 +10,8 @@ Hyrex is a modern, open-source task orchestration framework.
 
 #### Step 1: Database initialization
 
-- Set `HYREX_DATABASE_URL` to your Postgres database connection string.
-- Run `hyrex init-db`.
+- Set `HYREX_DATABASE_URL` to your Postgres database connection string
+- Run `hyrex init-db`
 
 #### Step 2: Decorate your tasks
 
@@ -35,7 +35,7 @@ def say_name(context: NameContext):
     print(context.name)
 ```
 
-- Send your task to the Hyrex queue. A worker will pick it up from here.
+- Send your task to the Hyrex queue. A worker will pick it up from there.
 
 ```
 say_name.send(NameContext(name="Bob"))
@@ -43,7 +43,7 @@ say_name.send(NameContext(name="Bob"))
 
 #### Step 3: Run your worker(s)
 
-- Update this command with the module path to your Hyrex instance
+- Update this command with the module path to your Hyrex instance:
 
 ```
 hyrex run-worker my_app.tasks:hy
