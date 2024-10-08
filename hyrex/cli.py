@@ -44,8 +44,10 @@ def run_worker(
     """
     Run the worker using the specified task module path
     """
-    if EnvVars.DATABASE_URL not in os.environ:
-        typer.echo(f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker.")
+    if EnvVars.DATABASE_URL not in os.environ and EnvVars.API_KEY not in os.environ:
+        typer.echo(
+            f"{EnvVars.API_KEY} or {EnvVars.DATABASE_URL} must be set to run Hyrex worker."
+        )
         return
 
     sys.path.append(str(Path.cwd()))
