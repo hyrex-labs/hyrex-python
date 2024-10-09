@@ -221,7 +221,7 @@ class TaskWrapper(Generic[T]):
             id=uuid7(),
             task_name=self.task_identifier,
             queue=self.queue,
-            args=context.model_dump_json(),
+            args=context.model_dump(),
         )
         if self.api_key and self.api_base_url:
             # Enqueue task using API
