@@ -33,7 +33,11 @@ RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
 GET_TASK_BY_ID = """
-SELECT FROM hyrextask WHERE id = %s
+SELECT root_id, task_name, args, queue, attempt_number, max_retries FROM hyrextask WHERE id = %s
+"""
+
+INSERT_TASK = """
+INSERT INTO hyrextask (id, root_id, status, task_name, args, queue, attempt_number, max_retries) VALUES (%(id)s, %(root_id)s, 'queued', %(task_name)s, %(args)s, %(queue)s, %(attempt_number)s, %(max_retries)s)
 """
 
 

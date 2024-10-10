@@ -16,7 +16,7 @@ import psycopg_pool
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine
 from sqlmodel import Session, select
-from uuid_extensions import uuid7str
+from uuid_extensions import uuid7, uuid7str
 
 from hyrex import sql
 from hyrex.models import HyrexTask, HyrexWorker, StatusEnum, create_engine
@@ -166,12 +166,30 @@ class WorkerThread(threading.Thread):
                 conn.execute(sql.MARK_TASK_FAILED, [task_id])
 
     async def retry_task(self, task_id):
+        # Retrieve task, re-queue it if there are retries left
         if self.api_key:
-            # Retrieve task, re-queue it if it has more retries left
+            raise NotImplementedError("Retries not yet implemented on Hyrex platform")
         else:
             with self.pool.connection() as conn:
-                task = conn.execute(sql.GET_TASK_BY_ID, [task_id])
-
+                task = conn.execute(sql.GET_TASK_BY_ID, [task_id]).fetchone()
+                if not task:
+                    raise RuntimeError(f"Task id: {task_id} not found in database.")
+                root_id, task_name, args, queue, attempt_number, max_retries = task
+                if attempt_number < max_retries:
+                    # Spawn off a new task to retry.
+                    with self.pool.connection() as conn:
+                        conn.execute(
+                            sql.INSERT_TASK,
+                            {
+                                "id": uuid7str(),
+                                "root_id": root_id,
+                                "task_name": task_name,
+                                "args": str(args),
+                                "queue": queue,
+                                "attempt_number": attempt_number + 1,
+                                "max_retries": max_retries,
+                            },
+                        )
 
     async def reset_task_status(self, task_id):
         if self.api_key:

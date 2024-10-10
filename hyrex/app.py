@@ -39,13 +39,33 @@ class Hyrex:
         self.error_callback = error_callback
         self.task_registry = TaskRegistry()
 
-    def task(self, func=None, *, queue="default", cron=None) -> TaskWrapper:
+    def task(
+        self, func=None, *, queue="default", cron=None, max_retries=0
+    ) -> TaskWrapper:
         """
         Task decorator
         """
-        task_wrapper = self.task_registry.task(func, queue=queue, cron=cron)
-        self.task_registry.set_connection(self.conn, self.api_key, self.PLATFORM_URL)
-        return task_wrapper
+        if func is None:
+            # The decorator is used with arguments: @hy.task(max_retries=1)
+            def decorator(func):
+                task_wrapper = self.task_registry.task(
+                    func, queue=queue, cron=cron, max_retries=max_retries
+                )
+                self.task_registry.set_connection(
+                    self.conn, self.api_key, self.PLATFORM_URL
+                )
+                return task_wrapper
+
+            return decorator
+        else:
+            # The decorator is used without arguments: @hy.task
+            task_wrapper = self.task_registry.task(
+                func, queue=queue, cron=cron, max_retries=max_retries
+            )
+            self.task_registry.set_connection(
+                self.conn, self.api_key, self.PLATFORM_URL
+            )
+            return task_wrapper
 
     def add_registry(self, registry: TaskRegistry):
         self.task_registry.add_registry(registry)

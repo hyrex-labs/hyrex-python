@@ -23,7 +23,9 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
             raise TypeError("Key must be an instance of str")
         return super().__getitem__(key)
 
-    def task(self, func=None, *, queue="default", cron=None) -> TaskWrapper:
+    def task(
+        self, func=None, *, queue="default", cron=None, max_retries=0
+    ) -> TaskWrapper:
         """
         Create task decorator
         """
@@ -35,6 +37,7 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
                 func=func,
                 queue=queue,
                 cron=cron,
+                max_retries=max_retries,
             )
             self[task_identifier] = task_wrapper
 
@@ -45,7 +48,9 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
             wrapper.send = task_wrapper.send
             return wrapper
 
-        return decorator(func) if func else decorator
+        if func is not None:
+            return decorator(func)
+        return decorator
 
     def add_registry(self, task_registry):
         for key, val in task_registry.items():

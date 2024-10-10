@@ -103,6 +103,7 @@ class TaskWrapper(Generic[T]):
         func: Callable[[T], Any],
         queue: str,
         cron: str | None,
+        max_retries: int = 0,
     ):
         self.task_identifier = task_identifier
         self.func = func
@@ -110,6 +111,7 @@ class TaskWrapper(Generic[T]):
         self.signature = signature(func)
         self.type_hints = get_type_hints(func)
         self.cron = cron
+        self.max_retries = max_retries
         self.conn = None
         self.engine = None
         self.api_key = None
@@ -185,7 +187,7 @@ class TaskWrapper(Generic[T]):
                 cron.schedule(
                     '{self.task_identifier}-cron',
                     '{self.cron}',
-                    $$INSERT INTO public.hyrextask(id, task_name, status, queue, scheduled_start, started, finished, retried, args) VALUES(gen_random_uuid(), '{self.task_identifier}', 'queued'::statusenum, '{self.queue}', null, null, null, 0, '{{}}');$$
+                    $$INSERT INTO public.hyrextask(id, root_id, task_name, status, queue, scheduled_start, started, finished, max_retries, args) VALUES(gen_random_uuid(), '{self.task_identifier}', 'queued'::statusenum, '{self.queue}', null, null, null, 0, '{{}}');$$
                     );
 
                 UPDATE cron.job SET database = '{target_db_name}' WHERE jobname = '{self.task_identifier}-cron';
@@ -242,11 +244,14 @@ class TaskWrapper(Generic[T]):
             )
 
     def _enqueue(self, context: T):
+        task_id = uuid7()
         task_instance = HyrexTask(
-            id=uuid7(),
+            id=task_id,
+            root_id=task_id,
             task_name=self.task_identifier,
             queue=self.queue,
-            args=context.model_dump_json(),
+            args=context.model_dump(),
+            max_retries=self.max_retries,
         )
         if self.api_key:
             # Enqueue task using API
@@ -261,6 +266,7 @@ class TaskWrapper(Generic[T]):
                         "task_name": task_instance.task_name,
                         "queue": task_instance.queue,
                         "args": task_instance.args,
+                        "max_retries": task_instance.max_retries,
                     }
                 ]
             }
