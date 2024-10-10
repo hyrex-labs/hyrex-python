@@ -32,6 +32,10 @@ WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
+GET_TASK_BY_ID = """
+SELECT FROM hyrextask WHERE id = %s
+"""
+
 
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
@@ -47,7 +51,7 @@ MARK_TASK_QUEUED = """
 
 MARK_TASK_FAILED = """
     UPDATE hyrextask 
-    SET status = 'failed' 
+    SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = %s
 """
 

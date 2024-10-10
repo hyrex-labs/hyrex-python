@@ -31,6 +31,11 @@ class Hyrex:
         if not self.conn and not self.api_key:
             raise ValueError("Hyrex requires a connection string or an API key to run.")
 
+        if self.api_key and not self.PLATFORM_URL:
+            raise ValueError(
+                "Hyrex requires a HYREX_PLATFORM_URL if API key is provided."
+            )
+
         self.error_callback = error_callback
         self.task_registry = TaskRegistry()
 

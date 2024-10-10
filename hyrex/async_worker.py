@@ -165,6 +165,14 @@ class WorkerThread(threading.Thread):
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_FAILED, [task_id])
 
+    async def retry_task(self, task_id):
+        if self.api_key:
+            # Retrieve task, re-queue it if it has more retries left
+        else:
+            with self.pool.connection() as conn:
+                task = conn.execute(sql.GET_TASK_BY_ID, [task_id])
+
+
     async def reset_task_status(self, task_id):
         if self.api_key:
             # Use HTTP endpoint to reset task status
@@ -231,6 +239,7 @@ class WorkerThread(threading.Thread):
 
             if "task_id" in locals():
                 await self.mark_task_failed(task_id)
+                await self.retry_task(task_id)
 
             await asyncio.sleep(1)  # Add delay after error
 
