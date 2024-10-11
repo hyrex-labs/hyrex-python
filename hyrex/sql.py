@@ -32,6 +32,41 @@ WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
+CONDITIONALLY_RETRY_TASK = """
+WITH existing_task AS (
+    SELECT
+        root_id,
+        task_name,
+        args,
+        queue,
+        attempt_number,
+        max_retries
+    FROM hyrextask
+    WHERE id = %(existing_id)s
+      AND attempt_number < max_retries
+)
+INSERT INTO hyrextask (
+    id,
+    root_id,
+    status,
+    task_name,
+    args,
+    queue,
+    attempt_number,
+    max_retries
+)
+SELECT
+    %(new_id)s AS id,
+    root_id,
+    'queued' AS status,
+    task_name,
+    args,
+    queue,
+    attempt_number + 1 AS attempt_number,
+    max_retries
+FROM existing_task;
+"""
+
 GET_TASK_BY_ID = """
 SELECT root_id, task_name, args, queue, attempt_number, max_retries FROM hyrextask WHERE id = %s
 """

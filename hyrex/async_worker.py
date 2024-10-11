@@ -171,25 +171,29 @@ class WorkerThread(threading.Thread):
             raise NotImplementedError("Retries not yet implemented on Hyrex platform")
         else:
             with self.pool.connection() as conn:
-                task = conn.execute(sql.GET_TASK_BY_ID, [task_id]).fetchone()
-                if not task:
-                    raise RuntimeError(f"Task id: {task_id} not found in database.")
-                root_id, task_name, args, queue, attempt_number, max_retries = task
-                if attempt_number < max_retries:
-                    # Spawn off a new task to retry.
-                    with self.pool.connection() as conn:
-                        conn.execute(
-                            sql.INSERT_TASK,
-                            {
-                                "id": uuid7str(),
-                                "root_id": root_id,
-                                "task_name": task_name,
-                                "args": str(args),
-                                "queue": queue,
-                                "attempt_number": attempt_number + 1,
-                                "max_retries": max_retries,
-                            },
-                        )
+                conn.execute(
+                    sql.CONDITIONALLY_RETRY_TASK,
+                    {"existing_id": task_id, "new_id": uuid7()},
+                )
+                # task = conn.execute(sql.GET_TASK_BY_ID, [task_id]).fetchone()
+                # if not task:
+                #     raise RuntimeError(f"Task id: {task_id} not found in database.")
+                # root_id, task_name, args, queue, attempt_number, max_retries = task
+                # if attempt_number < max_retries:
+                #     # Spawn off a new task to retry.
+                #     with self.pool.connection() as conn:
+                #         conn.execute(
+                #             sql.INSERT_TASK,
+                #             {
+                #                 "id": uuid7str(),
+                #                 "root_id": root_id,
+                #                 "task_name": task_name,
+                #                 "args": str(args),
+                #                 "queue": queue,
+                #                 "attempt_number": attempt_number + 1,
+                #                 "max_retries": max_retries,
+                #             },
+                #         )
 
     async def reset_task_status(self, task_id):
         if self.api_key:
