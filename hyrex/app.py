@@ -40,7 +40,13 @@ class Hyrex:
         self.task_registry = TaskRegistry()
 
     def task(
-        self, func=None, *, queue="default", cron=None, max_retries=0
+        self,
+        func: Callable = None,
+        *,
+        queue: str = "default",
+        cron: str = None,
+        max_retries: int = 0,
+        priority: int = 1
     ) -> TaskWrapper:
         """
         Task decorator
@@ -49,7 +55,11 @@ class Hyrex:
             # The decorator is used with arguments: @hy.task(max_retries=1)
             def decorator(func):
                 task_wrapper = self.task_registry.task(
-                    func, queue=queue, cron=cron, max_retries=max_retries
+                    func,
+                    queue=queue,
+                    cron=cron,
+                    max_retries=max_retries,
+                    priority=priority,
                 )
                 self.task_registry.set_connection(
                     self.conn, self.api_key, self.PLATFORM_URL
@@ -60,7 +70,7 @@ class Hyrex:
         else:
             # The decorator is used without arguments: @hy.task
             task_wrapper = self.task_registry.task(
-                func, queue=queue, cron=cron, max_retries=max_retries
+                func, queue=queue, cron=cron, max_retries=max_retries, priority=priority
             )
             self.task_registry.set_connection(
                 self.conn, self.api_key, self.PLATFORM_URL

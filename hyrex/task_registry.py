@@ -24,7 +24,7 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
         return super().__getitem__(key)
 
     def task(
-        self, func=None, *, queue="default", cron=None, max_retries=0
+        self, func=None, *, queue="default", cron=None, max_retries=0, priority=1
     ) -> TaskWrapper:
         """
         Create task decorator
@@ -38,6 +38,7 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
                 queue=queue,
                 cron=cron,
                 max_retries=max_retries,
+                priority=priority,
             )
             self[task_identifier] = task_wrapper
 

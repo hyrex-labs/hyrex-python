@@ -9,6 +9,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from uuid import UUID
 
 import aiohttp
 import psycopg2
@@ -114,7 +115,7 @@ class WorkerThread(threading.Thread):
                         return None
                     return row  # task_id, task_name, args
 
-    async def mark_task_success(self, task_id):
+    async def mark_task_success(self, task_id: str):
         if self.api_key:
             # Use HTTP endpoint to mark task as success
             update_task_url = f"{self.api_base_url}{self.UPDATE_STATUS_PATH}"
@@ -140,7 +141,7 @@ class WorkerThread(threading.Thread):
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_SUCCESS, [task_id])
 
-    async def mark_task_failed(self, task_id):
+    async def mark_task_failed(self, task_id: str):
         if self.api_key:
             # Use HTTP endpoint to mark task as failed
             update_task_url = f"{self.api_base_url}{self.UPDATE_STATUS_PATH}"
@@ -165,7 +166,7 @@ class WorkerThread(threading.Thread):
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_FAILED, [task_id])
 
-    async def attempt_retry(self, task_id):
+    async def attempt_retry(self, task_id: str):
         # Retrieve task, re-queue it if there are retries left
         if self.api_key:
             raise NotImplementedError("Retries not yet implemented on Hyrex platform")
@@ -176,7 +177,7 @@ class WorkerThread(threading.Thread):
                     {"existing_id": task_id, "new_id": uuid7()},
                 )
 
-    async def reset_task_status(self, task_id):
+    async def reset_task_status(self, task_id: str):
         if self.api_key:
             # Use HTTP endpoint to reset task status
             update_task_url = f"{self.api_base_url}{self.UPDATE_STATUS_PATH}"
@@ -200,14 +201,6 @@ class WorkerThread(threading.Thread):
         else:
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_QUEUED, [task_id])
-
-    def serialize_result(self, result):
-        if isinstance(result, BaseModel):
-            return result.model_dump_json()
-        elif isinstance(result, dict):
-            return json.dumps(result)
-        else:
-            raise TypeError("Return value must be JSON-serializable.")
 
     async def process(self):
         try:

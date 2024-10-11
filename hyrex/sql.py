@@ -5,7 +5,7 @@ WITH next_task AS (
     WHERE
         queue = %s AND
         status = 'queued'
-    ORDER BY id
+    ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
@@ -21,7 +21,7 @@ WITH next_task AS (
     SELECT id
     FROM hyrextask
     WHERE status = 'queued'
-    ORDER BY id
+    ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )

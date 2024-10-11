@@ -2,9 +2,8 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import JSON, Index
-from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
-                      create_engine)
+from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
 from uuid_extensions import uuid7
 
 
@@ -59,10 +58,22 @@ class HyrexTask(SQLModel, table=True):
     max_retries: int = 0
     attempt_number: int = 0
 
+    # Define the priority field with a constraint between 1 and 10
+    priority: int = Field(
+        sa_column=Column(Integer, CheckConstraint("priority BETWEEN 1 AND 10")),
+        default=1,
+    )
+
     args: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     __table_args__ = (
         Index("index_queue_status", "status", "queue", "scheduled_start", "task_name"),
+        Index(
+            "idx_hyrextask_queue_status_priority",
+            "queue",
+            "status",
+            desc("priority"),
+        ),
     )
 
 
