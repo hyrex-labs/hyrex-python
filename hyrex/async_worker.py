@@ -165,7 +165,7 @@ class WorkerThread(threading.Thread):
             with self.pool.connection() as conn:
                 conn.execute(sql.MARK_TASK_FAILED, [task_id])
 
-    async def retry_task(self, task_id):
+    async def attempt_retry(self, task_id):
         # Retrieve task, re-queue it if there are retries left
         if self.api_key:
             raise NotImplementedError("Retries not yet implemented on Hyrex platform")
@@ -175,25 +175,6 @@ class WorkerThread(threading.Thread):
                     sql.CONDITIONALLY_RETRY_TASK,
                     {"existing_id": task_id, "new_id": uuid7()},
                 )
-                # task = conn.execute(sql.GET_TASK_BY_ID, [task_id]).fetchone()
-                # if not task:
-                #     raise RuntimeError(f"Task id: {task_id} not found in database.")
-                # root_id, task_name, args, queue, attempt_number, max_retries = task
-                # if attempt_number < max_retries:
-                #     # Spawn off a new task to retry.
-                #     with self.pool.connection() as conn:
-                #         conn.execute(
-                #             sql.INSERT_TASK,
-                #             {
-                #                 "id": uuid7str(),
-                #                 "root_id": root_id,
-                #                 "task_name": task_name,
-                #                 "args": str(args),
-                #                 "queue": queue,
-                #                 "attempt_number": attempt_number + 1,
-                #                 "max_retries": max_retries,
-                #             },
-                #         )
 
     async def reset_task_status(self, task_id):
         if self.api_key:
@@ -261,7 +242,7 @@ class WorkerThread(threading.Thread):
 
             if "task_id" in locals():
                 await self.mark_task_failed(task_id)
-                await self.retry_task(task_id)
+                await self.attempt_retry(task_id)
 
             await asyncio.sleep(1)  # Add delay after error
 
