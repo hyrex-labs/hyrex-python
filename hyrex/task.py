@@ -80,7 +80,7 @@ class TaskRun:
 
                 self.status = task_instance.status
 
-    def wait(self, timeout=30, interval=1):
+    def wait(self, timeout: float = 30.0, interval: float = 1.0):
         start = time.time()
         elapsed = 0
         while self.status in [StatusEnum.queued, StatusEnum.running]:
@@ -104,6 +104,7 @@ class TaskWrapper(Generic[T]):
         queue: str,
         cron: str | None,
         max_retries: int = 0,
+        priority: int = 1,
     ):
         self.task_identifier = task_identifier
         self.func = func
@@ -112,6 +113,7 @@ class TaskWrapper(Generic[T]):
         self.type_hints = get_type_hints(func)
         self.cron = cron
         self.max_retries = max_retries
+        self.priority = priority
         self.conn = None
         self.engine = None
         self.api_key = None
@@ -252,6 +254,7 @@ class TaskWrapper(Generic[T]):
             queue=self.queue,
             args=context.model_dump(),
             max_retries=self.max_retries,
+            priority=self.priority,
         )
         if self.api_key:
             # Enqueue task using API
