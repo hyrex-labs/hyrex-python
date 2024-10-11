@@ -15,7 +15,7 @@ def utcnow():
 class StatusEnum(StrEnum):
     success = "success"
     failed = "failed"
-    up_for_retry = "up_for_retry"
+    canceled = "canceled"
     running = "running"
     queued = "queued"
 
@@ -34,6 +34,7 @@ class HyrexWorker(SQLModel, table=True):
 
 class HyrexTask(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid7, primary_key=True)
+    root_id: UUID
 
     # These 4 are indexed
     task_name: str = Field(index=True)
@@ -54,7 +55,9 @@ class HyrexTask(SQLModel, table=True):
     finished: datetime | None = Field(
         sa_column=Column(DateTime(timezone=True)), default=None
     )
-    retried: int = 0
+
+    max_retries: int = 0
+    attempt_number: int = 0
 
     args: dict = Field(default_factory=dict, sa_column=Column(JSON))
 

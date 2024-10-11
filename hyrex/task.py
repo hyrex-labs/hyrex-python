@@ -26,6 +26,8 @@ class UnboundTaskException(Exception):
 
 
 class TaskRun:
+    TASK_STATUS_PATH = "/connect/get-task-status"
+
     def __init__(
         self,
         task_name: str,
@@ -42,18 +44,33 @@ class TaskRun:
         self.api_base_url = api_base_url
         self.engine = engine
 
-    # TODO: Implement for API
-    def wait(self, timeout=30, interval=1):
+    def _update_status(self):
         if self.api_key:
-            raise NotImplementedError(
-                "Hyrex platform does not yet support waiting for tasks"
-            )
-
-        start = time.time()
-        elapsed = 0
-        while self.status in [StatusEnum.queued, StatusEnum.running]:
-            if elapsed > timeout:
-                raise TimeoutError("Waiting for task timed out.")
+            # Get task status using API
+            status_url = f"{self.api_base_url}{self.TASK_STATUS_PATH}"
+            headers = {
+                "x-project-api-key": self.api_key,
+            }
+            data = {"task_ids": [str(self.task_run_id)]}
+            try:
+                response = requests.get(status_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    response_data = response.json()
+                    if response_data.get("result"):
+                        task_instance = response_data.get("result")[0]
+                    else:
+                        raise Exception(
+                            "Awaiting a task instance but task ID not returned from Hyrex platform."
+                        )
+                    self.status = task_instance.get("status")
+                    return
+                else:
+                    logging.error(f"Error enqueuing task: {response.status_code}")
+                    logging.error(f"Response body: {response.text}")
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error enqueuing task via API: {str(e)}")
+                raise RuntimeError(f"Failed to enqueue task via API: {e}")
+        else:
             with Session(self.engine) as session:
                 task_instance = session.get(HyrexTask, self.task_run_id)
                 if task_instance is None:
@@ -62,6 +79,14 @@ class TaskRun:
                     )
 
                 self.status = task_instance.status
+
+    def wait(self, timeout=30, interval=1):
+        start = time.time()
+        elapsed = 0
+        while self.status in [StatusEnum.queued, StatusEnum.running]:
+            if elapsed > timeout:
+                raise TimeoutError("Waiting for task timed out.")
+            self._update_status()
             time.sleep(interval)
             elapsed = time.time() - start
 
@@ -78,6 +103,7 @@ class TaskWrapper(Generic[T]):
         func: Callable[[T], Any],
         queue: str,
         cron: str | None,
+        max_retries: int = 0,
     ):
         self.task_identifier = task_identifier
         self.func = func
@@ -85,6 +111,7 @@ class TaskWrapper(Generic[T]):
         self.signature = signature(func)
         self.type_hints = get_type_hints(func)
         self.cron = cron
+        self.max_retries = max_retries
         self.conn = None
         self.engine = None
         self.api_key = None
@@ -160,7 +187,7 @@ class TaskWrapper(Generic[T]):
                 cron.schedule(
                     '{self.task_identifier}-cron',
                     '{self.cron}',
-                    $$INSERT INTO public.hyrextask(id, task_name, status, queue, scheduled_start, started, finished, retried, args) VALUES(gen_random_uuid(), '{self.task_identifier}', 'queued'::statusenum, '{self.queue}', null, null, null, 0, '{{}}');$$
+                    $$INSERT INTO public.hyrextask(id, root_id, task_name, status, queue, scheduled_start, started, finished, max_retries, args) VALUES(gen_random_uuid(), '{self.task_identifier}', 'queued'::statusenum, '{self.queue}', null, null, null, 0, '{{}}');$$
                     );
 
                 UPDATE cron.job SET database = '{target_db_name}' WHERE jobname = '{self.task_identifier}-cron';
@@ -217,13 +244,16 @@ class TaskWrapper(Generic[T]):
             )
 
     def _enqueue(self, context: T):
+        task_id = uuid7()
         task_instance = HyrexTask(
-            id=uuid7(),
+            id=task_id,
+            root_id=task_id,
             task_name=self.task_identifier,
             queue=self.queue,
             args=context.model_dump(),
+            max_retries=self.max_retries,
         )
-        if self.api_key and self.api_base_url:
+        if self.api_key:
             # Enqueue task using API
             enqueue_url = f"{self.api_base_url}{self.ENQUEUE_TASK_PATH}"
             headers = {
@@ -236,13 +266,16 @@ class TaskWrapper(Generic[T]):
                         "task_name": task_instance.task_name,
                         "queue": task_instance.queue,
                         "args": task_instance.args,
+                        "max_retries": task_instance.max_retries,
                     }
                 ]
             }
             try:
                 response = requests.post(enqueue_url, headers=headers, json=data)
                 if response.status_code == 200:
-                    # Successfully enqueued
+                    # Successfully enqueued, refresh the task instance
+                    json_response = response.json()
+                    task_instance = HyrexTask(**json_response.get("result")[0])
                     return task_instance
                 else:
                     logging.error(f"Error enqueuing task: {response.status_code}")
@@ -256,6 +289,7 @@ class TaskWrapper(Generic[T]):
                 with Session(self._get_engine()) as session:
                     session.add(task_instance)
                     session.commit()
+                    # Successfully enqueued, refresh the task instance
                     session.refresh(task_instance)
                     return task_instance
             except TypeError as e:
