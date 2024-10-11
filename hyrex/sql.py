@@ -1,3 +1,43 @@
+INIT_DB = """
+-- Enable the uuid-ossp extension for UUID generation functions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create the status_enum type based on your StatusEnum
+CREATE TYPE status_enum AS ENUM ('queued', 'running', 'completed', 'failed');
+
+-- Create the hyrex_task table
+CREATE TABLE hyrex_task (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    root_id UUID NOT NULL,
+
+    -- Indexed fields
+    task_name TEXT NOT NULL,
+    status status_enum NOT NULL DEFAULT 'queued',
+    queue TEXT NOT NULL DEFAULT 'default',
+    scheduled_start TIMESTAMP WITH TIME ZONE,
+
+    worker_id UUID,
+
+    queued TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started TIMESTAMP WITH TIME ZONE,
+    finished TIMESTAMP WITH TIME ZONE,
+
+    max_retries INTEGER NOT NULL DEFAULT 0,
+    attempt_number INTEGER NOT NULL DEFAULT 0,
+
+    args JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+    priority INTEGER NOT NULL CHECK (priority BETWEEN 1 AND 10)
+);
+
+-- Create indexes on the specified fields
+CREATE INDEX idx_hyrex_task_task_name ON hyrex_task(task_name);
+CREATE INDEX idx_hyrex_task_status ON hyrex_task(status);
+CREATE INDEX idx_hyrex_task_queue ON hyrex_task(queue);
+CREATE INDEX idx_hyrex_task_scheduled_start ON hyrex_task(scheduled_start);
+"""
+
+
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
