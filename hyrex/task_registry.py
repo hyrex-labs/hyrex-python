@@ -53,7 +53,7 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
             return decorator(func)
         return decorator
 
-    def add_registry(self, task_registry):
+    def add_registry(self, task_registry: "TaskRegistry"):
         for key, val in task_registry.items():
             self[key] = val
 

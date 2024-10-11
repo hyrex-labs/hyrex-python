@@ -80,7 +80,7 @@ class TaskRun:
 
                 self.status = task_instance.status
 
-    def wait(self, timeout=30, interval=1):
+    def wait(self, timeout: float = 30.0, interval: float = 1.0):
         start = time.time()
         elapsed = 0
         while self.status in [StatusEnum.queued, StatusEnum.running]:
