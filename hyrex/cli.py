@@ -8,6 +8,7 @@ from pathlib import Path
 
 import typer
 
+from hyrex import constants
 from hyrex.app import EnvVars
 from hyrex.models import create_tables
 
@@ -26,7 +27,10 @@ class LogLevel(str, Enum):
 def run_worker(
     app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
     queue: str = typer.Option(
-        "default", "--queue", "-q", help="The name of the queue to process"
+        constants.DEFAULT_QUEUE,
+        "--queue",
+        "-q",
+        help="The name of the queue to process",
     ),
     num_threads: int = typer.Option(
         8, "--num-threads", "-n", help="Number of threads to run"

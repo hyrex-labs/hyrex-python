@@ -19,7 +19,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 from uuid_extensions import uuid7, uuid7str
 
-from hyrex import sql
+from hyrex import constants, sql
 from hyrex.models import HyrexTask, HyrexWorker, StatusEnum, create_engine
 from hyrex.task_registry import TaskRegistry
 
@@ -106,7 +106,7 @@ class WorkerThread(threading.Thread):
             # Fetch task from database
             with self.pool.connection() as conn:
                 with conn.cursor() as cur:
-                    if self.queue == "default":
+                    if self.queue == constants.DEFAULT_QUEUE:
                         cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [self.worker_id])
                     else:
                         cur.execute(sql.FETCH_TASK, [self.queue, self.worker_id])

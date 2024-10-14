@@ -3,6 +3,7 @@ import logging
 import os
 from typing import Any, Callable
 
+from hyrex import constants
 from hyrex.async_worker import AsyncWorker
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
@@ -43,10 +44,10 @@ class Hyrex:
         self,
         func: Callable = None,
         *,
-        queue: str = "default",
+        queue: str = constants.DEFAULT_QUEUE,
         cron: str = None,
         max_retries: int = 0,
-        priority: int = 1
+        priority: int = constants.DEFAULT_PRIORITY
     ) -> TaskWrapper:
         """
         Task decorator
@@ -86,7 +87,7 @@ class Hyrex:
 
     def run_worker(
         self,
-        queue: str = "default",
+        queue: str = constants.DEFAULT_QUEUE,
         num_threads: int = 8,
         log_level: int = logging.INFO,
     ):

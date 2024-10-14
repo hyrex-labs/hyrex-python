@@ -2,6 +2,7 @@
 import functools
 from typing import Any, Callable
 
+from hyrex import constants
 from hyrex.task import T, TaskWrapper
 
 
@@ -24,7 +25,13 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
         return super().__getitem__(key)
 
     def task(
-        self, func=None, *, queue="default", cron=None, max_retries=0, priority=1
+        self,
+        func=None,
+        *,
+        queue=constants.DEFAULT_QUEUE,
+        cron=None,
+        max_retries=0,
+        priority=constants.DEFAULT_PRIORITY,
     ) -> TaskWrapper:
         """
         Create task decorator

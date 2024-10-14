@@ -3,8 +3,11 @@ from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
+from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
+                      create_engine)
 from uuid_extensions import uuid7
+
+from hyrex import constants
 
 
 def utcnow():
@@ -38,7 +41,7 @@ class HyrexTask(SQLModel, table=True):
     # These 4 are indexed
     task_name: str = Field(index=True)
     status: StatusEnum = Field(default=StatusEnum.queued, index=True)
-    queue: str = Field(default="default", index=True)
+    queue: str = Field(default=constants.DEFAULT_QUEUE, index=True)
     scheduled_start: datetime | None = Field(
         sa_column=Column(DateTime(timezone=True), index=True), default=None
     )
@@ -61,7 +64,7 @@ class HyrexTask(SQLModel, table=True):
     # Define the priority field with a constraint between 1 and 10
     priority: int = Field(
         sa_column=Column(Integer, CheckConstraint("priority BETWEEN 1 AND 10")),
-        default=1,
+        default=constants.DEFAULT_PRIORITY,
     )
 
     args: dict = Field(default_factory=dict, sa_column=Column(JSON))
