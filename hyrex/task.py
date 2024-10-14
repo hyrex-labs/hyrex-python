@@ -12,6 +12,7 @@ from sqlalchemy import Engine, create_engine
 from sqlmodel import Session, select
 from uuid_extensions import uuid7
 
+from hyrex import constants
 from hyrex.models import HyrexTask, StatusEnum
 
 T = TypeVar("T", bound=BaseModel)
@@ -101,10 +102,10 @@ class TaskWrapper(Generic[T]):
         self,
         task_identifier: str,
         func: Callable[[T], Any],
-        queue: str,
         cron: str | None,
+        queue: str = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
-        priority: int = 1,
+        priority: int = constants.DEFAULT_PRIORITY,
     ):
         self.task_identifier = task_identifier
         self.func = func
@@ -210,11 +211,17 @@ class TaskWrapper(Generic[T]):
                     pass
                     # print(f"Unschedule failed with exception {e}")
 
-    def send(self, context: T) -> TaskRun:
+    def send(
+        self,
+        context: T,
+        queue: str = None,
+        priority: int = None,
+        max_retries: int = None,
+    ) -> TaskRun:
         logging.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
         self._check_type(context)
 
-        task = self._enqueue(context)
+        task = self._enqueue(context, queue, priority, max_retries)
         logging.info(f"Task sent off to queue: {context}")
         if self.api_key:
             return TaskRun(
@@ -245,16 +252,22 @@ class TaskWrapper(Generic[T]):
                 f"Invalid argument type. Expected {expected_type.__name__}. Error: {e}"
             )
 
-    def _enqueue(self, context: T):
+    def _enqueue(
+        self,
+        context: T,
+        queue: str = None,
+        priority: int = None,
+        max_retries: int = None,
+    ):
         task_id = uuid7()
         task_instance = HyrexTask(
             id=task_id,
             root_id=task_id,
             task_name=self.task_identifier,
-            queue=self.queue,
+            queue=queue or self.queue,
             args=context.model_dump(),
-            max_retries=self.max_retries,
-            priority=self.priority,
+            max_retries=max_retries if max_retries is not None else self.max_retries,
+            priority=priority if priority is not None else self.priority,
         )
         if self.api_key:
             # Enqueue task using API
