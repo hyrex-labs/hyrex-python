@@ -45,3 +45,6 @@ hyrex = "hyrex.cli:cli"
 [project.urls]
 "Homepage" = "https://github.com/hyrex-labs/hyrex-python"
 "Source Code" = "https://github.com/hyrex-labs/hyrex-python"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
