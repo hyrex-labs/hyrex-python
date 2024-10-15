@@ -245,7 +245,7 @@ class TaskWrapper(Generic[T]):
             validated_arg = (
                 expected_type.parse_obj(context)
                 if isinstance(context, dict)
-                else expected_type.validate(context)
+                else expected_type.model_validate(context)
             )
         except ValidationError as e:
             raise TypeError(

@@ -90,8 +90,3 @@ MARK_TASK_FAILED = """
     SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = %s
 """
-
-SAVE_RESULTS = """
-    INSERT INTO public.hyrextaskresult (task_id, results)
-    VALUES (%s,  %s);
-"""
