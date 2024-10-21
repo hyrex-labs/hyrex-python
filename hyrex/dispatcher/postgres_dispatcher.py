@@ -1,9 +1,11 @@
 import threading
-from queue import Queue, Empty
-from uuid import UUID
 import time
+from queue import Empty, Queue
+from uuid import UUID
 
+from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
+from pydantic import BaseModel
 
 from hyrex import constants, sql
 from hyrex.dispatcher.dispatcher import Dispatcher
@@ -20,10 +22,13 @@ class PostgresDispatcher(Dispatcher):
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
-        self.thread = threading.Thread(target=self._batch_insert)
+        self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
 
-    def enqueue(self, task: HyrexTask):
+    def enqueue(
+        self,
+        task: HyrexTask,
+    ):
         """
         Adds a task to the dispatcher's queue.
 
@@ -70,10 +75,25 @@ class PostgresDispatcher(Dispatcher):
 
         :param tasks: List of tasks to insert.
         """
+        task_data = [
+            (
+                task.id,
+                task.root_id,
+                task.task_name,
+                Json(task.args),
+                task.queue,
+                task.max_retries,
+                task.priority,
+            )
+            for task in tasks
+        ]
+
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                insert_query = "INSERT INTO tasks (data) VALUES %s"
-                extras.execute_values(cur, insert_query, [(task,) for task in tasks])
+                cur.executemany(
+                    sql.ENQUEUE_TASKS,
+                    task_data,
+                )
                 conn.commit()
 
     def stop(self):
@@ -97,24 +117,11 @@ class PostgresDispatcher(Dispatcher):
         """
         self.stop()
 
-    # def enqueue(self, task: HyrexTask):
-    #     with self.pool.connection() as conn:
-    #         with conn.cursor() as cur:
-    #             cur.execute(
-    #                 sql.ENQUEUE_TASK,
-    #                 {
-    #                     "id": task.id,
-    #                     "root_id": task.root_id,
-    #                     "task_name": task.task_name,
-    #                     "args": task.args,
-    #                     "queue": task.queue,
-    #                     "max_retries": task.max_retries,
-    #                     "priority": task.priority,
-    #                 },
-    #             )
-
     def dequeue(self, queue: str = constants.DEFAULT_QUEUE):
         pass
 
     def wait(self, task_id: UUID):
+        pass
+
+    def retrieve_status(self, task_id: UUID):
         pass

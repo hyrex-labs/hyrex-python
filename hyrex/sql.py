@@ -1,5 +1,5 @@
 CREATE_TABLES = """
-TODO
+
 """
 
 FETCH_TASK = """
@@ -77,7 +77,7 @@ FROM existing_task;
 """
 
 
-ENQUEUE_TASK = """
+ENQUEUE_TASKS = """
 INSERT INTO hyrextask (
     id,
     root_id,
@@ -85,18 +85,12 @@ INSERT INTO hyrextask (
     args,
     queue,
     max_retries,
-    priority
-) VALUES (
-    %(id)s,
-    %(root_id)s,
-    %(task_name)s,
-    %(args)s,
-    %(queue)s,
-    %(max_retries)s,
-    %(priority)s
-);
+    priority,
+    status,
+    attempt_number,
+    queued
+) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
 """
-
 
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
