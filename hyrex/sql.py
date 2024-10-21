@@ -1,3 +1,7 @@
+CREATE_TABLES = """
+TODO
+"""
+
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
@@ -70,6 +74,27 @@ SELECT
     max_retries,
     priority
 FROM existing_task;
+"""
+
+
+ENQUEUE_TASK = """
+INSERT INTO hyrextask (
+    id,
+    root_id,
+    task_name,
+    args,
+    queue,
+    max_retries,
+    priority
+) VALUES (
+    %(id)s,
+    %(root_id)s,
+    %(task_name)s,
+    %(args)s,
+    %(queue)s,
+    %(max_retries)s,
+    %(priority)s
+);
 """
 
 
