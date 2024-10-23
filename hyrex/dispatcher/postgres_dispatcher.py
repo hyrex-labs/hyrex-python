@@ -168,13 +168,18 @@ class PostgresDispatcher(Dispatcher):
     def wait(self, task_id: UUID, timeout: float = 30.0, interval: float = 1.0):
         start = time.time()
         elapsed = 0
-        task_status = self._get_task_status(task_id=task_id)
+        try:
+            task_status = self._get_task_status(task_id=task_id)
+        except ValueError:
+            # Task hasn't yet moved from self.local_queue to DB
+            task_status = "queued"
 
         while task_status in [StatusEnum.queued, StatusEnum.running]:
+            print(task_status)
             if elapsed > timeout:
                 raise TimeoutError("Waiting for task timed out.")
             time.sleep(interval)
-            self.get_task_status(task_id=task_id)
+            task_status = self._get_task_status(task_id=task_id)
             elapsed = time.time() - start
 
     def register_worker(self, worker_id: UUID):
