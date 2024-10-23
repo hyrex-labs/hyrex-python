@@ -47,11 +47,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def wait(self, task_id: UUID):
-        pass
-
-    @abstractmethod
-    def retrieve_status(self, task_id: UUID):
+    def wait(self, task_id: UUID, timeout: float, interval: float):
         pass
 
     @abstractmethod

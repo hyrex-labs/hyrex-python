@@ -12,7 +12,7 @@ from uuid_extensions import uuid7
 
 from hyrex import constants, sql
 from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
-from hyrex.models import HyrexTask
+from hyrex.models import HyrexTask, StatusEnum
 
 
 class PostgresDispatcher(Dispatcher):
@@ -154,23 +154,28 @@ class PostgresDispatcher(Dispatcher):
         self.pool.close()
         logging.info("Dispatcher stopped successfully!")
 
-    def __enter__(self):
-        """
-        Enter the runtime context related to this object.
-        """
-        return self
+    def _get_task_status(self, task_id: UUID):
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql.GET_TASK_STATUS, [task_id])
+                result = cursor.fetchone()  # Fetch one result (expecting a single row)
+                if result is None:
+                    raise ValueError(
+                        f"Awaiting a task instance but task id {task_id} not found in DB."
+                    )
+                return result[0]
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Exit the runtime context and ensure resources are cleaned up.
-        """
-        self.stop()
+    def wait(self, task_id: UUID, timeout: float = 30.0, interval: float = 1.0):
+        start = time.time()
+        elapsed = 0
+        task_status = self._get_task_status(task_id=task_id)
 
-    def wait(self, task_id: UUID):
-        pass
-
-    def retrieve_status(self, task_id: UUID):
-        pass
+        while task_status in [StatusEnum.queued, StatusEnum.running]:
+            if elapsed > timeout:
+                raise TimeoutError("Waiting for task timed out.")
+            time.sleep(interval)
+            self.get_task_status(task_id=task_id)
+            elapsed = time.time() - start
 
     def register_worker(self, worker_id: UUID):
         pass

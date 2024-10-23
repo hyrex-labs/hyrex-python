@@ -17,7 +17,7 @@ import psycopg_pool
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine
 from sqlmodel import Session, select
-from uuid_extensions import uuid7, uuid7str
+from uuid_extensions import uuid7
 
 from hyrex import constants, sql
 from hyrex.dispatcher import DequeuedTask, Dispatcher
@@ -156,7 +156,7 @@ class AsyncWorker:
         num_threads: int = 8,
         error_callback: Callable = None,
     ):
-        self.id = uuid7str()
+        self.id = uuid7()
         self.queue = queue
         self.dispatcher = dispatcher
         self.num_threads = num_threads
@@ -164,19 +164,6 @@ class AsyncWorker:
         self.task_registry = task_registry
         self.error_callback = error_callback
         self.name = name or generate_worker_name()
-
-    # def connect(self):
-    #     if self.api_key:
-    #         return
-
-    #     logging.info("Creating worker pool.")
-
-    #     self.pool = psycopg_pool.ConnectionPool(
-    #         self.conn,
-    #         min_size=max(1, self.num_threads // 4),
-    #         max_size=max(1, self.num_threads // 2),
-    #     )
-    #     logging.info(f"Pool {self.pool}")
 
     def close(self):
         pass

@@ -42,51 +42,46 @@ class TaskRun:
         self.status = status
         self.dispatcher = dispatcher
 
-    def _update_status(self):
-        if self.api_key:
-            # Get task status using API
-            status_url = f"{self.api_base_url}{self.TASK_STATUS_PATH}"
-            headers = {
-                "x-project-api-key": self.api_key,
-            }
-            data = {"task_ids": [str(self.task_run_id)]}
-            try:
-                response = requests.get(status_url, headers=headers, json=data)
-                if response.status_code == 200:
-                    response_data = response.json()
-                    if response_data.get("result"):
-                        task_instance = response_data.get("result")[0]
-                    else:
-                        raise Exception(
-                            "Awaiting a task instance but task ID not returned from Hyrex platform."
-                        )
-                    self.status = task_instance.get("status")
-                    return
-                else:
-                    logging.error(f"Error enqueuing task: {response.status_code}")
-                    logging.error(f"Response body: {response.text}")
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Error enqueuing task via API: {str(e)}")
-                raise RuntimeError(f"Failed to enqueue task via API: {e}")
-        else:
-            with Session(self.engine) as session:
-                task_instance = session.get(HyrexTask, self.task_run_id)
-                if task_instance is None:
-                    raise Exception(
-                        "Awaiting a task instance but task id not found in DB."
-                    )
+    # def _update_status(self):
+    #     if self.api_key:
+    #         # Get task status using API
+    #         status_url = f"{self.api_base_url}{self.TASK_STATUS_PATH}"
+    #         headers = {
+    #             "x-project-api-key": self.api_key,
+    #         }
+    #         data = {"task_ids": [str(self.task_run_id)]}
+    #         try:
+    #             response = requests.get(status_url, headers=headers, json=data)
+    #             if response.status_code == 200:
+    #                 response_data = response.json()
+    #                 if response_data.get("result"):
+    #                     task_instance = response_data.get("result")[0]
+    #                 else:
+    #                     raise Exception(
+    #                         "Awaiting a task instance but task ID not returned from Hyrex platform."
+    #                     )
+    #                 self.status = task_instance.get("status")
+    #                 return
+    #             else:
+    #                 logging.error(f"Error enqueuing task: {response.status_code}")
+    #                 logging.error(f"Response body: {response.text}")
+    #         except requests.exceptions.RequestException as e:
+    #             logging.error(f"Error enqueuing task via API: {str(e)}")
+    #             raise RuntimeError(f"Failed to enqueue task via API: {e}")
+    #     else:
+    #         with Session(self.engine) as session:
+    #             task_instance = session.get(HyrexTask, self.task_run_id)
+    #             if task_instance is None:
+    #                 raise Exception(
+    #                     "Awaiting a task instance but task id not found in DB."
+    #                 )
 
-                self.status = task_instance.status
+    #             self.status = task_instance.status
 
     def wait(self, timeout: float = 30.0, interval: float = 1.0):
-        start = time.time()
-        elapsed = 0
-        while self.status in [StatusEnum.queued, StatusEnum.running]:
-            if elapsed > timeout:
-                raise TimeoutError("Waiting for task timed out.")
-            self._update_status()
-            time.sleep(interval)
-            elapsed = time.time() - start
+        self.dispatcher.wait(
+            task_id=self.task_run_id, timeout=timeout, interval=interval
+        )
 
     def __repr__(self):
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"

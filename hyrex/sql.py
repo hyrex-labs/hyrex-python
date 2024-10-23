@@ -91,7 +91,7 @@ SELECT
 FROM existing_task;
 """
 
-
+# TODO: Update hyrextask table to have better defaults so they're not needed here.
 ENQUEUE_TASKS = """
 INSERT INTO hyrextask (
     id,
@@ -123,4 +123,8 @@ MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = %s
+"""
+
+GET_TASK_STATUS = """
+    SELECT status FROM hyrextask WHERE id = %s
 """
