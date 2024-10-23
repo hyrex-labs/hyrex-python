@@ -48,6 +48,9 @@ class PostgresDispatcher(Dispatcher):
         with self.pool.connection() as conn:
             conn.execute(sql.MARK_TASK_QUEUED, [task_id])
 
+    def cancel_task(self, task_id: UUID):
+        pass
+
     # TODO: Implement batch dequeuing
     def dequeue(
         self,

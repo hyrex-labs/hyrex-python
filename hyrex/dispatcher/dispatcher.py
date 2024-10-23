@@ -47,6 +47,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def cancel_task(self, task_id: UUID):
+        pass
+
+    @abstractmethod
     def wait(self, task_id: UUID, timeout: float, interval: float):
         pass
 
