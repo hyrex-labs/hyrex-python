@@ -3,7 +3,14 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from hyrex import constants
 from hyrex.models import HyrexTask
+
+
+class DequeuedTask(BaseModel):
+    id: UUID
+    name: str
+    args: dict
 
 
 class Dispatcher(ABC):
@@ -15,7 +22,28 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def dequeue(self):
+    def dequeue(
+        self,
+        worker_id: UUID,
+        queue: str = constants.DEFAULT_QUEUE,
+        num_tasks: int = 1,
+    ) -> list[DequeuedTask]:
+        pass
+
+    @abstractmethod
+    def mark_success(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def mark_failed(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def reset_status(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def attempt_retry(self, task_id: UUID):
         pass
 
     @abstractmethod
@@ -24,4 +52,16 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def retrieve_status(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def register_worker(self, worker_id: UUID):
+        pass
+
+    @abstractmethod
+    def mark_worker_stopped(self, worker_id: UUID):
+        pass
+
+    @abstractmethod
+    def stop(self):
         pass

@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import signal
 from enum import Enum
 from typing import Any, Callable
 
@@ -39,13 +40,7 @@ class Hyrex:
 
         self.dispatcher = self._init_dispatcher(dispatcher_type)
 
-        # if not self.conn and not self.api_key:
-        #     raise ValueError("Hyrex requires a connection string or an API key to run.")
-
-        # if self.api_key and not self.PLATFORM_URL:
-        #     raise ValueError(
-        #         "Hyrex requires a HYREX_PLATFORM_URL if API key is provided."
-        #     )
+        self._setup_signal_handlers()
 
         self.error_callback = error_callback
         self.task_registry = TaskRegistry()
@@ -61,6 +56,29 @@ class Hyrex:
             raise NotImplementedError(
                 "Non-Postgres dispatchers have not yet been implemented."
             )
+
+    def _signal_handler(self, signum, frame):
+        logging.info("SIGTERM received, stopping Hyrex dispatcher...")
+        self.dispatcher.stop()
+
+    def _chain_signal_handlers(self, new_handler, old_handler):
+        """Return a function that calls both the new and old signal handlers."""
+
+        def wrapper(signum, frame):
+            # Call the new handler first
+            new_handler(signum, frame)
+            # Then call the previous handler (if it exists)
+            if old_handler and callable(old_handler):
+                old_handler(signum, frame)
+
+        return wrapper
+
+    def _setup_signal_handlers(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            old_handler = signal.getsignal(sig)  # Get the existing handler
+            new_handler = self._signal_handler  # Your new handler
+            # Set the new handler, which calls both new and old handlers
+            signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
 
     def task(
         self,
@@ -112,9 +130,7 @@ class Hyrex:
         logging.basicConfig(level=log_level)
 
         worker = AsyncWorker(
-            conn=self.conn,
-            api_key=self.api_key,
-            api_base_url=self.PLATFORM_URL,
+            dispatcher=self.dispatcher,
             queue=queue,
             task_registry=self.task_registry,
             num_threads=num_threads,

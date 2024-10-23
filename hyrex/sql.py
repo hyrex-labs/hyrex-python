@@ -1,6 +1,21 @@
-CREATE_TABLES = """
+from hyrex import constants
 
-"""
+# CREATE_TABLES = f"""
+# -- Enable UUID extension
+# CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+# -- Create custom ENUM type for StatusEnum
+# CREATE TYPE statusenum AS ENUM ('success', 'failed', 'canceled', 'running', 'queued');
+
+# CREATE TABLE hyrexworker (
+#     id UUID PRIMARY KEY,
+#     name TEXT NOT NULL,
+#     queue TEXT NOT NULL DEFAULT {constants.DEFAULT_QUEUE},
+#     started TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+#     stopped TIMESTAMP WITH TIME ZONE
+# );
+
+# """
 
 FETCH_TASK = """
 WITH next_task AS (
