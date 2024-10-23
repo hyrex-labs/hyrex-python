@@ -1,10 +1,13 @@
 import functools
 import logging
 import os
+import signal
+from enum import Enum
 from typing import Any, Callable
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
+from hyrex.dispatcher import PostgresDispatcher
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
 
@@ -15,12 +18,18 @@ class EnvVars:
     PLATFORM_URL = "HYREX_PLATFORM_URL"
 
 
+class DispatcherType(Enum):
+    POSTGRES = 1
+    HYREX_PLATFORM = 2
+
+
 class Hyrex:
     PLATFORM_URL = os.getenv(EnvVars.PLATFORM_URL)
 
     def __init__(
         self,
         app_id: str,
+        dispatcher_type: DispatcherType = DispatcherType.POSTGRES,
         conn: str = os.getenv(EnvVars.DATABASE_URL),
         api_key: str = os.getenv(EnvVars.API_KEY),
         error_callback: Callable = None,
@@ -29,16 +38,47 @@ class Hyrex:
         self.conn = conn
         self.api_key = api_key
 
-        if not self.conn and not self.api_key:
-            raise ValueError("Hyrex requires a connection string or an API key to run.")
+        self.dispatcher = self._init_dispatcher(dispatcher_type)
 
-        if self.api_key and not self.PLATFORM_URL:
-            raise ValueError(
-                "Hyrex requires a HYREX_PLATFORM_URL if API key is provided."
-            )
+        self._setup_signal_handlers()
 
         self.error_callback = error_callback
         self.task_registry = TaskRegistry()
+
+    def _init_dispatcher(self, dispatcher_type: DispatcherType):
+        if dispatcher_type == DispatcherType.POSTGRES:
+            if self.conn == None:
+                raise ValueError(
+                    "Hyrex Postgres dispatcher requires a connection string. Have you set HYREX_DATABASE_URL?"
+                )
+            return PostgresDispatcher(conn_string=self.conn)
+        else:
+            raise NotImplementedError(
+                "Non-Postgres dispatchers have not yet been implemented."
+            )
+
+    def _signal_handler(self, signum, frame):
+        logging.info("SIGTERM received, stopping Hyrex dispatcher...")
+        self.dispatcher.stop()
+
+    def _chain_signal_handlers(self, new_handler, old_handler):
+        """Return a function that calls both the new and old signal handlers."""
+
+        def wrapper(signum, frame):
+            # Call the new handler first
+            new_handler(signum, frame)
+            # Then call the previous handler (if it exists)
+            if old_handler and callable(old_handler):
+                old_handler(signum, frame)
+
+        return wrapper
+
+    def _setup_signal_handlers(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            old_handler = signal.getsignal(sig)  # Get the existing handler
+            new_handler = self._signal_handler  # Your new handler
+            # Set the new handler, which calls both new and old handlers
+            signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
 
     def task(
         self,
@@ -62,9 +102,7 @@ class Hyrex:
                     max_retries=max_retries,
                     priority=priority,
                 )
-                self.task_registry.set_connection(
-                    self.conn, self.api_key, self.PLATFORM_URL
-                )
+                self.task_registry.set_dispatcher(self.dispatcher)
                 return task_wrapper
 
             return decorator
@@ -73,14 +111,12 @@ class Hyrex:
             task_wrapper = self.task_registry.task(
                 func, queue=queue, cron=cron, max_retries=max_retries, priority=priority
             )
-            self.task_registry.set_connection(
-                self.conn, self.api_key, self.PLATFORM_URL
-            )
+            self.task_registry.set_dispatcher(self.dispatcher)
             return task_wrapper
 
     def add_registry(self, registry: TaskRegistry):
         self.task_registry.add_registry(registry)
-        self.task_registry.set_connection(self.conn, self.api_key, self.PLATFORM_URL)
+        self.task_registry.set_dispatcher(self.dispatcher)
 
     def schedule(self):
         self.task_registry.schedule()
@@ -94,9 +130,7 @@ class Hyrex:
         logging.basicConfig(level=log_level)
 
         worker = AsyncWorker(
-            conn=self.conn,
-            api_key=self.api_key,
-            api_base_url=self.PLATFORM_URL,
+            dispatcher=self.dispatcher,
             queue=queue,
             task_registry=self.task_registry,
             num_threads=num_threads,
