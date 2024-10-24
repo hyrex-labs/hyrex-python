@@ -123,3 +123,6 @@ async def test_hyrex(db_connection_string):
     finally:
         worker.terminate()
         worker.join()
+
+        # Close out dispatcher thread.
+        hy.stop()

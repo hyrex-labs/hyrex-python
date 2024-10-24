@@ -3,6 +3,7 @@ import functools
 from typing import Any, Callable
 
 from hyrex import constants
+from hyrex.dispatcher import Dispatcher
 from hyrex.task import T, TaskWrapper
 
 
@@ -64,14 +65,9 @@ class TaskRegistry(dict[str, "TaskWrapper"]):
         for key, val in task_registry.items():
             self[key] = val
 
-    def set_connection(self, conn: str, api_key: str, api_base_url: str):
+    def set_dispatcher(self, dispatcher: Dispatcher):
         for task_wrapper in self.values():
-            if conn:
-                task_wrapper.set_conn(conn)
-            if api_key:
-                task_wrapper.set_api_key(api_key)
-            if api_base_url:
-                task_wrapper.set_api_base_url(api_base_url)
+            task_wrapper.set_dispatcher(dispatcher)
 
     def schedule(self):
         for task_wrapper in self.values():

@@ -1,3 +1,22 @@
+from hyrex import constants
+
+# CREATE_TABLES = f"""
+# -- Enable UUID extension
+# CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+# -- Create custom ENUM type for StatusEnum
+# CREATE TYPE statusenum AS ENUM ('success', 'failed', 'canceled', 'running', 'queued');
+
+# CREATE TABLE hyrexworker (
+#     id UUID PRIMARY KEY,
+#     name TEXT NOT NULL,
+#     queue TEXT NOT NULL DEFAULT {constants.DEFAULT_QUEUE},
+#     started TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+#     stopped TIMESTAMP WITH TIME ZONE
+# );
+
+# """
+
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
@@ -72,6 +91,21 @@ SELECT
 FROM existing_task;
 """
 
+# TODO: Update hyrextask table to have better defaults so they're not needed here.
+ENQUEUE_TASKS = """
+INSERT INTO hyrextask (
+    id,
+    root_id,
+    task_name,
+    args,
+    queue,
+    max_retries,
+    priority,
+    status,
+    attempt_number,
+    queued
+) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
+"""
 
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
@@ -79,9 +113,9 @@ MARK_TASK_SUCCESS = """
        WHERE id = %s
 """
 
-MARK_TASK_QUEUED = """
+RESET_TASK = """
    UPDATE hyrextask 
-   SET status = 'queued', worker_id = NULL
+   SET status = 'queued', worker_id = NULL, started = NULL
    WHERE id = %s
 """
 
@@ -89,4 +123,8 @@ MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = %s
+"""
+
+GET_TASK_STATUS = """
+    SELECT status FROM hyrextask WHERE id = %s
 """
