@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
-from hyrex.dispatcher import PostgresDispatcher
+from hyrex.dispatcher import PlatformDispatcher, PostgresDispatcher
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
 
@@ -20,7 +20,7 @@ class EnvVars:
 
 class DispatcherType(Enum):
     POSTGRES = 1
-    HYREX_PLATFORM = 2
+    PLATFORM = 2
 
 
 class Hyrex:
@@ -52,10 +52,14 @@ class Hyrex:
                     "Hyrex Postgres dispatcher requires a connection string. Have you set HYREX_DATABASE_URL?"
                 )
             return PostgresDispatcher(conn_string=self.conn)
+        elif dispatcher_type == DispatcherType.PLATFORM:
+            if self.api_key == None:
+                raise ValueError(
+                    "Hyrex Platform dispatcher requires an API key. Have you set HYREX_API_KEY?"
+                )
+            return PlatformDispatcher(api_key=self.api_key)
         else:
-            raise NotImplementedError(
-                "Non-Postgres dispatchers have not yet been implemented."
-            )
+            raise NotImplementedError("Dispatcher type not yet implemented.")
 
     def _signal_handler(self, signum, frame):
         logging.info("SIGTERM received, stopping Hyrex dispatcher...")

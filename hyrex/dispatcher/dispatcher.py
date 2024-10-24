@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex import constants
-from hyrex.models import HyrexTask
+from hyrex.models import HyrexTask, StatusEnum
 
 
 class DequeuedTask(BaseModel):
@@ -51,7 +51,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def wait(self, task_id: UUID, timeout: float, interval: float):
+    def get_task_status(self, task_id: UUID) -> StatusEnum:
         pass
 
     @abstractmethod

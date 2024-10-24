@@ -71,19 +71,12 @@ class PostgresDispatcher(Dispatcher):
                     dequeued_tasks.append(
                         DequeuedTask(id=task_id, name=task_name, args=task_args)
                     )
-                    return dequeued_tasks
-                else:
-                    return []
+        return dequeued_tasks
 
     def enqueue(
         self,
         task: HyrexTask,
     ):
-        """
-        Adds a task to the dispatcher's queue.
-
-        :param task: The task to be enqueued.
-        """
         self.local_queue.put(task)
 
     def _batch_enqueue(self):
@@ -157,7 +150,7 @@ class PostgresDispatcher(Dispatcher):
         self.pool.close()
         logging.info("Dispatcher stopped successfully!")
 
-    def _get_task_status(self, task_id: UUID):
+    def get_task_status(self, task_id: UUID) -> StatusEnum:
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(sql.GET_TASK_STATUS, [task_id])
@@ -167,23 +160,6 @@ class PostgresDispatcher(Dispatcher):
                         f"Awaiting a task instance but task id {task_id} not found in DB."
                     )
                 return result[0]
-
-    def wait(self, task_id: UUID, timeout: float = 30.0, interval: float = 1.0):
-        start = time.time()
-        elapsed = 0
-        try:
-            task_status = self._get_task_status(task_id=task_id)
-        except ValueError:
-            # Task hasn't yet moved from self.local_queue to DB
-            task_status = "queued"
-
-        while task_status in [StatusEnum.queued, StatusEnum.running]:
-            print(task_status)
-            if elapsed > timeout:
-                raise TimeoutError("Waiting for task timed out.")
-            time.sleep(interval)
-            task_status = self._get_task_status(task_id=task_id)
-            elapsed = time.time() - start
 
     def register_worker(self, worker_id: UUID):
         pass

@@ -83,7 +83,6 @@ class WorkerThread(threading.Thread):
 
     async def process(self):
         try:
-            logging.info("Fetching tasks...")
             tasks: DequeuedTask = await self.fetch_tasks()
             if not tasks:
                 # No unprocessed items, wait a bit before trying again

@@ -79,9 +79,20 @@ class TaskRun:
     #             self.status = task_instance.status
 
     def wait(self, timeout: float = 30.0, interval: float = 1.0):
-        self.dispatcher.wait(
-            task_id=self.task_run_id, timeout=timeout, interval=interval
-        )
+        start = time.time()
+        elapsed = 0
+        try:
+            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
+        except ValueError:
+            # Task hasn't yet moved from self.local_queue to DB
+            task_status = StatusEnum.queued
+
+        while task_status in [StatusEnum.queued, StatusEnum.running]:
+            if elapsed > timeout:
+                raise TimeoutError("Waiting for task timed out.")
+            time.sleep(interval)
+            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
+            elapsed = time.time() - start
 
     def __repr__(self):
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
