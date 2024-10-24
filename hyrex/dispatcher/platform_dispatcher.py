@@ -141,7 +141,6 @@ class PlatformDispatcher(Dispatcher):
             return dequeued_tasks
 
         except Exception as e:
-            logging.error()
             logging.error(f"Exception while fetching task: {str(e)}")
             return None
 

@@ -19,7 +19,7 @@ class PostgresDispatcher(Dispatcher):
     def __init__(self, conn_string: str, batch_size=100, flush_interval=0.1):
         self.conn_string = conn_string
         # TODO: Set min/max size based on worker threads
-        self.pool = ConnectionPool(conn_string)
+        self.pool = ConnectionPool(conn_string, open=True)
 
         self.local_queue = Queue()
         self.running = True
