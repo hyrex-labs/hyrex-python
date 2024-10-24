@@ -167,7 +167,8 @@ class PlatformDispatcher(Dispatcher):
     def mark_failed(self, task_id: UUID):
         self._update_task_status(task_id, StatusEnum.failed)
 
-    def reset_status(self, task_id: UUID):
+    # TODO: Update this once platform supports a full reset
+    def reset_task(self, task_id: UUID):
         self._update_task_status(task_id, StatusEnum.queued)
 
     def attempt_retry(self, task_id: UUID):

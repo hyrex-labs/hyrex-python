@@ -113,9 +113,9 @@ MARK_TASK_SUCCESS = """
        WHERE id = %s
 """
 
-MARK_TASK_QUEUED = """
+RESET_TASK = """
    UPDATE hyrextask 
-   SET status = 'queued', worker_id = NULL
+   SET status = 'queued', worker_id = NULL, started = NULL
    WHERE id = %s
 """
 
