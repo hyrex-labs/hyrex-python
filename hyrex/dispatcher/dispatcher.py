@@ -39,7 +39,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def reset_status(self, task_id: UUID):
+    def reset_task(self, task_id: UUID):
         pass
 
     @abstractmethod

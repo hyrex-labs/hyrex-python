@@ -44,9 +44,9 @@ class PostgresDispatcher(Dispatcher):
                 {"existing_id": task_id, "new_id": uuid7()},
             )
 
-    def reset_status(self, task_id: UUID):
+    def reset_task(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.MARK_TASK_QUEUED, [task_id])
+            conn.execute(sql.RESET_TASK, [task_id])
 
     def cancel_task(self, task_id: UUID):
         pass

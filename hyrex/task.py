@@ -42,42 +42,6 @@ class TaskRun:
         self.status = status
         self.dispatcher = dispatcher
 
-    # def _update_status(self):
-    #     if self.api_key:
-    #         # Get task status using API
-    #         status_url = f"{self.api_base_url}{self.TASK_STATUS_PATH}"
-    #         headers = {
-    #             "x-project-api-key": self.api_key,
-    #         }
-    #         data = {"task_ids": [str(self.task_run_id)]}
-    #         try:
-    #             response = requests.get(status_url, headers=headers, json=data)
-    #             if response.status_code == 200:
-    #                 response_data = response.json()
-    #                 if response_data.get("result"):
-    #                     task_instance = response_data.get("result")[0]
-    #                 else:
-    #                     raise Exception(
-    #                         "Awaiting a task instance but task ID not returned from Hyrex platform."
-    #                     )
-    #                 self.status = task_instance.get("status")
-    #                 return
-    #             else:
-    #                 logging.error(f"Error enqueuing task: {response.status_code}")
-    #                 logging.error(f"Response body: {response.text}")
-    #         except requests.exceptions.RequestException as e:
-    #             logging.error(f"Error enqueuing task via API: {str(e)}")
-    #             raise RuntimeError(f"Failed to enqueue task via API: {e}")
-    #     else:
-    #         with Session(self.engine) as session:
-    #             task_instance = session.get(HyrexTask, self.task_run_id)
-    #             if task_instance is None:
-    #                 raise Exception(
-    #                     "Awaiting a task instance but task id not found in DB."
-    #                 )
-
-    #             self.status = task_instance.status
-
     def wait(self, timeout: float = 30.0, interval: float = 1.0):
         start = time.time()
         elapsed = 0
@@ -231,67 +195,6 @@ class TaskWrapper(Generic[T]):
             raise TypeError(
                 f"Invalid argument type. Expected {expected_type.__name__}. Error: {e}"
             )
-
-    # def _enqueue(
-    #     self,
-    #     context: T,
-    #     queue: str = None,
-    #     priority: int = None,
-    #     max_retries: int = None,
-    # ):
-    #     task_id = uuid7()
-    #     task_instance = HyrexTask(
-    #         id=task_id,
-    #         root_id=task_id,
-    #         task_name=self.task_identifier,
-    #         queue=queue or self.queue,
-    #         args=context.model_dump(),
-    #         max_retries=max_retries if max_retries is not None else self.max_retries,
-    #         priority=priority if priority is not None else self.priority,
-    #     )
-    #     if self.api_key:
-    #         # Enqueue task using API
-    #         enqueue_url = f"{self.api_base_url}{self.ENQUEUE_TASK_PATH}"
-    #         headers = {
-    #             "x-project-api-key": self.api_key,
-    #         }
-    #         data = {
-    #             "tasks": [
-    #                 {
-    #                     "id": str(task_instance.id),
-    #                     "task_name": task_instance.task_name,
-    #                     "queue": task_instance.queue,
-    #                     "args": task_instance.args,
-    #                     "max_retries": task_instance.max_retries,
-    #                 }
-    #             ]
-    #         }
-    #         try:
-    #             response = requests.post(enqueue_url, headers=headers, json=data)
-    #             if response.status_code == 200:
-    #                 # Successfully enqueued, refresh the task instance
-    #                 json_response = response.json()
-    #                 task_instance = HyrexTask(**json_response.get("result")[0])
-    #                 return task_instance
-    #             else:
-    #                 logging.error(f"Error enqueuing task: {response.status_code}")
-    #                 logging.error(f"Response body: {response.text}")
-    #         except requests.exceptions.RequestException as e:
-    #             logging.error(f"Error enqueuing task via API: {str(e)}")
-    #             raise RuntimeError(f"Failed to enqueue task via API: {e}")
-    #     else:
-    #         # Enqueue task using database
-    #         try:
-    #             with Session(self._get_engine()) as session:
-    #                 session.add(task_instance)
-    #                 session.commit()
-    #                 # Successfully enqueued, refresh the task instance
-    #                 session.refresh(task_instance)
-    #                 return task_instance
-    #         except TypeError as e:
-    #             raise RuntimeError(
-    #                 "Task does not have a connection. If it's in a secondary register, make sure it's added to the main Hyrex instance."
-    #             )
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
