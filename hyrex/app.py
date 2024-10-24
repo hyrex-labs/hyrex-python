@@ -61,6 +61,9 @@ class Hyrex:
         else:
             raise NotImplementedError("Dispatcher type not yet implemented.")
 
+    def stop(self):
+        self.dispatcher.stop()
+
     def _signal_handler(self, signum, frame):
         logging.info("SIGTERM received, stopping Hyrex dispatcher...")
         self.dispatcher.stop()
