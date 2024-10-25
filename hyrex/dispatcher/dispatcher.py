@@ -55,7 +55,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_worker(self, worker_id: UUID):
+    def register_worker(self, worker_id: UUID, worker_name: str, queue: str):
         pass
 
     @abstractmethod
