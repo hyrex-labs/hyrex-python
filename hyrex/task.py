@@ -58,6 +58,9 @@ class TaskRun:
             task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
             elapsed = time.time() - start
 
+    def cancel(self):
+        self.dispatcher.cancel_task(self.task_run_id)
+
     def __repr__(self):
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
 
