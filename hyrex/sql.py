@@ -92,7 +92,7 @@ FROM existing_task;
 """
 
 # TODO: Update hyrextask table to have better defaults so they're not needed here.
-ENQUEUE_TASKS = """
+ENQUEUE_TASK = """
 INSERT INTO hyrextask (
     id,
     root_id,
@@ -115,8 +115,8 @@ RESET_TASK = """
 
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
-       SET status = 'success', finished = CURRENT_TIMESTAMP
-       WHERE id = %s
+    SET status = 'success', finished = CURRENT_TIMESTAMP
+    WHERE id = %s
 """
 
 MARK_TASK_FAILED = """
@@ -133,4 +133,15 @@ MARK_TASK_CANCELED = """
 
 GET_TASK_STATUS = """
     SELECT status FROM hyrextask WHERE id = %s
+"""
+
+REGISTER_WORKER = """
+    INSERT INTO hyrexworker (id, name, queue, started)
+    VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+"""
+
+MARK_WORKER_STOPPED = """
+    UPDATE hyrexworker
+    SET stopped = CURRENT_TIMESTAMP
+    WHERE id = %s
 """

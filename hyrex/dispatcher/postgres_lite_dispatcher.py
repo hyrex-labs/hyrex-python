@@ -1,13 +1,8 @@
-import json
 import logging
-import threading
-import time
-from queue import Empty, Queue
 from uuid import UUID
 
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
-from pydantic import BaseModel
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
@@ -15,19 +10,11 @@ from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
 
-class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=100, flush_interval=0.1):
+class PostgresLiteDispatcher(Dispatcher):
+    def __init__(self, conn_string: str):
         self.conn_string = conn_string
         # TODO: Set min/max size based on worker threads
         self.pool = ConnectionPool(conn_string, open=True)
-
-        self.local_queue = Queue()
-        self.running = True
-        self.batch_size = batch_size
-        self.flush_interval = flush_interval
-
-        self.thread = threading.Thread(target=self._batch_enqueue)
-        self.thread.start()
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
@@ -82,63 +69,19 @@ class PostgresDispatcher(Dispatcher):
         self,
         task: HyrexTask,
     ):
-        self.local_queue.put(task)
-
-    def _batch_enqueue(self):
-        tasks = []
-        last_flush_time = time.monotonic()
-        while self.running or not self.local_queue.empty():
-            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
-            if timeout <= 0:
-                # Flush if the flush interval has passed
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-                continue
-
-            try:
-                # Wait for a task or until the timeout expires
-                task = self.local_queue.get(timeout=timeout)
-                tasks.append(task)
-                if len(tasks) >= self.batch_size:
-                    # Flush if batch size is reached
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                    last_flush_time = time.monotonic()
-            except Empty:
-                # No task received within the timeout
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-
-        # Flush any remaining tasks when stopping
-        if tasks:
-            self._enqueue_tasks(tasks)
-
-    def _enqueue_tasks(self, tasks):
-        """
-        Inserts a batch of tasks into the database.
-
-        :param tasks: List of tasks to insert.
-        """
-        task_data = [
-            (
-                task.id,
-                task.root_id,
-                task.task_name,
-                Json(task.args),
-                task.queue,
-                task.max_retries,
-                task.priority,
-            )
-            for task in tasks
-        ]
+        task_data = (
+            task.id,
+            task.root_id,
+            task.task_name,
+            Json(task.args),
+            task.queue,
+            task.max_retries,
+            task.priority,
+        )
 
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.executemany(
+                cur.execute(
                     sql.ENQUEUE_TASK,
                     task_data,
                 )
@@ -149,9 +92,6 @@ class PostgresDispatcher(Dispatcher):
         Stops the batching process and flushes remaining tasks.
         """
         logging.info("Stopping dispatcher...")
-        self.running = False
-        self.thread.join()
-        # Close the connection pool
         self.pool.close()
         logging.info("Dispatcher stopped successfully!")
 

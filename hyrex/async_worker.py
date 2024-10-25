@@ -178,9 +178,7 @@ class AsyncWorker:
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
 
-        # self.connect()
-        self.dispatcher.register_worker(self.id)
-        # self._add_to_db()
+        self.dispatcher.register_worker(self.id, self.name, self.queue)
 
         self.threads = [
             WorkerThread(

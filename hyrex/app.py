@@ -7,7 +7,11 @@ from typing import Any, Callable
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
-from hyrex.dispatcher import PlatformDispatcher, PostgresDispatcher
+from hyrex.dispatcher import (
+    PlatformDispatcher,
+    PostgresDispatcher,
+    PostgresLiteDispatcher,
+)
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
 
@@ -21,6 +25,7 @@ class EnvVars:
 class DispatcherType(Enum):
     POSTGRES = 1
     PLATFORM = 2
+    POSTGRES_LITE = 3
 
 
 class Hyrex:
@@ -58,6 +63,13 @@ class Hyrex:
                     "Hyrex Platform dispatcher requires an API key. Have you set HYREX_API_KEY?"
                 )
             return PlatformDispatcher(api_key=self.api_key)
+        elif dispatcher_type == DispatcherType.POSTGRES_LITE:
+            if self.conn == None:
+                raise ValueError(
+                    "Hyrex Postgres dispatcher requires a connection string. Have you set HYREX_DATABASE_URL?"
+                )
+            return PostgresLiteDispatcher(conn_string=self.conn)
+
         else:
             raise NotImplementedError("Dispatcher type not yet implemented.")
 
