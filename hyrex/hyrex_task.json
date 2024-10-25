@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HyrexTask",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the task.",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "root_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identifier for the root task for tracing back retries.",
+      "examples": ["123e4567-e89b-12d3-a456-426614174000"]
+    },
+    "task_name": {
+      "type": "string",
+      "description": "Name of the task.",
+      "examples": ["data_processing_task"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "canceled", "success", "failed"],
+      "default": "queued",
+      "description": "Current status of the task."
+    },
+    "queue": {
+      "type": "string",
+      "default": "default",
+      "description": "Queue to which the task belongs.",
+      "examples": ["high_priority_queue"]
+    },
+    "scheduled_start": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Scheduled start time of the task.",
+      "examples": ["2024-10-25T14:48:00.000Z"]
+    },
+    "worker_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Identifier of the worker processing the task.",
+      "examples": ["f47ac10b-58cc-4372-a567-0e02b2c3d479"]
+    },
+    "queued": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Time when the task was queued.",
+      "examples": ["2024-10-25T13:00:00.000Z"]
+    },
+    "started": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Time when task execution started.",
+      "examples": ["2024-10-25T14:00:00.000Z"]
+    },
+    "finished": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Time when task execution finished.",
+      "examples": ["2024-10-25T15:00:00.000Z"]
+    },
+    "max_retries": {
+      "type": "integer",
+      "default": 0,
+      "description": "Maximum number of retries allowed for the task."
+    },
+    "attempt_number": {
+      "type": "integer",
+      "default": 0,
+      "description": "Current attempt number of the task."
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 1,
+      "description": "Priority of the task (1-10)."
+    },
+    "args": {
+      "type": "object",
+      "description": "Arguments for the task.",
+      "default": {},
+      "additionalProperties": true
+    }
+  },
+  "required": ["id", "root_id", "task_name"],
+  "additionalProperties": false
+}

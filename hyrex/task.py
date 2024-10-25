@@ -6,10 +6,7 @@ from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
-import requests
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import Engine, create_engine
-from sqlmodel import Session, select
 from uuid_extensions import uuid7
 
 from hyrex import constants

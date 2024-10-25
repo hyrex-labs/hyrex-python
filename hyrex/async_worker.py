@@ -1,33 +1,21 @@
 import asyncio
-import json
 import logging
 import os
 import signal
 import socket
 import threading
-import time
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from typing import Callable
 from uuid import UUID
 
-import aiohttp
-import psycopg2
-import psycopg_pool
-from pydantic import BaseModel, ValidationError
-from sqlalchemy import Engine
-from sqlmodel import Session, select
 from uuid_extensions import uuid7
 
-from hyrex import constants, sql
 from hyrex.dispatcher import DequeuedTask, Dispatcher
-from hyrex.models import HyrexTask, HyrexWorker, StatusEnum, create_engine
 from hyrex.task_registry import TaskRegistry
 
 
 class WorkerThread(threading.Thread):
-    # FETCH_TASK_PATH = "/connect/dequeue-task"
-    # UPDATE_STATUS_PATH = "/connect/update-task-status"
 
     def __init__(
         self,
