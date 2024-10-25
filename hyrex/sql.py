@@ -107,22 +107,28 @@ INSERT INTO hyrextask (
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
 """
 
-MARK_TASK_SUCCESS = """
-    UPDATE hyrextask 
-       SET status = 'success', finished = CURRENT_TIMESTAMP
-       WHERE id = %s
-"""
-
 RESET_TASK = """
    UPDATE hyrextask 
    SET status = 'queued', worker_id = NULL, started = NULL
    WHERE id = %s
 """
 
+MARK_TASK_SUCCESS = """
+    UPDATE hyrextask 
+       SET status = 'success', finished = CURRENT_TIMESTAMP
+       WHERE id = %s
+"""
+
 MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = %s
+"""
+
+MARK_TASK_CANCELED = """
+    UPDATE hyrextask
+    SET status = 'canceled'
+    WHERE id = %s AND status = 'queued'
 """
 
 GET_TASK_STATUS = """
