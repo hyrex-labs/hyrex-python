@@ -37,7 +37,7 @@ class Worker:
         self.name = generate_worker_name()
 
         self.queue = queue
-        self.worker_id = worker_id
+        self.worker_id = worker_id or uuid7()
         self.task_registry = task_registry
 
         self.dispatcher = dispatcher

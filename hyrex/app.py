@@ -147,7 +147,7 @@ class Hyrex:
 
     def run_worker(
         self,
-        worker_id: UUID,
+        worker_id: UUID = None,
         queue: str = constants.DEFAULT_QUEUE,
         log_level: int = logging.INFO,
     ):
