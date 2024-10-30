@@ -4,16 +4,17 @@ import os
 import signal
 from enum import Enum
 from typing import Any, Callable
+from uuid import UUID
+
+from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
-from hyrex.dispatcher import (
-    PlatformDispatcher,
-    PostgresDispatcher,
-    PostgresLiteDispatcher,
-)
+from hyrex.dispatcher import (PlatformDispatcher, PostgresDispatcher,
+                              PostgresLiteDispatcher)
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
+from hyrex.worker import HyrexWorker
 
 
 class EnvVars:
@@ -142,17 +143,17 @@ class Hyrex:
 
     def run_worker(
         self,
+        worker_id: UUID,
         queue: str = constants.DEFAULT_QUEUE,
-        num_threads: int = 8,
         log_level: int = logging.INFO,
     ):
         logging.basicConfig(level=log_level)
 
-        worker = AsyncWorker(
+        worker = HyrexWorker(
             dispatcher=self.dispatcher,
             queue=queue,
+            worker_id=worker_id,
             task_registry=self.task_registry,
-            num_threads=num_threads,
             error_callback=self.error_callback,
         )
 
