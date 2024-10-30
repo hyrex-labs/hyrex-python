@@ -107,12 +107,6 @@ INSERT INTO hyrextask (
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
 """
 
-RESET_TASK = """
-   UPDATE hyrextask 
-   SET status = 'queued', worker_id = NULL, started = NULL
-   WHERE id = %s
-"""
-
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
     SET status = 'success', finished = CURRENT_TIMESTAMP
@@ -125,10 +119,35 @@ MARK_TASK_FAILED = """
     WHERE id = %s
 """
 
+RESET_OR_CANCEL_TASK = """
+   UPDATE hyrextask 
+   SET status = CASE 
+                   WHEN status = 'up_for_cancel' THEN 'canceled'::statusenum 
+                   ELSE 'queued'::statusenum 
+               END, 
+       worker_id = CASE 
+                     WHEN status = 'up_for_cancel' THEN worker_id  -- Keep the current value
+                     ELSE NULL
+                   END,
+       started = CASE 
+                   WHEN status = 'up_for_cancel' THEN started  -- Keep the current value
+                   ELSE NULL
+                 END
+   WHERE id = %s
+"""
+
 MARK_TASK_CANCELED = """
     UPDATE hyrextask
-    SET status = 'canceled'
-    WHERE id = %s AND status = 'queued'
+    SET status = CASE 
+                WHEN status = 'running' THEN 'up_for_cancel'::statusenum 
+                WHEN status = 'queued' THEN 'canceled'::statusenum
+                ELSE status  -- Keep the current status if it's not 'running' or 'queued'
+                END
+    WHERE id = %s AND status IN ('running', 'queued');
+"""
+
+GET_WORKERS_TO_CANCEL = """
+    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY(%s);
 """
 
 GET_TASK_STATUS = """

@@ -168,7 +168,7 @@ class PlatformDispatcher(Dispatcher):
         self._update_task_status(task_id, StatusEnum.failed)
 
     # TODO: Update this once platform supports a full reset
-    def reset_task(self, task_id: UUID):
+    def reset_or_cancel_task(self, task_id: UUID):
         self._update_task_status(task_id, StatusEnum.queued)
 
     def attempt_retry(self, task_id: UUID):
@@ -203,4 +203,7 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def mark_worker_stopped(self, worker_id: UUID):
+        pass
+
+    def get_workers_to_cancel(self, worker_ids: list[UUID]):
         pass

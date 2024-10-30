@@ -10,11 +10,15 @@ from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
-from hyrex.dispatcher import (PlatformDispatcher, PostgresDispatcher,
-                              PostgresLiteDispatcher)
+from hyrex.dispatcher import (
+    PlatformDispatcher,
+    PostgresDispatcher,
+    PostgresLiteDispatcher,
+)
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
-from hyrex.worker import HyrexWorker
+from hyrex.worker import Worker
+from hyrex.worker_manager import WorkerManager
 
 
 class EnvVars:
@@ -143,13 +147,13 @@ class Hyrex:
 
     def run_worker(
         self,
-        worker_id: UUID,
+        worker_id: UUID = None,
         queue: str = constants.DEFAULT_QUEUE,
         log_level: int = logging.INFO,
     ):
         logging.basicConfig(level=log_level)
 
-        worker = HyrexWorker(
+        worker = Worker(
             dispatcher=self.dispatcher,
             queue=queue,
             worker_id=worker_id,
@@ -158,3 +162,21 @@ class Hyrex:
         )
 
         worker.run()
+
+    def run_manager(
+        self,
+        app_module: str,
+        num_workers: int,
+        queue: str = constants.DEFAULT_QUEUE,
+        log_level: int = logging.INFO,
+    ):
+        logging.basicConfig(level=log_level)
+
+        manager = WorkerManager(
+            app_module=app_module,
+            queue=queue,
+            num_workers=num_workers,
+            dispatcher=self.dispatcher,
+        )
+
+        manager.run()

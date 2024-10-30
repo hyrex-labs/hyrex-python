@@ -39,7 +39,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def reset_task(self, task_id: UUID):
+    def reset_or_cancel_task(self, task_id: UUID):
         pass
 
     @abstractmethod
@@ -48,6 +48,10 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def cancel_task(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
         pass
 
     @abstractmethod

@@ -3,27 +3,45 @@ import os
 import signal
 import subprocess
 import time
+from uuid import UUID
 
 from uuid_extensions import uuid7
 
 from hyrex import constants
+from hyrex.dispatcher import Dispatcher
 
 
 class WorkerManager:
     def __init__(
         self,
-        app: str,
+        app_module: str,
+        dispatcher: Dispatcher,
         queue: str = constants.DEFAULT_QUEUE,
         num_workers: int = 8,
-        log_level: int = logging.INFO,
     ):
-        self.app = app
+        self.app_module = app_module
+        self.dispatcher = dispatcher
         self.queue = queue
         self.num_workers = num_workers
         self.worker_map = {}
         self._stop_requested = False
 
-        logging.basicConfig(level=log_level)
+    def terminate_worker(self, worker_id: UUID):
+        if worker_id not in self.worker_map:
+            logging.warning(f"Tried to terminate untracked worker with ID: {worker_id}")
+            return
+
+        worker_process = self.worker_map[worker_id]
+        worker_process.terminate()
+        try:
+            worker_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            logging.warning(
+                f"Worker ID {worker_id} did not terminate. Stopping forcefully."
+            )
+            worker_process.kill()
+
+        del self.worker_map[worker_id]
 
     def stop(self):
         for worker_process in self.worker_map.values():
@@ -40,6 +58,10 @@ class WorkerManager:
 
         logging.info("All worker processes successfully stopped.")
 
+        self.dispatcher.stop()
+
+        logging.info("Manager shutdown successful.")
+
     def _signal_handler(self, signum, frame):
         logging.info("SIGTERM received by worker manager. Beginning shutdown.")
         self._stop_requested = True
@@ -50,7 +72,7 @@ class WorkerManager:
             [
                 "hyrex",
                 "worker-process",
-                self.app,
+                self.app_module,
                 "--worker-id",
                 str(worker_id),
             ],
@@ -59,18 +81,27 @@ class WorkerManager:
 
     def run(self):
         # Note: This overrides the Hyrex instance signal handler,
-        # which makes the worker manager responsible for stopping the dispatcher.
+        # which makes the manager responsible for stopping the dispatcher.
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
 
         logging.info("Spinning up worker processes.")
 
-        try:
-            for i in range(self.num_workers):
-                self.add_new_worker_process()
+        for i in range(self.num_workers):
+            self.add_new_worker_process()
 
+        try:
             while not self._stop_requested:
-                # TODO: Poll for canceled tasks
+                # Poll for workers running canceled tasks
+                workers_to_terminate = self.dispatcher.get_workers_to_cancel(
+                    list(self.worker_map.keys())
+                )
+                for worker_id in workers_to_terminate:
+                    logging.info(
+                        f"Terminating worker {worker_id} to cancel running task."
+                    )
+                    self.terminate_worker(worker_id)
+                    self.add_new_worker_process()
 
                 # Check for exited worker processes
                 for worker_id, worker_process in list(self.worker_map.items()):
