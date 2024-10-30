@@ -97,6 +97,9 @@ class WorkerManager:
                     list(self.worker_map.keys())
                 )
                 for worker_id in workers_to_terminate:
+                    logging.info(
+                        f"Terminating worker {worker_id} to cancel running task."
+                    )
                     self.terminate_worker(worker_id)
                     self.add_new_worker_process()
 

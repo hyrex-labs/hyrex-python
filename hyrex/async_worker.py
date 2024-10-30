@@ -78,8 +78,8 @@ class WorkerThread(threading.Thread):
     async def attempt_retry(self, task_id: UUID):
         self.dispatcher.attempt_retry(task_id=task_id)
 
-    async def reset_task(self, task_id: UUID):
-        self.dispatcher.reset_task(task_id=task_id)
+    async def reset_or_cancel_task(self, task_id: UUID):
+        self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
     async def process(self):
         try:
@@ -101,7 +101,7 @@ class WorkerThread(threading.Thread):
                 logging.info(
                     f"Worker {self.name}: Processing of item {task.id} was interrupted"
                 )
-                await self.reset_task(task.id)
+                await self.reset_or_update_task(task.id)
                 logging.info(f"Successfully reset task on worker {self.name}")
             raise  # Re-raise the CancelledError to properly shut down the worker
 

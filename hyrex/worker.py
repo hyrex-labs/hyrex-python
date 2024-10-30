@@ -62,8 +62,8 @@ class Worker:
     def attempt_retry(self, task_id: UUID):
         self.dispatcher.attempt_retry(task_id=task_id)
 
-    def reset_task(self, task_id: UUID):
-        self.dispatcher.reset_task(task_id=task_id)
+    def reset_or_cancel_task(self, task_id: UUID):
+        self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
     def process(self):
         try:
@@ -85,8 +85,10 @@ class Worker:
                 logging.info(
                     f"Worker {self.name}: Processing of item {task.id} was interrupted"
                 )
-                self.reset_task(task.id)
-                logging.info(f"Successfully reset task {task.id} on worker {self.name}")
+                self.reset_or_cancel_task(task.id)
+                logging.info(
+                    f"Successfully updated task {task.id} on worker {self.name} after interruption"
+                )
             raise  # Re-raise the CancelledError to properly shut down the worker
 
         except Exception as e:

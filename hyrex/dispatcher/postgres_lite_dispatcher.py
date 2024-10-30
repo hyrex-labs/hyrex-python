@@ -34,9 +34,9 @@ class PostgresLiteDispatcher(Dispatcher):
             )
             conn.commit()
 
-    def reset_task(self, task_id: UUID):
+    def reset_or_cancel_task(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.RESET_TASK, [task_id])
+            conn.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
             conn.commit()
 
     def cancel_task(self, task_id: UUID):
