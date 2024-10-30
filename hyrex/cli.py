@@ -56,21 +56,38 @@ def run_worker(
     ),
 ):
     """
-    Run worker processes using the specified task module path
+    Run multiple worker processes using the specified task module path
     """
-    manager = WorkerManager(
-        app=app,
-        queue=queue,
-        num_workers=num_processes,
-        log_level=getattr(logging, log_level.upper()),
-    )
-    manager.run()
+    sys.path.append(str(Path.cwd()))
+
+    try:
+        module_path, instance_name = app.split(":")
+        # Import the hyrex module
+        hyrex_module = importlib.import_module(module_path)
+        hyrex_instance = getattr(hyrex_module, instance_name)
+        hyrex_instance.run_manager(
+            app_module=app,
+            queue=queue,
+            num_workers=num_processes,
+            log_level=getattr(logging, log_level.upper()),
+        )
+
+    except ModuleNotFoundError as e:
+        typer.echo(f"Error: {e}")
+        sys.exit(1)
+    # manager = WorkerManager(
+    #     app_module=app,
+    #     queue=queue,
+    #     num_workers=num_processes,
+    #     log_level=getattr(logging, log_level.upper()),
+    # )
+    # manager.run()
 
 
 # For internal usage only
 @cli.command()
 def worker_process(
-    app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
+    app_module: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
     queue: str = typer.Option(
         constants.DEFAULT_QUEUE,
         "--queue",
@@ -101,7 +118,7 @@ def worker_process(
     sys.path.append(str(Path.cwd()))
 
     try:
-        module_path, instance_name = app.split(":")
+        module_path, instance_name = app_module.split(":")
         # Import the hyrex module
         hyrex_module = importlib.import_module(module_path)
         hyrex_instance = getattr(hyrex_module, instance_name)

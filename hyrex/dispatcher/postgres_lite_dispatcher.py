@@ -115,3 +115,6 @@ class PostgresLiteDispatcher(Dispatcher):
             with conn.cursor() as cursor:
                 cursor.execute(sql.MARK_WORKER_STOPPED, [worker_id])
                 conn.commit()
+
+    def get_workers_to_cancel(self, worker_ids: list[UUID]):
+        pass

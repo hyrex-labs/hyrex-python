@@ -107,9 +107,20 @@ INSERT INTO hyrextask (
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
 """
 
-RESET_TASK = """
+CLEANUP_TASK = """
    UPDATE hyrextask 
-   SET status = 'queued', worker_id = NULL, started = NULL
+   SET status = CASE 
+                   WHEN status = 'up_for_cancel' THEN 'canceled'::statusenum 
+                   ELSE 'queued'::statusenum 
+               END, 
+       worker_id = CASE 
+                     WHEN status = 'up_for_cancel' THEN worker_id  -- Keep the current value
+                     ELSE NULL
+                   END,
+       started = CASE 
+                   WHEN status = 'up_for_cancel' THEN started  -- Keep the current value
+                   ELSE NULL
+                 END
    WHERE id = %s
 """
 
@@ -129,6 +140,10 @@ MARK_TASK_CANCELED = """
     UPDATE hyrextask
     SET status = 'canceled'
     WHERE id = %s AND status = 'queued'
+"""
+
+GET_WORKERS_TO_CANCEL = """
+    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY(%s);
 """
 
 GET_TASK_STATUS = """

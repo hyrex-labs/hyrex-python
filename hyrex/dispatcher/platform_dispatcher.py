@@ -204,3 +204,6 @@ class PlatformDispatcher(Dispatcher):
 
     def mark_worker_stopped(self, worker_id: UUID):
         pass
+
+    def get_workers_to_cancel(self, worker_ids: list[UUID]):
+        pass

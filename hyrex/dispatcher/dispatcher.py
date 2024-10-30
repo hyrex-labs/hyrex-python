@@ -51,6 +51,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
+        pass
+
+    @abstractmethod
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         pass
 

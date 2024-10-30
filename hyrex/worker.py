@@ -23,7 +23,7 @@ def generate_worker_name():
     return f"worker-{hostname}-{pid}-{timestamp}"
 
 
-class HyrexWorker:
+class Worker:
 
     def __init__(
         self,

@@ -175,3 +175,10 @@ class PostgresDispatcher(Dispatcher):
             with conn.cursor() as cursor:
                 cursor.execute(sql.MARK_WORKER_STOPPED, [worker_id])
                 conn.commit()
+
+    def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
+                result = cursor.fetchall()
+                return [row[0] for row in result]
