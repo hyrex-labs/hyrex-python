@@ -70,9 +70,9 @@ class WorkerManager:
                 self.add_new_worker_process()
 
             while not self._stop_requested:
-                # Poll for canceled tasks
+                # TODO: Poll for canceled tasks
 
-                # Check for lost workers
+                # Check for exited worker processes
                 for worker_id, worker_process in list(self.worker_map.items()):
                     retcode = worker_process.poll()
                     if retcode is not None:
