@@ -1,18 +1,18 @@
 import importlib
 import logging
 import os
-import pkgutil
 import sys
 from enum import Enum
 from pathlib import Path
 from uuid import UUID
-from uuid_extensions import uuid7
 
 import typer
+from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.app import EnvVars
 from hyrex.models import create_tables
+from hyrex.worker_manager import WorkerManager
 
 cli = typer.Typer()
 
@@ -42,7 +42,42 @@ def run_worker(
         "-q",
         help="The name of the queue to process",
     ),
-    worker_id: UUID = typer.Option(
+    num_processes: int = typer.Option(
+        8, "--num-processes", "-p", help="Number of worker processes to run"
+    ),
+    log_level: LogLevel = typer.Option(
+        "INFO",
+        "--log-level",
+        "-l",
+        help="Set the log level",
+        case_sensitive=False,
+        show_default=True,
+        show_choices=True,
+    ),
+):
+    """
+    Run worker processes using the specified task module path
+    """
+    manager = WorkerManager(
+        app=app,
+        queue=queue,
+        num_workers=num_processes,
+        log_level=getattr(logging, log_level.upper()),
+    )
+    manager.run()
+
+
+# For internal usage only
+@cli.command()
+def worker_process(
+    app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
+    queue: str = typer.Option(
+        constants.DEFAULT_QUEUE,
+        "--queue",
+        "-q",
+        help="The name of the queue to process",
+    ),
+    worker_id: str = typer.Option(
         None, "--worker-id", help="Optional UUID for the worker."
     ),
     log_level: LogLevel = typer.Option(
@@ -56,7 +91,7 @@ def run_worker(
     ),
 ):
     """
-    Run the worker using the specified task module path
+    Run a single worker process
     """
     if worker_id is None:
         worker_id = uuid7()

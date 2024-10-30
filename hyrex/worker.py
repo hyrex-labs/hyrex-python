@@ -23,10 +23,6 @@ def generate_worker_name():
     return f"worker-{hostname}-{pid}-{timestamp}"
 
 
-class StopWorkerException(Exception):
-    pass
-
-
 class HyrexWorker:
 
     def __init__(
@@ -84,7 +80,7 @@ class HyrexWorker:
 
             logging.info(f"Worker {self.name}: Completed processing item {task.id}")
 
-        except StopWorkerException:
+        except InterruptedError:
             if "task" in locals():
                 logging.info(
                     f"Worker {self.name}: Processing of item {task.id} was interrupted"
@@ -113,7 +109,7 @@ class HyrexWorker:
 
     def _signal_handler(self, signum, frame):
         logging.info("SIGTERM received, stopping worker...")
-        raise StopWorkerException
+        raise InterruptedError
 
     def run(self):
         self.dispatcher.register_worker(
@@ -121,15 +117,15 @@ class HyrexWorker:
         )
 
         # Note: This overrides the Hyrex instance signal handler,
-        # which makes the async_worker responsible for stopping the dispatcher.
+        # which makes the worker responsible for stopping the dispatcher.
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
 
         # Run processing loop
-        logging.info(f"Worker {self.name} started - checking for tasks.")
+        logging.info(f"Worker process {self.name} started - checking for tasks.")
         try:
             while True:
                 self.process()
-        except StopWorkerException:
+        except InterruptedError:
             self.stop()
             logging.info(f"Worker {self.name} stopped.")

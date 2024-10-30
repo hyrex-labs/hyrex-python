@@ -17,6 +17,7 @@ def utcnow():
 class StatusEnum(StrEnum):
     success = "success"
     failed = "failed"
+    up_for_cancel = "up_for_cancel"
     canceled = "canceled"
     running = "running"
     queued = "queued"

@@ -5,18 +5,16 @@ import signal
 from enum import Enum
 from typing import Any, Callable
 from uuid import UUID
+
 from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.async_worker import AsyncWorker
-from hyrex.worker import HyrexWorker
-from hyrex.dispatcher import (
-    PlatformDispatcher,
-    PostgresDispatcher,
-    PostgresLiteDispatcher,
-)
+from hyrex.dispatcher import (PlatformDispatcher, PostgresDispatcher,
+                              PostgresLiteDispatcher)
 from hyrex.task import TaskWrapper
 from hyrex.task_registry import TaskRegistry
+from hyrex.worker import HyrexWorker
 
 
 class EnvVars:
