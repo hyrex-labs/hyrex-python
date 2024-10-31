@@ -50,6 +50,11 @@ class Dispatcher(ABC):
     def cancel_task(self, task_id: UUID):
         pass
 
+    # Result must be a JSON string
+    @abstractmethod
+    def save_result(self, task_id: UUID, result: str):
+        pass
+
     @abstractmethod
     def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
         pass
