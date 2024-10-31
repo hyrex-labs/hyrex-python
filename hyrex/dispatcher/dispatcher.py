@@ -1,10 +1,35 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 from uuid import UUID
+import threading
 
 from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.models import HyrexTask, StatusEnum
+
+
+class SingletonMeta(ABCMeta):
+    _instances = {}
+    _init_args = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        # If the instance does not exist, create it and store args
+        if cls not in cls._instances:
+            with cls._lock:
+                if cls not in cls._instances:
+                    instance = super().__call__(*args, **kwargs)
+                    cls._instances[cls] = instance
+                    cls._init_args[cls] = (args, kwargs)
+        else:
+            # Check if the new args differ from the initial args
+            if (args, kwargs) != cls._init_args[cls]:
+                raise ValueError(
+                    f"Singleton instance already created with "
+                    f"different arguments: {cls._init_args[cls]} vs {args, kwargs}"
+                )
+
+        return cls._instances[cls]
 
 
 class DequeuedTask(BaseModel):
@@ -13,7 +38,7 @@ class DequeuedTask(BaseModel):
     args: dict
 
 
-class Dispatcher(ABC):
+class Dispatcher(ABC, metaclass=SingletonMeta):
     @abstractmethod
     def enqueue(
         self,

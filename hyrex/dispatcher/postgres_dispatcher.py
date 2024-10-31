@@ -1,4 +1,3 @@
-import json
 import logging
 import threading
 import time
@@ -7,7 +6,6 @@ from uuid import UUID
 
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
-from pydantic import BaseModel
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
