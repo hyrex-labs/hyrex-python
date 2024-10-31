@@ -118,3 +118,6 @@ class PostgresLiteDispatcher(Dispatcher):
 
     def get_workers_to_cancel(self, worker_ids: list[UUID]):
         pass
+
+    def save_result(self, task_id: UUID, result: str):
+        pass

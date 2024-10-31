@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import signal
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Callable
 from uuid import UUID
 
+from pydantic import BaseModel
 from uuid_extensions import uuid7
 
 from hyrex.dispatcher import DequeuedTask, Dispatcher
@@ -75,7 +77,18 @@ class Worker:
 
             # TODO: Implement batch processing
             task = tasks[0]
-            self.process_item(task.name, task.args)
+            result = self.process_item(task.name, task.args)
+
+            if result is not None:
+                if isinstance(result, BaseModel):
+                    result = result.model_dump_json()
+                elif isinstance(result, dict):
+                    result = json.dumps(result)
+                else:
+                    raise TypeError("Return value must be JSON-serializable.")
+
+                self.dispatcher.save_result(task.id, result)
+
             self.mark_task_success(task.id)
 
             logging.info(f"Worker {self.name}: Completed processing item {task.id}")

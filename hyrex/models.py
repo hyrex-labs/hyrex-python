@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
 from uuid_extensions import uuid7
+from typing import Optional
 
 from hyrex import constants
 
@@ -69,6 +70,8 @@ class HyrexTask(SQLModel, table=True):
 
     args: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
+    result: Optional["HyrexTaskResult"] = Relationship(back_populates="task")
+
     __table_args__ = (
         Index("index_queue_status", "status", "queue", "scheduled_start", "task_name"),
         Index(
@@ -78,6 +81,15 @@ class HyrexTask(SQLModel, table=True):
             desc("priority"),
         ),
     )
+
+
+class HyrexTaskResult(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+
+    task_id: UUID | None = Field(foreign_key="hyrextask.id")
+    task: HyrexTask | None = Relationship(back_populates="results")
+
+    result: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
 
 def create_tables(conn_string):

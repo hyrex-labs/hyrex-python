@@ -182,3 +182,9 @@ class PostgresDispatcher(Dispatcher):
                 cursor.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
                 result = cursor.fetchall()
                 return [row[0] for row in result]
+
+    def save_result(self, task_id: UUID, result: str):
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql.SAVE_RESULT, [task_id, result])
+                conn.commit()

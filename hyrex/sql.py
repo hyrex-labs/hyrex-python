@@ -164,3 +164,8 @@ MARK_WORKER_STOPPED = """
     SET stopped = CURRENT_TIMESTAMP
     WHERE id = %s
 """
+
+SAVE_RESULT = """
+    INSERT INTO public.hyrextaskresult (task_id, result)
+    VALUES (%s,  %s);
+"""
