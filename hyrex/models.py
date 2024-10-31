@@ -87,7 +87,7 @@ class HyrexTaskResult(SQLModel, table=True):
     id: int = Field(primary_key=True)
 
     task_id: UUID | None = Field(foreign_key="hyrextask.id")
-    task: HyrexTask | None = Relationship(back_populates="results")
+    task: HyrexTask | None = Relationship(back_populates="result")
 
     result: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
