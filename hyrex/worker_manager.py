@@ -8,19 +8,18 @@ from uuid import UUID
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher import Dispatcher
+from hyrex.dispatcher import get_dispatcher
 
 
 class WorkerManager:
     def __init__(
         self,
         app_module: str,
-        dispatcher: Dispatcher,
         queue: str = constants.DEFAULT_QUEUE,
         num_workers: int = 8,
     ):
         self.app_module = app_module
-        self.dispatcher = dispatcher
+        self.dispatcher = get_dispatcher()
         self.queue = queue
         self.num_workers = num_workers
         self.worker_map = {}
@@ -68,16 +67,19 @@ class WorkerManager:
 
     def add_new_worker_process(self):
         worker_id = uuid7()
-        self.worker_map[worker_id] = subprocess.Popen(
-            [
-                "hyrex",
-                "worker-process",
-                self.app_module,
-                "--worker-id",
-                str(worker_id),
-            ],
-            preexec_fn=os.setsid,
-        )
+        try:
+            self.worker_map[worker_id] = subprocess.Popen(
+                [
+                    "hyrex",
+                    "worker-process",
+                    self.app_module,
+                    "--worker-id",
+                    str(worker_id),
+                ],
+                preexec_fn=os.setsid,
+            )
+        except Exception as e:
+            logging.error(f"Failed to start worker {worker_id}: {e}")
 
     def run(self):
         # Note: This overrides the Hyrex instance signal handler,

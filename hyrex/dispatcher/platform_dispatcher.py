@@ -7,7 +7,7 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher import DequeuedTask, Dispatcher
+from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
 

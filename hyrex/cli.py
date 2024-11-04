@@ -10,7 +10,7 @@ import typer
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.app import EnvVars
+from hyrex.config import EnvVars
 from hyrex.models import create_tables
 from hyrex.worker_manager import WorkerManager
 
@@ -58,30 +58,14 @@ def run_worker(
     """
     Run multiple worker processes using the specified task module path
     """
-    sys.path.append(str(Path.cwd()))
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    try:
-        module_path, instance_name = app.split(":")
-        # Import the hyrex module
-        hyrex_module = importlib.import_module(module_path)
-        hyrex_instance = getattr(hyrex_module, instance_name)
-        hyrex_instance.run_manager(
-            app_module=app,
-            queue=queue,
-            num_workers=num_processes,
-            log_level=getattr(logging, log_level.upper()),
-        )
-
-    except ModuleNotFoundError as e:
-        typer.echo(f"Error: {e}")
-        sys.exit(1)
-    # manager = WorkerManager(
-    #     app_module=app,
-    #     queue=queue,
-    #     num_workers=num_processes,
-    #     log_level=getattr(logging, log_level.upper()),
-    # )
-    # manager.run()
+    manager = WorkerManager(
+        app_module=app,
+        queue=queue,
+        num_workers=num_processes,
+    )
+    manager.run()
 
 
 # For internal usage only
@@ -110,6 +94,8 @@ def worker_process(
     """
     Run a single worker process
     """
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
+
     if worker_id is None:
         worker_id = uuid7()
     elif not is_valid_uuid(worker_id):
@@ -119,67 +105,16 @@ def worker_process(
 
     try:
         module_path, instance_name = app_module.split(":")
-        # Import the hyrex module
-        hyrex_module = importlib.import_module(module_path)
-        hyrex_instance = getattr(hyrex_module, instance_name)
-        hyrex_instance.run_worker(
-            queue=queue,
-            worker_id=worker_id,
-            log_level=getattr(logging, log_level.upper()),
-        )
+        # Import the worker module
+        worker_module = importlib.import_module(module_path)
+        worker_instance = getattr(worker_module, instance_name)
+        worker_instance.set_worker_id(worker_id)
+        worker_instance.set_queue(queue)
+        worker_instance.run()
 
     except ModuleNotFoundError as e:
         typer.echo(f"Error: {e}")
         sys.exit(1)
-
-
-# @cli.command()
-# def run_worker(
-#     app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
-#     queue: str = typer.Option(
-#         constants.DEFAULT_QUEUE,
-#         "--queue",
-#         "-q",
-#         help="The name of the queue to process",
-#     ),
-#     num_threads: int = typer.Option(
-#         8, "--num-threads", "-n", help="Number of threads to run"
-#     ),
-#     log_level: LogLevel = typer.Option(
-#         "INFO",
-#         "--log-level",
-#         "-l",
-#         help="Set the log level",
-#         case_sensitive=False,
-#         show_default=True,
-#         show_choices=True,
-#     ),
-# ):
-#     """
-#     Run the worker using the specified task module path
-#     """
-#     if EnvVars.DATABASE_URL not in os.environ and EnvVars.API_KEY not in os.environ:
-#         typer.echo(
-#             f"{EnvVars.API_KEY} or {EnvVars.DATABASE_URL} must be set to run Hyrex worker."
-#         )
-#         return
-
-#     sys.path.append(str(Path.cwd()))
-
-#     try:
-#         module_path, instance_name = app.split(":")
-#         # Import the hyrex module
-#         hyrex_module = importlib.import_module(module_path)
-#         hyrex_instance = getattr(hyrex_module, instance_name)
-#         hyrex_instance.run_worker(
-#             num_threads=num_threads,
-#             queue=queue,
-#             log_level=getattr(logging, log_level.upper()),
-#         )
-
-#     except ModuleNotFoundError as e:
-#         typer.echo(f"Error: {e}")
-#         sys.exit(1)
 
 
 @cli.command()
