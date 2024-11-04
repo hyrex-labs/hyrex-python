@@ -14,8 +14,9 @@ from uuid import UUID
 from pydantic import BaseModel
 from uuid_extensions import uuid7
 
-from hyrex.dispatcher import DequeuedTask, Dispatcher
-from hyrex.task_registry import TaskRegistry
+from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.task import TaskWrapper
 
 
 def generate_worker_name():
@@ -25,26 +26,26 @@ def generate_worker_name():
     return f"worker-{hostname}-{pid}-{timestamp}"
 
 
-class Worker:
+class HyrexWorker:
 
     def __init__(
         self,
-        queue: str,
-        worker_id: UUID,
-        task_registry: TaskRegistry,
-        dispatcher: Dispatcher,
         error_callback: Callable = None,
     ):
-        # super().__init__(name=name)
         self.name = generate_worker_name()
-
-        self.queue = queue
-        self.worker_id = worker_id or uuid7()
-        self.task_registry = task_registry
-
-        self.dispatcher = dispatcher
-
+        self.task_registry: dict[str, TaskWrapper] = {}
+        self.dispatcher = get_dispatcher()
         self.error_callback = error_callback
+
+    def set_worker_id(self, worker_id: UUID):
+        self.worker_id = worker_id
+
+    def set_queue(self, queue: str):
+        self.queue = queue
+
+    def add_registry(self, registry: HyrexRegistry):
+        for task_name, task_wrapper in registry.items():
+            self.task_registry[task_name] = task_wrapper
 
     def process_item(self, task_name: str, args: dict):
         task_func = self.task_registry[task_name]
@@ -102,7 +103,7 @@ class Worker:
                 logging.info(
                     f"Successfully updated task {task.id} on worker {self.name} after interruption"
                 )
-            raise  # Re-raise the CancelledError to properly shut down the worker
+            raise  # Re-raise the InterruptedError to properly shut down the worker
 
         except Exception as e:
             logging.error(f"Worker {self.name}: Error processing item {str(e)}")
@@ -127,6 +128,12 @@ class Worker:
         raise InterruptedError
 
     def run(self):
+        if not self.worker_id:
+            raise RuntimeError("HyrexWorker must have an ID set.")
+
+        if not self.queue:
+            raise RuntimeError("HyrexWorker must have a queue set.")
+
         self.dispatcher.register_worker(
             worker_id=self.worker_id, worker_name=self.name, queue=self.queue
         )

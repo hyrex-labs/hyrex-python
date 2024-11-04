@@ -72,6 +72,7 @@ class TaskWrapper(Generic[T]):
         self,
         task_identifier: str,
         func: Callable[[T], Any],
+        dispatcher: Dispatcher,
         cron: str | None,
         queue: str = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
@@ -85,7 +86,7 @@ class TaskWrapper(Generic[T]):
         self.cron = cron
         self.max_retries = max_retries
         self.priority = priority
-        self.dispatcher = None
+        self.dispatcher = dispatcher
 
         try:
             context_klass = next(iter(self.type_hints.values()))
@@ -95,9 +96,6 @@ class TaskWrapper(Generic[T]):
             )
 
         self.context_klass = context_klass
-
-    def set_dispatcher(self, dispatcher: Dispatcher):
-        self.dispatcher = dispatcher
 
     async def async_call(self, context: T):
         logging.info(f"Executing task {self.func.__name__} on queue: {self.queue}")

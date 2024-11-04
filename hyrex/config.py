@@ -1,0 +1,3 @@
+class EnvVars:
+    DATABASE_URL = "HYREX_DATABASE_URL"
+    API_KEY = "HYREX_API_KEY"
