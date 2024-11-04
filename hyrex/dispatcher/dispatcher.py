@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod, ABCMeta
-from uuid import UUID
 import threading
+from abc import ABC, ABCMeta, abstractmethod
+from uuid import UUID
 
 from pydantic import BaseModel
 

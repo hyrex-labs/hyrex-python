@@ -14,7 +14,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from uuid_extensions import uuid7
 
-from hyrex.dispatcher import get_dispatcher, DequeuedTask
+from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
 

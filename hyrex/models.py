@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, create_engine
+from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
+                      create_engine)
 from uuid_extensions import uuid7
-from typing import Optional
 
 from hyrex import constants
 

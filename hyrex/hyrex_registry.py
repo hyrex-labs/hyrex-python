@@ -1,8 +1,8 @@
 # from hyrex.decorator import TaskDecoratorProvider
 import functools
-from typing import Any, Callable
 import logging
 import signal
+from typing import Any, Callable
 
 from hyrex import constants
 from hyrex.dispatcher import get_dispatcher

@@ -1,10 +1,11 @@
+import os
+
+from hyrex.config import EnvVars
+
 from .dispatcher import Dispatcher
 from .platform_dispatcher import PlatformDispatcher
 from .postgres_dispatcher import PostgresDispatcher
 from .postgres_lite_dispatcher import PostgresLiteDispatcher
-from hyrex.config import EnvVars
-
-import os
 
 
 def get_dispatcher() -> Dispatcher:
