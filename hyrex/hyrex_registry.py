@@ -1,7 +1,8 @@
 # from hyrex.decorator import TaskDecoratorProvider
 import functools
 from typing import Any, Callable
-import os
+import logging
+import signal
 
 from hyrex import constants
 from hyrex.dispatcher import get_dispatcher
@@ -26,8 +27,32 @@ class HyrexRegistry(dict[str, "TaskWrapper"]):
             raise TypeError("Key must be an instance of str")
         return super().__getitem__(key)
 
+    def _signal_handler(self, signum, frame):
+        logging.info("SIGTERM received, stopping Hyrex dispatcher...")
+        self.dispatcher.stop()
+
+    def _chain_signal_handlers(self, new_handler, old_handler):
+        """Return a function that calls both the new and old signal handlers."""
+
+        def wrapper(signum, frame):
+            # Call the new handler first
+            new_handler(signum, frame)
+            # Then call the previous handler (if it exists)
+            if old_handler and callable(old_handler):
+                old_handler(signum, frame)
+
+        return wrapper
+
+    def _setup_signal_handlers(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            old_handler = signal.getsignal(sig)  # Get the existing handler
+            new_handler = self._signal_handler  # Your new handler
+            # Set the new handler, which calls both new and old handlers
+            signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
+
     def __init__(self):
         self.dispatcher = get_dispatcher()
+        self._setup_signal_handlers()
 
     def task(
         self,
