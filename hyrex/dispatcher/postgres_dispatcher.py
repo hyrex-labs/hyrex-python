@@ -2,6 +2,7 @@ import logging
 import threading
 import time
 from queue import Empty, Queue
+from typing import List
 from uuid import UUID
 
 from psycopg.types.json import Json
@@ -16,14 +17,13 @@ from hyrex.models import HyrexTask, StatusEnum
 class PostgresDispatcher(Dispatcher):
     def __init__(self, conn_string: str, batch_size=100, flush_interval=0.1):
         self.conn_string = conn_string
-        # TODO: Set min/max size based on worker threads
         self.pool = ConnectionPool(conn_string, open=True)
 
         self.local_queue = Queue()
-        self.running = True
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
+        # Start the batch enqueue thread
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
 
@@ -76,16 +76,13 @@ class PostgresDispatcher(Dispatcher):
                     )
         return dequeued_tasks
 
-    def enqueue(
-        self,
-        task: HyrexTask,
-    ):
+    def enqueue(self, task: HyrexTask):
         self.local_queue.put(task)
 
     def _batch_enqueue(self):
         tasks = []
         last_flush_time = time.monotonic()
-        while self.running or not self.local_queue.empty():
+        while True:
             timeout = self.flush_interval - (time.monotonic() - last_flush_time)
             if timeout <= 0:
                 # Flush if the flush interval has passed
@@ -98,6 +95,9 @@ class PostgresDispatcher(Dispatcher):
             try:
                 # Wait for a task or until the timeout expires
                 task = self.local_queue.get(timeout=timeout)
+                if task is None:
+                    # Stop sequence initiated
+                    break
                 tasks.append(task)
                 if len(tasks) >= self.batch_size:
                     # Flush if batch size is reached
@@ -115,7 +115,7 @@ class PostgresDispatcher(Dispatcher):
         if tasks:
             self._enqueue_tasks(tasks)
 
-    def _enqueue_tasks(self, tasks):
+    def _enqueue_tasks(self, tasks: List[HyrexTask]):
         """
         Inserts a batch of tasks into the database.
 
@@ -147,7 +147,8 @@ class PostgresDispatcher(Dispatcher):
         Stops the batching process and flushes remaining tasks.
         """
         logging.info("Stopping dispatcher...")
-        self.running = False
+        # Add value to indicate cancellation and unblock the queue
+        self.local_queue.put(None)
         self.thread.join()
         # Close the connection pool
         self.pool.close()
