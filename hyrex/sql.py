@@ -68,14 +68,14 @@ WITH next_task AS (
     SELECT id 
     FROM hyrextask
     WHERE
-        queue = %s AND
+        queue = $1 AND
         status = 'queued'
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = %s
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $2
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
@@ -91,7 +91,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = %s
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $1
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
@@ -108,7 +108,7 @@ WITH existing_task AS (
         max_retries,
         priority
     FROM hyrextask
-    WHERE id = %(existing_id)s
+    WHERE id = $1
       AND attempt_number < max_retries
 )
 INSERT INTO hyrextask (
@@ -124,7 +124,7 @@ INSERT INTO hyrextask (
     priority
 )
 SELECT
-    %(new_id)s AS id,
+    $2 AS id,
     root_id,
     CURRENT_TIMESTAMP as queued,
     'queued' AS status,
@@ -137,7 +137,6 @@ SELECT
 FROM existing_task;
 """
 
-# TODO: Update hyrextask table to have better defaults so they're not needed here.
 ENQUEUE_TASK = """
 INSERT INTO hyrextask (
     id,
@@ -147,19 +146,19 @@ INSERT INTO hyrextask (
     queue,
     max_retries,
     priority
-) VALUES (%s, %s, %s, %s, %s, %s, %s);
+) VALUES ($1, $2, $3, $4, $5, $6, $7);
 """
 
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
     SET status = 'success', finished = CURRENT_TIMESTAMP
-    WHERE id = %s
+    WHERE id = $1
 """
 
 MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
-    WHERE id = %s
+    WHERE id = $1
 """
 
 RESET_OR_CANCEL_TASK = """
@@ -176,7 +175,7 @@ RESET_OR_CANCEL_TASK = """
                    WHEN status = 'up_for_cancel' THEN started  -- Keep the current value
                    ELSE NULL
                  END
-   WHERE id = %s
+   WHERE id = $1
 """
 
 MARK_TASK_CANCELED = """
@@ -185,29 +184,29 @@ MARK_TASK_CANCELED = """
                 WHEN status = 'running' THEN 'up_for_cancel'::statusenum 
                 WHEN status = 'queued' THEN 'canceled'::statusenum
                 END
-    WHERE id = %s AND status IN ('running', 'queued');
+    WHERE id = $1 AND status IN ('running', 'queued');
 """
 
 GET_WORKERS_TO_CANCEL = """
-    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY(%s);
+    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY($1);
 """
 
 GET_TASK_STATUS = """
-    SELECT status FROM hyrextask WHERE id = %s
+    SELECT status FROM hyrextask WHERE id = $1
 """
 
 REGISTER_WORKER = """
     INSERT INTO hyrexworker (id, name, queue, started)
-    VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
 """
 
 MARK_WORKER_STOPPED = """
     UPDATE hyrexworker
     SET stopped = CURRENT_TIMESTAMP
-    WHERE id = %s
+    WHERE id = $1
 """
 
 SAVE_RESULT = """
     INSERT INTO hyrextaskresult (task_id, result)
-    VALUES (%s,  %s);
+    VALUES ($1, $2);
 """
