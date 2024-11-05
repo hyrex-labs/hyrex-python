@@ -3,12 +3,12 @@ from enum import StrEnum
 from typing import Optional
 from uuid import UUID
 
+import psycopg
 from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
-from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
-                      create_engine)
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from uuid_extensions import uuid7
 
-from hyrex import constants
+from hyrex import constants, sql
 
 
 def utcnow():
@@ -94,5 +94,9 @@ class HyrexTaskResult(SQLModel, table=True):
 
 
 def create_tables(conn_string):
-    engine = create_engine(conn_string)
-    SQLModel.metadata.create_all(engine)
+    with psycopg.connect(conn_string) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql.CREATE_HYREX_TASK_TABLE)
+            cur.execute(sql.CREATE_HYREX_RESULT_TABLE)
+            cur.execute(sql.CREATE_HYREX_WORKER_TABLE)
+        conn.commit()

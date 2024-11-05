@@ -4,7 +4,7 @@ CREATE_HYREX_TASK_TABLE = """
 DO $$
 BEGIN
 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
-CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', "up_for_cancel", "canceled");
+CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
 END IF;
 END $$;
 
@@ -41,6 +41,14 @@ on hyrextask (scheduled_start);
 
 create index if not exists index_queue_status
 on hyrextask (status, queue, scheduled_start, task_name);
+"""
+
+CREATE_HYREX_RESULT_TABLE = """
+CREATE TABLE IF NOT EXISTS hyrextaskresult (
+    id SERIAL PRIMARY KEY,
+    task_id UUID REFERENCES hyrextask(id),
+    result JSON DEFAULT '{}'
+);
 """
 
 CREATE_HYREX_WORKER_TABLE = """
