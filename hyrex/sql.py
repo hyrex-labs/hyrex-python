@@ -1,21 +1,59 @@
 from hyrex import constants
 
-# CREATE_TABLES = f"""
-# -- Enable UUID extension
-# CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE_HYREX_TASK_TABLE = """
+DO $$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
+CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', "up_for_cancel", "canceled");
+END IF;
+END $$;
 
-# -- Create custom ENUM type for StatusEnum
-# CREATE TYPE statusenum AS ENUM ('success', 'failed', 'canceled', 'running', 'queued');
+create table if not exists hyrextask
+(
+    id              uuid       not null
+primary key,
+    root_id         uuid       not null,
+    task_name       varchar    not null,
+    args            json       not null,
+    queue           varchar    not null,
+    max_retries     smallint   not null,
+    priority        smallint   not null,
+    status          statusenum not null default 'queued'::statusenum,
+    attempt_number  smallint   not null default 0,
+    scheduled_start timestamp with time zone,
+    worker_id       uuid,
+    queued          timestamp with time zone default CURRENT_TIMESTAMP,
+    started         timestamp with time zone,
+    finished        timestamp with time zone
+);
 
-# CREATE TABLE hyrexworker (
-#     id UUID PRIMARY KEY,
-#     name TEXT NOT NULL,
-#     queue TEXT NOT NULL DEFAULT {constants.DEFAULT_QUEUE},
-#     started TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-#     stopped TIMESTAMP WITH TIME ZONE
-# );
+create index if not exists ix_hyrextask_task_name
+on hyrextask (task_name);
 
-# """
+create index if not exists ix_hyrextask_status
+on hyrextask (status);
+
+create index if not exists ix_hyrextask_queue
+on hyrextask (queue);
+
+create index if not exists ix_hyrextask_scheduled_start
+on hyrextask (scheduled_start);
+
+create index if not exists index_queue_status
+on hyrextask (status, queue, scheduled_start, task_name);
+"""
+
+CREATE_HYREX_WORKER_TABLE = """
+create table if not exists hyrexworker
+(
+    id      uuid    not null
+primary key,
+    name    varchar not null,
+    queue   varchar not null,
+    started timestamp,
+    stopped timestamp
+);
+"""
 
 FETCH_TASK = """
 WITH next_task AS (
@@ -100,11 +138,8 @@ INSERT INTO hyrextask (
     args,
     queue,
     max_retries,
-    priority,
-    status,
-    attempt_number,
-    queued
-) VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', 0, CURRENT_TIMESTAMP);
+    priority
+) VALUES (%s, %s, %s, %s, %s, %s, %s);
 """
 
 MARK_TASK_SUCCESS = """
@@ -141,7 +176,6 @@ MARK_TASK_CANCELED = """
     SET status = CASE 
                 WHEN status = 'running' THEN 'up_for_cancel'::statusenum 
                 WHEN status = 'queued' THEN 'canceled'::statusenum
-                ELSE status  -- Keep the current status if it's not 'running' or 'queued'
                 END
     WHERE id = %s AND status IN ('running', 'queued');
 """
@@ -166,6 +200,6 @@ MARK_WORKER_STOPPED = """
 """
 
 SAVE_RESULT = """
-    INSERT INTO public.hyrextaskresult (task_id, result)
+    INSERT INTO hyrextaskresult (task_id, result)
     VALUES (%s,  %s);
 """
