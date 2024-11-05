@@ -6,6 +6,7 @@ from typing import List
 from uuid import UUID
 
 from psycopg.types.json import Json
+from psycopg import RawCursor
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
@@ -29,30 +30,35 @@ class PostgresDispatcher(Dispatcher):
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.MARK_TASK_SUCCESS, [task_id])
+            with RawCursor(conn) as cur:
+                cur.execute(sql.MARK_TASK_SUCCESS, [task_id])
             conn.commit()
 
     def mark_failed(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.MARK_TASK_FAILED, [task_id])
+            with RawCursor(conn) as cur:
+                cur.execute(sql.MARK_TASK_FAILED, [task_id])
             conn.commit()
 
     def attempt_retry(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(
-                sql.CONDITIONALLY_RETRY_TASK,
-                {"existing_id": task_id, "new_id": uuid7()},
-            )
+            with RawCursor(conn) as cur:
+                cur.execute(
+                    sql.CONDITIONALLY_RETRY_TASK,
+                    [task_id, uuid7()],
+                )
             conn.commit()
 
     def reset_or_cancel_task(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
+            with RawCursor(conn) as cur:
+                cur.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
             conn.commit()
 
     def cancel_task(self, task_id: UUID):
         with self.pool.connection() as conn:
-            conn.execute(sql.MARK_TASK_CANCELED, [task_id])
+            with RawCursor(conn) as cur:
+                cur.execute(sql.MARK_TASK_CANCELED, [task_id])
             conn.commit()
 
     def dequeue(
@@ -63,7 +69,7 @@ class PostgresDispatcher(Dispatcher):
     ) -> list[DequeuedTask]:
         dequeued_tasks = []
         with self.pool.connection() as conn:
-            with conn.cursor() as cur:
+            with RawCursor(conn) as cur:
                 if queue == constants.DEFAULT_QUEUE:
                     cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [worker_id])
                 else:
@@ -135,12 +141,12 @@ class PostgresDispatcher(Dispatcher):
         ]
 
         with self.pool.connection() as conn:
-            with conn.cursor() as cur:
+            with RawCursor(conn) as cur:
                 cur.executemany(
                     sql.ENQUEUE_TASK,
                     task_data,
                 )
-                conn.commit()
+            conn.commit()
 
     def stop(self):
         """
@@ -156,34 +162,34 @@ class PostgresDispatcher(Dispatcher):
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql.GET_TASK_STATUS, [task_id])
-                result = cursor.fetchone()
+            with RawCursor(conn) as cur:
+                cur.execute(sql.GET_TASK_STATUS, [task_id])
+                result = cur.fetchone()
                 if result is None:
                     raise ValueError(f"Task id {task_id} not found in DB.")
                 return result[0]
 
     def register_worker(self, worker_id: UUID, worker_name: str, queue: str):
         with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql.REGISTER_WORKER, [worker_id, worker_name, queue])
-                conn.commit()
+            with RawCursor(conn) as cur:
+                cur.execute(sql.REGISTER_WORKER, [worker_id, worker_name, queue])
+            conn.commit()
 
     def mark_worker_stopped(self, worker_id: UUID):
         with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql.MARK_WORKER_STOPPED, [worker_id])
-                conn.commit()
+            with RawCursor(conn) as cur:
+                cur.execute(sql.MARK_WORKER_STOPPED, [worker_id])
+            conn.commit()
 
     def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
         with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
-                result = cursor.fetchall()
+            with RawCursor(conn) as cur:
+                cur.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
+                result = cur.fetchall()
                 return [row[0] for row in result]
 
     def save_result(self, task_id: UUID, result: str):
         with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(sql.SAVE_RESULT, [task_id, result])
+            with RawCursor(conn) as cur:
+                cur.execute(sql.SAVE_RESULT, [task_id, result])
                 conn.commit()
