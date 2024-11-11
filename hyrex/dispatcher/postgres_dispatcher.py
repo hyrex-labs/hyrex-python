@@ -29,7 +29,7 @@ class BatchMetrics:
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=5000, flush_interval=0.1):
+    def __init__(self, conn_string: str, batch_size=5000, flush_interval=0.05):
         self.conn_string = conn_string
         self.pool = ConnectionPool(
             conn_string,
@@ -43,9 +43,14 @@ class PostgresDispatcher(Dispatcher):
             },
         )
 
-        self.local_queue = Queue()
-        self.batch_size = batch_size
-        self.flush_interval = flush_interval
+        # Warm up the pool
+        with self.pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+
+            self.local_queue = Queue()
+            self.batch_size = batch_size
+            self.flush_interval = flush_interval
 
         # Metrics tracking
         self.task_enqueue_times = {}  # task_id -> enqueue_start_time
