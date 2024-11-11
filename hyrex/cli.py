@@ -123,13 +123,18 @@ def init_db(
         os.getenv(EnvVars.DATABASE_URL),
         "--database-string",
         help="Database connection string",
-    )
+    ),
+    disable_wal: bool = typer.Option(
+        False,
+        "--disable-wal",
+        help="If set, creates tables with WAL disabled (UNLOGGED)",
+    ),
 ):
     """
     Creates the tables for hyrex tasks/workers in the given Postgres database
     """
     if database_string:
-        create_tables(database_string)
+        create_tables(database_string, disable_wal=disable_wal)
         typer.echo("Hyrex tables initialized.")
         return
 

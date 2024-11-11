@@ -210,3 +210,7 @@ SAVE_RESULT = """
     INSERT INTO hyrextaskresult (task_id, result)
     VALUES ($1, $2);
 """
+
+DISABLE_WAL_FOR_TASKS = """
+ALTER TABLE hyrextask SET UNLOGGED;
+"""

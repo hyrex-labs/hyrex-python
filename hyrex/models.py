@@ -93,10 +93,13 @@ class HyrexTaskResult(SQLModel, table=True):
     result: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
 
-def create_tables(conn_string):
+def create_tables(conn_string, disable_wal: bool = False):
     with psycopg.connect(conn_string) as conn:
         with conn.cursor() as cur:
             cur.execute(sql.CREATE_HYREX_TASK_TABLE)
             cur.execute(sql.CREATE_HYREX_RESULT_TABLE)
             cur.execute(sql.CREATE_HYREX_WORKER_TABLE)
+            if disable_wal:
+                cur.execute(sql.DISABLE_WAL_FOR_TASKS)
+
         conn.commit()
