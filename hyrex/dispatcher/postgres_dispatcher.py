@@ -16,16 +16,24 @@ from hyrex.models import HyrexTask, StatusEnum
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=1000, flush_interval=0.1):
+    def __init__(
+        self,
+        conn_string: str,
+        batch_size=1000,
+        flush_interval=0.1,
+    ):
         self.conn_string = conn_string
-        self.pool = ConnectionPool(conn_string, open=True)
+        self.pool = ConnectionPool(
+            conn_string, open=True, min_size=2, max_size=10, timeout=30
+        )
 
         self.local_queue = Queue()
         self.batch_size = batch_size
         self.flush_interval = flush_interval
+        self._shutdown_event = threading.Event()
 
-        # Start the batch enqueue thread
-        self.thread = threading.Thread(target=self._batch_enqueue)
+        # Non-daemon thread for safe shutdown
+        self.thread = threading.Thread(target=self._batch_enqueue, daemon=False)
         self.thread.start()
 
     def mark_success(self, task_id: UUID):
@@ -83,43 +91,49 @@ class PostgresDispatcher(Dispatcher):
         return dequeued_tasks
 
     def enqueue(self, task: HyrexTask):
+        # Add backpressure when queue gets too large
+        if self.local_queue.qsize() > self.batch_size * 10:
+            time.sleep(0.001)  # Small delay to prevent overwhelming
         self.local_queue.put(task)
 
     def _batch_enqueue(self):
         tasks = []
         last_flush_time = time.monotonic()
+
         while True:
-            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
-            if timeout <= 0:
-                # Flush if the flush interval has passed
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-                continue
+            current_time = time.monotonic()
+            timeout = max(0, self.flush_interval - (current_time - last_flush_time))
 
             try:
-                # Wait for a task or until the timeout expires
-                task = self.local_queue.get(timeout=timeout)
-                if task is None:
-                    # Stop sequence initiated
-                    break
-                tasks.append(task)
-                if len(tasks) >= self.batch_size:
-                    # Flush if batch size is reached
+                # Dynamic batch sizing based on queue pressure
+                current_batch_size = min(
+                    self.batch_size,
+                    max(100, self.local_queue.qsize()),  # Minimum batch of 100
+                )
+
+                # Collect tasks up to batch size or timeout
+                while len(tasks) < current_batch_size and timeout > 0:
+                    task = self.local_queue.get(timeout=timeout)
+                    if task is None:  # Stop signal
+                        if tasks:
+                            self._enqueue_tasks(tasks)
+                        return
+                    tasks.append(task)
+                    timeout = max(
+                        0, self.flush_interval - (time.monotonic() - last_flush_time)
+                    )
+
+                # Flush if we have tasks and either reached batch size or timeout
+                if tasks and (len(tasks) >= current_batch_size or timeout <= 0):
                     self._enqueue_tasks(tasks)
                     tasks = []
                     last_flush_time = time.monotonic()
+
             except Empty:
-                # No task received within the timeout
-                if tasks:
+                if tasks:  # Flush remaining tasks if timeout occurred
                     self._enqueue_tasks(tasks)
                     tasks = []
                 last_flush_time = time.monotonic()
-
-        # Flush any remaining tasks when stopping
-        if tasks:
-            self._enqueue_tasks(tasks)
 
     def _enqueue_tasks(self, tasks: List[HyrexTask]):
         """

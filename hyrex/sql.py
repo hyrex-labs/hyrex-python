@@ -214,4 +214,7 @@ SAVE_RESULT = """
 DISABLE_WAL_FOR_TASKS = """
 ALTER TABLE hyrextaskresult SET UNLOGGED;
 ALTER TABLE hyrextask SET UNLOGGED;
+SET synchronous_commit TO OFF;
+SET commit_delay TO 1000;
+SET commit_siblings TO 5;
 """
