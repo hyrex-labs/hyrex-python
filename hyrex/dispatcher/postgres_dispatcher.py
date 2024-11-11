@@ -14,12 +14,11 @@ from hyrex import constants, sql
 from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(threadName)s - %(levelname)s - %(message)s",
-# )
-# logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(threadName)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 class PostgresDispatcher(Dispatcher):
@@ -30,8 +29,9 @@ class PostgresDispatcher(Dispatcher):
         flush_interval=0.1,
     ):
         self.conn_string = conn_string
+        # Pre-warm the connection pool
         self.pool = ConnectionPool(
-            conn_string, open=True, min_size=2, max_size=10, timeout=30
+            conn_string, open=True, min_size=2, max_size=5, timeout=30
         )
 
         self.local_queue = Queue()
@@ -145,7 +145,6 @@ class PostgresDispatcher(Dispatcher):
     def _enqueue_tasks(self, tasks: List[HyrexTask]):
         start_time = time.monotonic()
 
-        # Prepare the data
         task_data = [
             (
                 task.id,
@@ -158,40 +157,33 @@ class PostgresDispatcher(Dispatcher):
             )
             for task in tasks
         ]
-        prep_time = time.monotonic() - start_time
 
-        db_start = time.monotonic()
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
-                # Temporarily disable synchronous commit for this transaction
                 cur.execute("SET LOCAL synchronous_commit TO OFF")
 
-                # Use larger batches for executemany
-                # psycopg's executemany uses prepared statements under the hood
-                cur.execute("SET LOCAL work_mem = '256MB'")
-
-                cur.executemany(
+                with cur.copy(
                     """
-                    INSERT INTO hyrextask (
-                        id,
-                        root_id,
-                        task_name,
-                        args,
-                        queue,
-                        max_retries,
+                    COPY hyrextask (
+                        id, 
+                        root_id, 
+                        task_name, 
+                        args, 
+                        queue, 
+                        max_retries, 
                         priority
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    """,
-                    task_data,
-                )
+                    ) FROM STDIN
+                    """
+                ) as copy:
+                    for task in task_data:
+                        copy.write_row(task)
 
             conn.commit()
 
         total_time = time.monotonic() - start_time
-        tasks_per_second = len(tasks) / total_time
-        logging.info(
+        logger.info(
             f"Enqueued {len(tasks)} tasks in {total_time:.3f}s "
-            f"({tasks_per_second:.1f} tasks/sec)"
+            f"({len(tasks)/total_time:.1f} tasks/sec)"
         )
 
     def stop(self):
