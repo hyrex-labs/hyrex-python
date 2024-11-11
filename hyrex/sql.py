@@ -212,5 +212,6 @@ SAVE_RESULT = """
 """
 
 DISABLE_WAL_FOR_TASKS = """
+ALTER TABLE hyrextaskresult SET UNLOGGED;
 ALTER TABLE hyrextask SET UNLOGGED;
 """
