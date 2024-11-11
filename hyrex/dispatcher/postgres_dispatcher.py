@@ -14,11 +14,12 @@ from hyrex import constants, sql
 from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(threadName)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s - %(threadName)s - %(levelname)s - %(message)s",
+# )
+# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.WARNING)
 
 
 class PostgresDispatcher(Dispatcher):
