@@ -46,7 +46,7 @@ def run_worker(
         8, "--num-processes", "-p", help="Number of worker processes to run"
     ),
     log_level: LogLevel = typer.Option(
-        "INFO",
+        "WARNING",
         "--log-level",
         "-l",
         help="Set the log level",
@@ -82,7 +82,7 @@ def worker_process(
         None, "--worker-id", help="Optional UUID for the worker."
     ),
     log_level: LogLevel = typer.Option(
-        "INFO",
+        "WARNING",
         "--log-level",
         "-l",
         help="Set the log level",
