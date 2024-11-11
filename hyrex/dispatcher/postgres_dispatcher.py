@@ -14,6 +14,12 @@ from hyrex import constants, sql
 from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(threadName)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 
 class PostgresDispatcher(Dispatcher):
     def __init__(
@@ -136,11 +142,9 @@ class PostgresDispatcher(Dispatcher):
                 last_flush_time = time.monotonic()
 
     def _enqueue_tasks(self, tasks: List[HyrexTask]):
-        """
-        Inserts a batch of tasks into the database.
+        start_time = time.monotonic()
 
-        :param tasks: List of tasks to insert.
-        """
+        # Prepare the data
         task_data = [
             (
                 task.id,
@@ -153,14 +157,41 @@ class PostgresDispatcher(Dispatcher):
             )
             for task in tasks
         ]
+        prep_time = time.monotonic() - start_time
 
+        db_start = time.monotonic()
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
+                # Temporarily disable synchronous commit for this transaction
+                cur.execute("SET LOCAL synchronous_commit TO OFF")
+
+                # Use larger batches for executemany
+                # psycopg's executemany uses prepared statements under the hood
+                cur.execute("SET LOCAL work_mem = '256MB'")
+
                 cur.executemany(
-                    sql.ENQUEUE_TASK,
+                    """
+                    INSERT INTO hyrextask (
+                        id,
+                        root_id,
+                        task_name,
+                        args,
+                        queue,
+                        max_retries,
+                        priority
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
                     task_data,
                 )
+
             conn.commit()
+
+        total_time = time.monotonic() - start_time
+        tasks_per_second = len(tasks) / total_time
+        logging.info(
+            f"Enqueued {len(tasks)} tasks in {total_time:.3f}s "
+            f"({tasks_per_second:.1f} tasks/sec)"
+        )
 
     def stop(self):
         """
