@@ -16,7 +16,7 @@ from hyrex.models import HyrexTask, StatusEnum
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=100, flush_interval=0.1):
+    def __init__(self, conn_string: str, batch_size=200, flush_interval=0.05):
         self.conn_string = conn_string
         self.pool = ConnectionPool(conn_string, open=True)
 
