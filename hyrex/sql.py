@@ -12,7 +12,7 @@ END $$;
 -- Create the partitioned table
 CREATE TABLE IF NOT EXISTS hyrextask
 (
-    id              uuid       not null primary key,
+    id              uuid       not null,
     root_id         uuid       not null,
     task_name       varchar    not null,
     args            json       not null,
@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS hyrextask
     worker_id       uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
-    finished        timestamp with time zone
+    finished        timestamp with time zone,
+    PRIMARY KEY (id, status)  -- Include status in primary key
 ) PARTITION BY LIST (status);
 
 -- Create the partitions
