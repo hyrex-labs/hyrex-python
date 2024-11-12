@@ -1,4 +1,3 @@
-import json
 import logging
 import threading
 import time
@@ -6,9 +5,8 @@ from queue import Empty, Queue
 from typing import List
 from uuid import UUID
 
-import psycopg
-from psycopg import RawCursor
 from psycopg.types.json import Json
+from psycopg import RawCursor
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
@@ -18,89 +16,17 @@ from hyrex.models import HyrexTask, StatusEnum
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, num_workers: int = 8, batch_size: int = 20):
-        self.pool = ConnectionPool(
-            conn_string, min_size=num_workers, max_size=num_workers, open=True
-        )
-        self.queue = Queue()
+    def __init__(self, conn_string: str, batch_size=100, flush_interval=0.1):
+        self.conn_string = conn_string
+        self.pool = ConnectionPool(conn_string, open=True)
+
+        self.local_queue = Queue()
         self.batch_size = batch_size
-        self.stop_flag = threading.Event()
+        self.flush_interval = flush_interval
 
-        self.workers = []
-        for i in range(num_workers):
-            worker = threading.Thread(target=self._worker_routine, args=(i,))
-            worker.daemon = True
-            worker.start()
-            self.workers.append(worker)
-
-    def _worker_routine(self, worker_id: int):
-        tasks = []
-        while not self.stop_flag.is_set() or not self.queue.empty():
-            try:
-                try:
-                    task = self.queue.get(timeout=0.1)
-                    tasks.append(task)
-                except Empty:
-                    if tasks:
-                        self._process_batch(tasks)
-                        tasks = []
-                    continue
-
-                if len(tasks) >= self.batch_size:
-                    self._process_batch(tasks)
-                    tasks = []
-
-            except Exception as e:
-                print(f"Worker {worker_id} error: {e}")
-                if tasks:
-                    try:
-                        self._process_batch(tasks)
-                    except:
-                        pass
-                    tasks = []
-
-    def _process_batch(self, tasks: List["HyrexTask"]):
-        with self.pool.connection() as conn:
-            try:
-                with conn.cursor() as cur:
-                    task_data = [
-                        (
-                            str(task.id),
-                            str(task.root_id),
-                            task.task_name,
-                            json.dumps(task.args),
-                            task.queue,
-                            task.max_retries,
-                            task.priority,
-                        )
-                        for task in tasks
-                    ]
-                    cur.executemany(
-                        """
-                        INSERT INTO hyrextask (
-                            id, root_id, task_name, args, queue,
-                            max_retries, priority
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """,
-                        task_data,
-                    )
-                    conn.commit()
-            except Exception as e:
-                conn.rollback()
-                raise e
-
-    def enqueue(self, task: "HyrexTask"):
-        self.queue.put(task)
-
-    def stop(self):
-        """
-        Stops the batching process and flushes remaining tasks.
-        """
-        self.stop_flag.set()
-        self.queue.put(None)
-        for worker in self.workers:
-            worker.join()
-        self.pool.close()
+        # Start the batch enqueue thread
+        self.thread = threading.Thread(target=self._batch_enqueue)
+        self.thread.start()
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
@@ -155,6 +81,84 @@ class PostgresDispatcher(Dispatcher):
                         DequeuedTask(id=task_id, name=task_name, args=task_args)
                     )
         return dequeued_tasks
+
+    def enqueue(self, task: HyrexTask):
+        self.local_queue.put(task)
+
+    def _batch_enqueue(self):
+        tasks = []
+        last_flush_time = time.monotonic()
+        while True:
+            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
+            if timeout <= 0:
+                # Flush if the flush interval has passed
+                if tasks:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                last_flush_time = time.monotonic()
+                continue
+
+            try:
+                # Wait for a task or until the timeout expires
+                task = self.local_queue.get(timeout=timeout)
+                if task is None:
+                    # Stop sequence initiated
+                    break
+                tasks.append(task)
+                if len(tasks) >= self.batch_size:
+                    # Flush if batch size is reached
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                    last_flush_time = time.monotonic()
+            except Empty:
+                # No task received within the timeout
+                if tasks:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                last_flush_time = time.monotonic()
+
+        # Flush any remaining tasks when stopping
+        if tasks:
+            self._enqueue_tasks(tasks)
+
+    def _enqueue_tasks(self, tasks: List[HyrexTask]):
+        """
+        Inserts a batch of tasks into the database.
+
+        :param tasks: List of tasks to insert.
+        """
+        task_data = [
+            (
+                task.id,
+                task.root_id,
+                task.task_name,
+                Json(task.args),
+                task.queue,
+                task.max_retries,
+                task.priority,
+            )
+            for task in tasks
+        ]
+
+        with self.pool.connection() as conn:
+            with RawCursor(conn) as cur:
+                cur.executemany(
+                    sql.ENQUEUE_TASK,
+                    task_data,
+                )
+            conn.commit()
+
+    def stop(self):
+        """
+        Stops the batching process and flushes remaining tasks.
+        """
+        logging.info("Stopping dispatcher...")
+        # Add value to indicate cancellation and unblock the queue
+        self.local_queue.put(None)
+        self.thread.join()
+        # Close the connection pool
+        self.pool.close()
+        logging.info("Dispatcher stopped successfully!")
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         with self.pool.connection() as conn:
