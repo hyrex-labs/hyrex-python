@@ -1,17 +1,18 @@
 from hyrex import constants
 
 CREATE_HYREX_TASK_TABLE = """
+-- Create the status enum if it doesn't exist
 DO $$
 BEGIN
-IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
-CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
-END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
+        CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
+    END IF;
 END $$;
 
-create table if not exists hyrextask
+-- Create the partitioned table
+CREATE TABLE IF NOT EXISTS hyrextask
 (
-    id              uuid       not null
-primary key,
+    id              uuid       not null primary key,
     root_id         uuid       not null,
     task_name       varchar    not null,
     args            json       not null,
@@ -25,11 +26,27 @@ primary key,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
     finished        timestamp with time zone
-);
+) PARTITION BY LIST (status);
 
-CREATE INDEX idx_task_dequeue ON hyrextask 
-    (queue, status, priority DESC, id)
-WHERE status = 'queued';
+-- Create the partitions
+CREATE TABLE IF NOT EXISTS hyrextask_queued 
+    PARTITION OF hyrextask FOR VALUES IN ('queued');
+
+CREATE TABLE IF NOT EXISTS hyrextask_running 
+    PARTITION OF hyrextask FOR VALUES IN ('running');
+
+CREATE TABLE IF NOT EXISTS hyrextask_success 
+    PARTITION OF hyrextask FOR VALUES IN ('success');
+
+CREATE TABLE IF NOT EXISTS hyrextask_failed 
+    PARTITION OF hyrextask FOR VALUES IN ('failed');
+
+CREATE TABLE IF NOT EXISTS hyrextask_canceled 
+    PARTITION OF hyrextask FOR VALUES IN ('canceled', 'up_for_cancel');
+
+-- Create the optimized index for dequeuing on the queued partition
+CREATE INDEX IF NOT EXISTS idx_task_dequeue ON hyrextask_queued 
+    (queue, priority DESC, id);
 """
 
 CREATE_HYREX_RESULT_TABLE = """
@@ -55,32 +72,38 @@ primary key,
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
-    FROM hyrextask
-    WHERE
-        queue = $1 AND
-        status = 'queued'
+    FROM hyrextask_queued  -- Query directly on queued partition
+    WHERE queue = $1
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $2
+UPDATE hyrextask  -- Update still needs to be on parent table
+SET 
+    status = 'running',
+    started = CURRENT_TIMESTAMP,
+    worker_id = $2,
+    attempt_number = attempt_number + 1
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
+# If you need to fetch from any queue
 FETCH_TASK_FROM_ANY_QUEUE = """
 WITH next_task AS (
-    SELECT id
-    FROM hyrextask
-    WHERE status = 'queued'
+    SELECT id 
+    FROM hyrextask_queued  -- Query directly on queued partition
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $1
+SET 
+    status = 'running',
+    started = CURRENT_TIMESTAMP,
+    worker_id = $1,
+    attempt_number = attempt_number + 1
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
