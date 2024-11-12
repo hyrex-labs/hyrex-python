@@ -27,20 +27,9 @@ primary key,
     finished        timestamp with time zone
 );
 
-create index if not exists ix_hyrextask_task_name
-on hyrextask (task_name);
-
-create index if not exists ix_hyrextask_status
-on hyrextask (status);
-
-create index if not exists ix_hyrextask_queue
-on hyrextask (queue);
-
-create index if not exists ix_hyrextask_scheduled_start
-on hyrextask (scheduled_start);
-
-create index if not exists index_queue_status
-on hyrextask (status, queue, scheduled_start, task_name);
+CREATE INDEX idx_task_dequeue ON hyrextask 
+    (queue, status, priority DESC, id)
+WHERE status = 'queued';
 """
 
 CREATE_HYREX_RESULT_TABLE = """
