@@ -1,18 +1,17 @@
 from hyrex import constants
 
 CREATE_HYREX_TASK_TABLE = """
--- Create the status enum if it doesn't exist
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
-        CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
-    END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
+CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
+END IF;
 END $$;
 
--- Create regular table
-CREATE TABLE IF NOT EXISTS hyrextask
+create table if not exists hyrextask
 (
-    id              uuid       not null primary key,
+    id              uuid       not null
+primary key,
     root_id         uuid       not null,
     task_name       varchar    not null,
     args            json       not null,
@@ -28,19 +27,9 @@ CREATE TABLE IF NOT EXISTS hyrextask
     finished        timestamp with time zone
 );
 
--- Create partial index for queued tasks
 CREATE INDEX idx_task_dequeue ON hyrextask 
-    (queue, priority DESC, id)
+    (queue, status, priority DESC, id)
 WHERE status = 'queued';
-
--- Add indexes for other statuses if needed
-CREATE INDEX idx_task_running ON hyrextask 
-    (worker_id, started)
-WHERE status = 'running';
-
-CREATE INDEX idx_task_completed ON hyrextask 
-    (finished)
-WHERE status IN ('success', 'failed');
 """
 
 CREATE_HYREX_RESULT_TABLE = """
@@ -63,45 +52,38 @@ primary key,
 );
 """
 
-# Dequeue query optimized for partial index
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
     FROM hyrextask
-    WHERE status = 'queued'  -- Will use partial index
-        AND queue = $1
+    WHERE
+        queue = $1 AND
+        status = 'queued'
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
 UPDATE hyrextask
-SET 
-    status = 'running',
-    started = CURRENT_TIMESTAMP,
-    worker_id = $2,
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $2
 FROM next_task
 WHERE hyrextask.id = next_task.id
-RETURNING id, task_name, args;
+RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
-# Dequeue from any queue
 FETCH_TASK_FROM_ANY_QUEUE = """
 WITH next_task AS (
-    SELECT id 
+    SELECT id
     FROM hyrextask
-    WHERE status = 'queued'  -- Will use partial index
+    WHERE status = 'queued'
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
 UPDATE hyrextask
-SET 
-    status = 'running',
-    started = CURRENT_TIMESTAMP,
-    worker_id = $1,
+SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $1
 FROM next_task
 WHERE hyrextask.id = next_task.id
-RETURNING id, task_name, args;
+RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
 CONDITIONALLY_RETRY_TASK = """
