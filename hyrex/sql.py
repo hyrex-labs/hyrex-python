@@ -27,7 +27,7 @@ primary key,
     finished        timestamp with time zone
 );
 
-CREATE INDEX idx_task_dequeue ON hyrextask 
+CREATE INDEX IF NOT EXISTS idx_task_dequeue ON hyrextask 
     (queue, status, priority DESC, id)
 WHERE status = 'queued';
 """
