@@ -34,13 +34,13 @@ class PostgresDispatcher(Dispatcher):
         self.pool = ConnectionPool(
             conn_string,
             open=True,
-            check=ConnectionPool.check_connection,
-            kwargs={
-                "keepalives": 1,
-                "keepalives_idle": 20,
-                "keepalives_interval": 10,
-                "keepalives_count": 5,
-            },
+            # check=ConnectionPool.check_connection,
+            # kwargs={
+            #     "keepalives": 1,
+            #     "keepalives_idle": 20,
+            #     "keepalives_interval": 10,
+            #     "keepalives_count": 5,
+            # },
         )
 
         # Warm up the pool
