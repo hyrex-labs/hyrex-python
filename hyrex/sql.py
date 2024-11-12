@@ -9,10 +9,10 @@ BEGIN
     END IF;
 END $$;
 
--- Create the partitioned table
+-- Create regular table
 CREATE TABLE IF NOT EXISTS hyrextask
 (
-    id              uuid       not null,
+    id              uuid       not null primary key,
     root_id         uuid       not null,
     task_name       varchar    not null,
     args            json       not null,
@@ -25,29 +25,22 @@ CREATE TABLE IF NOT EXISTS hyrextask
     worker_id       uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
-    finished        timestamp with time zone,
-    PRIMARY KEY (id, status)  -- Include status in primary key
-) PARTITION BY LIST (status);
+    finished        timestamp with time zone
+);
 
--- Create the partitions
-CREATE TABLE IF NOT EXISTS hyrextask_queued 
-    PARTITION OF hyrextask FOR VALUES IN ('queued');
+-- Create partial index for queued tasks
+CREATE INDEX idx_task_dequeue ON hyrextask 
+    (queue, priority DESC, id)
+WHERE status = 'queued';
 
-CREATE TABLE IF NOT EXISTS hyrextask_running 
-    PARTITION OF hyrextask FOR VALUES IN ('running');
+-- Add indexes for other statuses if needed
+CREATE INDEX idx_task_running ON hyrextask 
+    (worker_id, started)
+WHERE status = 'running';
 
-CREATE TABLE IF NOT EXISTS hyrextask_success 
-    PARTITION OF hyrextask FOR VALUES IN ('success');
-
-CREATE TABLE IF NOT EXISTS hyrextask_failed 
-    PARTITION OF hyrextask FOR VALUES IN ('failed');
-
-CREATE TABLE IF NOT EXISTS hyrextask_canceled 
-    PARTITION OF hyrextask FOR VALUES IN ('canceled', 'up_for_cancel');
-
--- Create the optimized index for dequeuing on the queued partition
-CREATE INDEX IF NOT EXISTS idx_task_dequeue ON hyrextask_queued 
-    (queue, priority DESC, id);
+CREATE INDEX idx_task_completed ON hyrextask 
+    (finished)
+WHERE status IN ('success', 'failed');
 """
 
 CREATE_HYREX_RESULT_TABLE = """
@@ -70,31 +63,33 @@ primary key,
 );
 """
 
+# Dequeue query optimized for partial index
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
-    FROM hyrextask_queued  -- Query directly on queued partition
-    WHERE queue = $1
+    FROM hyrextask
+    WHERE status = 'queued'  -- Will use partial index
+        AND queue = $1
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrextask  -- Update still needs to be on parent table
+UPDATE hyrextask
 SET 
     status = 'running',
     started = CURRENT_TIMESTAMP,
     worker_id = $2,
-    attempt_number = attempt_number + 1
 FROM next_task
 WHERE hyrextask.id = next_task.id
-RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+RETURNING id, task_name, args;
 """
 
-# If you need to fetch from any queue
+# Dequeue from any queue
 FETCH_TASK_FROM_ANY_QUEUE = """
 WITH next_task AS (
     SELECT id 
-    FROM hyrextask_queued  -- Query directly on queued partition
+    FROM hyrextask
+    WHERE status = 'queued'  -- Will use partial index
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -104,10 +99,9 @@ SET
     status = 'running',
     started = CURRENT_TIMESTAMP,
     worker_id = $1,
-    attempt_number = attempt_number + 1
 FROM next_task
 WHERE hyrextask.id = next_task.id
-RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+RETURNING id, task_name, args;
 """
 
 CONDITIONALLY_RETRY_TASK = """
