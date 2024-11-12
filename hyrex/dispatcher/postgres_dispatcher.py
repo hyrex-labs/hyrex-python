@@ -8,6 +8,7 @@ from statistics import mean, median
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from psycopg.types.json import Json
 from psycopg import RawCursor
@@ -29,18 +30,20 @@ class BatchMetrics:
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=5000, flush_interval=0.05):
+    def __init__(
+        self, conn_string: str, batch_size=5000, flush_interval=0.05, num_workers=4
+    ):
         self.conn_string = conn_string
         self.pool = ConnectionPool(
             conn_string,
             open=True,
-            # check=ConnectionPool.check_connection,
-            # kwargs={
-            #     "keepalives": 1,
-            #     "keepalives_idle": 20,
-            #     "keepalives_interval": 10,
-            #     "keepalives_count": 5,
-            # },
+            check=ConnectionPool.check_connection,
+            kwargs={
+                "keepalives": 1,
+                "keepalives_idle": 20,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            },
         )
 
         # Warm up the pool
@@ -48,22 +51,67 @@ class PostgresDispatcher(Dispatcher):
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
 
-            self.local_queue = Queue()
-            self.batch_size = batch_size
-            self.flush_interval = flush_interval
+        self.local_queue = Queue()
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+        self.num_workers = num_workers
+        self.stop_event = threading.Event()
 
         # Metrics tracking
-        self.task_enqueue_times = {}  # task_id -> enqueue_start_time
-        self.recent_batch_metrics = deque(maxlen=100)  # Keep last 100 batch metrics
+        self.task_enqueue_times = {}
+        self.recent_batch_metrics = deque(maxlen=100)
         self.metrics_lock = threading.Lock()
 
         # Configure logging
         self.logger = logging.getLogger("hyrex.dispatcher")
         self.logger.setLevel(logging.INFO)
 
-        # Start the batch enqueue thread
-        self.thread = threading.Thread(target=self._batch_enqueue)
-        self.thread.start()
+        # Start the worker threads
+        self.workers = []
+        self.start_workers()
+
+    def start_workers(self):
+        """Initialize and start the worker threads."""
+        for i in range(self.num_workers):
+            worker = threading.Thread(
+                target=self._batch_enqueue_worker, name=f"BatchWorker-{i}", daemon=True
+            )
+            self.workers.append(worker)
+            worker.start()
+            self.logger.info(f"Started batch worker thread {i}")
+
+    def _batch_enqueue_worker(self):
+        """Worker thread function that processes batches of tasks."""
+        tasks = []
+        last_flush_time = time.monotonic()
+
+        while not self.stop_event.is_set():
+            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
+            if timeout <= 0:
+                if tasks:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                last_flush_time = time.monotonic()
+                continue
+
+            try:
+                task = self.local_queue.get(timeout=max(0, timeout))
+                if task is None:  # Sentinel value for shutdown
+                    break
+                tasks.append(task)
+                if len(tasks) >= self.batch_size:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                    last_flush_time = time.monotonic()
+            except Empty:
+                if tasks:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                last_flush_time = time.monotonic()
+
+        # Final flush of remaining tasks
+        if tasks:
+            self._enqueue_tasks(tasks)
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
@@ -129,36 +177,6 @@ class PostgresDispatcher(Dispatcher):
         # Record the time when task enters the queue
         self.task_enqueue_times[task.id] = time.perf_counter()
         self.local_queue.put(task)
-
-    def _batch_enqueue(self):
-        tasks = []
-        last_flush_time = time.monotonic()
-        while True:
-            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
-            if timeout <= 0:
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-                continue
-
-            try:
-                task = self.local_queue.get(timeout=timeout)
-                if task is None:
-                    break
-                tasks.append(task)
-                if len(tasks) >= self.batch_size:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                    last_flush_time = time.monotonic()
-            except Empty:
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-
-        if tasks:
-            self._enqueue_tasks(tasks)
 
     def _enqueue_tasks(self, tasks: List[HyrexTask]):
         """
@@ -244,11 +262,19 @@ class PostgresDispatcher(Dispatcher):
 
     def stop(self):
         """
-        Stops the batching process and flushes remaining tasks.
+        Stops all worker threads and flushes remaining tasks.
         """
         self.logger.info("Stopping dispatcher...")
-        self.local_queue.put(None)
-        self.thread.join()
+        self.stop_event.set()
+
+        # Signal all workers to stop
+        for _ in self.workers:
+            self.local_queue.put(None)
+
+        # Wait for all workers to finish
+        for worker in self.workers:
+            worker.join()
+
         self.pool.close()
         self.logger.info("Dispatcher stopped successfully!")
 
