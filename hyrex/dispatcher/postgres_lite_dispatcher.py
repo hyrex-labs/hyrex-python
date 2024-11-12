@@ -1,9 +1,9 @@
 import logging
 from uuid import UUID
 
+from psycopg import RawCursor
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
-from psycopg import RawCursor
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
