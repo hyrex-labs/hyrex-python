@@ -32,6 +32,8 @@ class HyrexWorker:
         self,
         error_callback: Callable = None,
     ):
+        self.logger = logging.getLogger(__name__)
+
         self.name = generate_worker_name()
         self.task_registry: dict[str, TaskWrapper] = {}
         self.dispatcher = get_dispatcher()
@@ -92,23 +94,23 @@ class HyrexWorker:
 
             self.mark_task_success(task.id)
 
-            logging.info(f"Worker {self.name}: Completed processing item {task.id}")
+            self.logger.info(f"Worker {self.name}: Completed processing item {task.id}")
 
         except InterruptedError:
             if "task" in locals():
-                logging.info(
+                self.logger.info(
                     f"Worker {self.name}: Processing of item {task.id} was interrupted"
                 )
                 self.reset_or_cancel_task(task.id)
-                logging.info(
+                self.logger.info(
                     f"Successfully updated task {task.id} on worker {self.name} after interruption"
                 )
             raise  # Re-raise the InterruptedError to properly shut down the worker
 
         except Exception as e:
-            logging.error(f"Worker {self.name}: Error processing item {str(e)}")
-            logging.error(e)
-            logging.error("Traceback:\n%s", traceback.format_exc())
+            self.logger.error(f"Worker {self.name}: Error processing item {str(e)}")
+            self.logger.error(e)
+            self.logger.error("Traceback:\n%s", traceback.format_exc())
             if self.error_callback:
                 task_name = locals().get("task.name", "Unknown task name")
                 self.error_callback(task_name, e)
@@ -124,7 +126,7 @@ class HyrexWorker:
         self.dispatcher.stop()
 
     def _signal_handler(self, signum, frame):
-        logging.info("SIGTERM received, stopping worker...")
+        self.logger.info("SIGTERM received, stopping worker...")
         raise InterruptedError
 
     def run(self):
@@ -144,10 +146,10 @@ class HyrexWorker:
             signal.signal(sig, self._signal_handler)
 
         # Run processing loop
-        logging.info(f"Worker process {self.name} started - checking for tasks.")
+        self.logger.info(f"Worker process {self.name} started - checking for tasks.")
         try:
             while True:
                 self.process()
         except InterruptedError:
             self.stop()
-            logging.info(f"Worker {self.name} stopped.")
+            self.logger.info(f"Worker {self.name} stopped.")

@@ -1,9 +1,8 @@
-import logging
 from uuid import UUID
 
+from psycopg import RawCursor
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
-from psycopg import RawCursor
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
@@ -94,9 +93,9 @@ class PostgresLiteDispatcher(Dispatcher):
         """
         Stops the batching process and flushes remaining tasks.
         """
-        logging.info("Stopping dispatcher...")
+        self.logger.info("Stopping dispatcher...")
         self.pool.close()
-        logging.info("Dispatcher stopped successfully!")
+        self.logger.info("Dispatcher stopped successfully!")
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         with self.pool.connection() as conn:

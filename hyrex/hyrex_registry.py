@@ -28,7 +28,7 @@ class HyrexRegistry(dict[str, "TaskWrapper"]):
         return super().__getitem__(key)
 
     def _signal_handler(self, signum, frame):
-        logging.info("SIGTERM received, stopping Hyrex dispatcher...")
+        self.logger.info("SIGTERM received, stopping Hyrex dispatcher...")
         self.dispatcher.stop()
 
     def _chain_signal_handlers(self, new_handler, old_handler):
@@ -51,6 +51,7 @@ class HyrexRegistry(dict[str, "TaskWrapper"]):
             signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
 
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.dispatcher = get_dispatcher()
         self._setup_signal_handlers()
 

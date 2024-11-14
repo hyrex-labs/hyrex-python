@@ -1,12 +1,11 @@
-import logging
 import threading
 import time
 from queue import Empty, Queue
 from typing import List
 from uuid import UUID
 
-from psycopg.types.json import Json
 from psycopg import RawCursor
+from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
@@ -27,6 +26,7 @@ class PostgresDispatcher(Dispatcher):
         # Start the batch enqueue thread
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
+        self.stopping = False
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
@@ -83,6 +83,8 @@ class PostgresDispatcher(Dispatcher):
         return dequeued_tasks
 
     def enqueue(self, task: HyrexTask):
+        if self.stopping:
+            self.logger.warning("Task enqueued during shutdown. May not be processed.")
         self.local_queue.put(task)
 
     def _batch_enqueue(self):
@@ -148,17 +150,34 @@ class PostgresDispatcher(Dispatcher):
                 )
             conn.commit()
 
-    def stop(self):
+    def stop(self, timeout: float = 5.0) -> bool:
         """
         Stops the batching process and flushes remaining tasks.
+        Returns True if shutdown completed within timeout, False otherwise.
         """
-        logging.info("Stopping dispatcher...")
-        # Add value to indicate cancellation and unblock the queue
+        self.logger.info("Stopping dispatcher...")
+        self.stopping = True
+
+        # Signal the batch thread to stop and wait with timeout
         self.local_queue.put(None)
-        self.thread.join()
+        self.thread.join(timeout=timeout)
+
+        clean_shutdown = not self.thread.is_alive()
+
         # Close the connection pool
-        self.pool.close()
-        logging.info("Dispatcher stopped successfully!")
+        if clean_shutdown:
+            self.pool.close()
+        else:
+            self.logger.warning(
+                "Batch thread did not stop cleanly, forcing connection pool to close"
+            )
+            self.pool.close(timeout=1.0)
+
+        self.logger.info(
+            "Dispatcher stopped %s.",
+            "successfully" if clean_shutdown else "with timeout",
+        )
+        return clean_shutdown
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         with self.pool.connection() as conn:

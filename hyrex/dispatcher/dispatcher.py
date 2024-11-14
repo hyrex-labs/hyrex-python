@@ -1,3 +1,4 @@
+import logging
 import threading
 from abc import ABC, ABCMeta, abstractmethod
 from uuid import UUID
@@ -39,7 +40,8 @@ class DequeuedTask(BaseModel):
 
 
 class Dispatcher(ABC, metaclass=SingletonMeta):
-    # class Dispatcher(ABC):
+    logger = logging.getLogger(__name__)
+
     @abstractmethod
     def enqueue(
         self,
