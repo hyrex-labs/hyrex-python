@@ -39,6 +39,10 @@ class HyrexWorker:
         self.dispatcher = get_dispatcher()
         self.error_callback = error_callback
 
+        # For graceful shutdowns
+        self.stopping = False
+        self._stop_event = threading.Event()
+
     def set_worker_id(self, worker_id: UUID):
         self.worker_id = worker_id
 
@@ -71,11 +75,14 @@ class HyrexWorker:
         self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
     def process(self):
+        if self.stopping:
+            signal.alarm(0)  # Cancel pending alarm
+            raise InterruptedError
         try:
             tasks: list[DequeuedTask] = self.fetch_task()
             if not tasks:
                 # No unprocessed items, wait a bit before trying again
-                time.sleep(1)
+                self._stop_event.wait(1.0)
                 return
 
             # TODO: Implement batch processing
@@ -119,7 +126,7 @@ class HyrexWorker:
                 self.mark_task_failed(task.id)
                 self.attempt_retry(task.id)
 
-            time.sleep(1)  # Add delay after error
+            self._stop_event.wait(1.0)  # Add delay after error
 
     def stop(self):
         self.dispatcher.mark_worker_stopped(worker_id=self.worker_id)
@@ -127,6 +134,12 @@ class HyrexWorker:
 
     def _signal_handler(self, signum, frame):
         self.logger.info("SIGTERM received, stopping worker...")
+        self.stopping = True
+        self._stop_event.set()  # Wake up from any waiting sleeps
+        # Give operations 3 seconds to complete before being interrupted
+        signal.alarm(3)
+
+    def _alarm_handler(self, signum, frame):
         raise InterruptedError
 
     def run(self):
@@ -142,6 +155,7 @@ class HyrexWorker:
 
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
+        signal.signal(signal.SIGALRM, self._alarm_handler)
 
         # Run processing loop
         self.logger.info(f"Worker process {self.name} started - checking for tasks.")
