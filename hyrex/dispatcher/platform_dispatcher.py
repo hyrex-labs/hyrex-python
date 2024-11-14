@@ -1,4 +1,3 @@
-import logging
 import threading
 import time
 from queue import Empty, Queue
@@ -92,20 +91,20 @@ class PlatformDispatcher(Dispatcher):
         try:
             response = requests.post(enqueue_url, headers=headers, json=data)
             if response.status_code != 200:
-                logging.error(f"Error enqueuing task: {response.status_code}")
-                logging.error(f"Response body: {response.text}")
+                self.logger.error(f"Error enqueuing task: {response.status_code}")
+                self.logger.error(f"Response body: {response.text}")
         except requests.exceptions.RequestException as e:
-            logging.error(f"Error enqueuing task via API: {str(e)}")
+            self.logger.error(f"Error enqueuing task via API: {str(e)}")
             raise RuntimeError(f"Failed to enqueue task via API: {e}")
 
     def stop(self):
         """
         Stops the batching process and flushes remaining tasks.
         """
-        logging.info("Stopping dispatcher...")
+        self.logger.info("Stopping dispatcher...")
         self.running = False
         self.thread.join()
-        logging.info("Dispatcher stopped successfully!")
+        self.logger.info("Dispatcher stopped successfully!")
 
     def dequeue(
         self,
@@ -134,14 +133,14 @@ class PlatformDispatcher(Dispatcher):
                         )
                     )
             else:
-                logging.error(f"Error fetching task: {response.status_code}")
+                self.logger.error(f"Error fetching task: {response.status_code}")
                 error_body = response.text()  # Get the response body as text
-                logging.error(f"Response body: {error_body}")
+                self.logger.error(f"Response body: {error_body}")
 
             return dequeued_tasks
 
         except Exception as e:
-            logging.error(f"Exception while fetching task: {str(e)}")
+            self.logger.error(f"Exception while fetching task: {str(e)}")
             return None
 
     def _update_task_status(self, task_id: UUID, new_status: StatusEnum):
@@ -156,10 +155,10 @@ class PlatformDispatcher(Dispatcher):
             response = requests.post(update_task_url, headers=headers, json=data)
 
             if response.status_code != 200:
-                logging.error(f"Error updating task status: {response.status_code}")
+                self.logger.error(f"Error updating task status: {response.status_code}")
 
         except Exception as e:
-            logging.error(f"Exception while updating task status: {str(e)}")
+            self.logger.error(f"Exception while updating task status: {str(e)}")
 
     def mark_success(self, task_id: UUID):
         self._update_task_status(task_id, StatusEnum.success)
@@ -192,12 +191,12 @@ class PlatformDispatcher(Dispatcher):
                 else:
                     raise ValueError(f"Task status not returned for task ID {task_id}")
             else:
-                logging.error(f"Error getting task status: {response.status_code}")
-                logging.error(f"Response body: {response.text}")
+                self.logger.error(f"Error getting task status: {response.status_code}")
+                self.logger.error(f"Response body: {response.text}")
         except Exception as e:
             if isinstance(e, ValueError):
                 raise
-            logging.error(f"Exception while getting task status: {str(e)}")
+            self.logger.error(f"Exception while getting task status: {str(e)}")
 
     def register_worker(self, worker_id: UUID):
         pass

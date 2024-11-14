@@ -12,7 +12,7 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.models import create_tables
-from hyrex.worker_manager import WorkerManager
+from hyrex.worker_node import WorkerNode
 
 cli = typer.Typer()
 
@@ -35,7 +35,7 @@ def is_valid_uuid(id: UUID):
 
 @cli.command()
 def run_worker(
-    app: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
+    app: str = typer.Argument(..., help="Module path to the Hyrex worker"),
     queue: str = typer.Option(
         constants.DEFAULT_QUEUE,
         "--queue",
@@ -46,7 +46,7 @@ def run_worker(
         8, "--num-processes", "-p", help="Number of worker processes to run"
     ),
     log_level: LogLevel = typer.Option(
-        "INFO",
+        None,
         "--log-level",
         "-l",
         help="Set the log level",
@@ -56,16 +56,16 @@ def run_worker(
     ),
 ):
     """
-    Run multiple worker processes using the specified task module path
+    Run multiple worker processes using the specified worker module path
     """
-    logging.basicConfig(level=getattr(logging, log_level.upper()))
+    if log_level:
+        # logging.getLogger("hyrex").setLevel(level=getattr(logging, log_level.upper()))
+        logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    manager = WorkerManager(
-        app_module=app,
-        queue=queue,
-        num_workers=num_processes,
+    worker_node = WorkerNode(
+        app_module=app, queue=queue, num_workers=num_processes, log_level=log_level
     )
-    manager.run()
+    worker_node.run()
 
 
 # For internal usage only
@@ -82,7 +82,7 @@ def worker_process(
         None, "--worker-id", help="Optional UUID for the worker."
     ),
     log_level: LogLevel = typer.Option(
-        "INFO",
+        None,
         "--log-level",
         "-l",
         help="Set the log level",
@@ -94,7 +94,17 @@ def worker_process(
     """
     Run a single worker process
     """
-    logging.basicConfig(level=getattr(logging, log_level.upper()))
+    if log_level:
+        # logging.getLogger("hyrex").setLevel(level=getattr(logging, log_level.upper()))
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter(
+                "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+        )
+        logger = logging.getLogger("hyrex")
+        logger.setLevel(level=getattr(logging, log_level.upper()))
+        logger.addHandler(handler)
 
     if worker_id is None:
         worker_id = uuid7()

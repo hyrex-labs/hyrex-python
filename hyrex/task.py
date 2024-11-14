@@ -37,6 +37,8 @@ class TaskRun:
         status: StatusEnum,
         dispatcher: Dispatcher,
     ):
+        self.logger = logging.getLogger(__name__)
+
         self.task_name = task_name
         self.task_run_id = task_run_id
         self.status = status
@@ -98,7 +100,7 @@ class TaskWrapper(Generic[T]):
         self.context_klass = context_klass
 
     async def async_call(self, context: T):
-        logging.info(f"Executing task {self.func.__name__} on queue: {self.queue}")
+        self.logger.info(f"Executing task {self.func.__name__} on queue: {self.queue}")
         self._check_type(context)
         if asyncio.iscoroutinefunction(self.func):
             return await self.func(context)
@@ -140,7 +142,7 @@ class TaskWrapper(Generic[T]):
                 """
                 result = cur.execute(sql)
                 conn.commit()
-                print(f"{self.task_identifier} successfully scheduled.")
+                self.logger.info(f"{self.task_identifier} successfully scheduled.")
 
     def _unschedule(self):
         postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
@@ -149,10 +151,9 @@ class TaskWrapper(Generic[T]):
             with conn.cursor() as cur:
                 try:
                     cur.execute(sql)
-                    print(f"Successfully unscheduled {self.task_identifier}")
+                    self.logger.info(f"Successfully unscheduled {self.task_identifier}")
                 except Exception as e:
-                    pass
-                    # print(f"Unschedule failed with exception {e}")
+                    self.logger.warning(f"Unschedule failed with exception {e}")
 
     def send(
         self,
@@ -161,7 +162,7 @@ class TaskWrapper(Generic[T]):
         priority: int = None,
         max_retries: int = None,
     ) -> TaskRun:
-        logging.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
+        self.logger.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
         self._check_type(context)
 
         task_id = uuid7()
