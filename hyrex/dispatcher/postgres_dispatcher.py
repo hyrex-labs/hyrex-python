@@ -26,6 +26,7 @@ class PostgresDispatcher(Dispatcher):
         # Start the batch enqueue thread
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
+        self.stopping = False
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
@@ -82,6 +83,8 @@ class PostgresDispatcher(Dispatcher):
         return dequeued_tasks
 
     def enqueue(self, task: HyrexTask):
+        if self.stopping:
+            self.logger.warning("Task enqueued during shutdown. May not be processed.")
         self.local_queue.put(task)
 
     def _batch_enqueue(self):
@@ -153,6 +156,7 @@ class PostgresDispatcher(Dispatcher):
         Returns True if shutdown completed within timeout, False otherwise.
         """
         self.logger.info("Stopping dispatcher...")
+        self.stopping = True
 
         # Signal the batch thread to stop and wait with timeout
         self.local_queue.put(None)

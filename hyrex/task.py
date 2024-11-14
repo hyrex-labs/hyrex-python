@@ -80,6 +80,8 @@ class TaskWrapper(Generic[T]):
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
     ):
+        self.logger = logging.getLogger(__name__)
+
         self.task_identifier = task_identifier
         self.func = func
         self.queue = queue
