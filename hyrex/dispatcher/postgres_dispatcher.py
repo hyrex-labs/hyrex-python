@@ -27,26 +27,17 @@ class PostgresDispatcher(Dispatcher):
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
         self.stopping = False
-        self._active_operations = 0
-        self._operations_lock = threading.Lock()
 
     @contextmanager
     def transaction(self):
-        """Context manager for database operations that tracks active transactions"""
-        with self._operations_lock:
-            self._active_operations += 1
-        try:
-            with self.pool.connection() as conn:
-                with RawCursor(conn) as cur:
-                    try:
-                        yield cur
-                    except InterruptedError:
-                        conn.rollback()
-                        raise
-                conn.commit()
-        finally:
-            with self._operations_lock:
-                self._active_operations -= 1
+        with self.pool.connection() as conn:
+            with RawCursor(conn) as cur:
+                try:
+                    yield cur
+                except InterruptedError:
+                    conn.rollback()
+                    raise
+            conn.commit()
 
     def mark_success(self, task_id: UUID):
         with self.transaction() as cur:
@@ -158,10 +149,6 @@ class PostgresDispatcher(Dispatcher):
             )
 
     def stop(self, timeout: float = 5.0) -> bool:
-        """
-        Stops the batching process and flushes remaining tasks.
-        Returns True if shutdown completed within timeout, False otherwise.
-        """
         self.logger.info("Stopping dispatcher...")
         self.stopping = True
 
@@ -169,19 +156,17 @@ class PostgresDispatcher(Dispatcher):
         self.local_queue.put(None)
         self.thread.join(timeout=timeout)
 
-        # Wait for active operations to complete
-        start_time = time.monotonic()
-        while self._active_operations > 0:
-            if time.monotonic() - start_time > timeout:
-                self.logger.warning(
-                    f"{self._active_operations} operations still active at shutdown"
-                )
-                break
-            time.sleep(0.1)
+        clean_shutdown = not self.thread.is_alive()
 
-        self.pool.close()
+        # Close the connection pool
+        if clean_shutdown:
+            self.pool.close()
+        else:
+            self.logger.warning(
+                "Batch thread did not stop cleanly, forcing connection pool to close"
+            )
+            self.pool.close(timeout=1.0)
 
-        clean_shutdown = not self.thread.is_alive() and self._active_operations == 0
         self.logger.info(
             "Dispatcher stopped %s.",
             "successfully" if clean_shutdown else "with timeout",
