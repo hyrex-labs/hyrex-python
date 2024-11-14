@@ -140,8 +140,6 @@ class HyrexWorker:
             worker_id=self.worker_id, worker_name=self.name, queue=self.queue
         )
 
-        # Note: This overrides the Hyrex instance signal handler,
-        # which makes the worker responsible for stopping the dispatcher.
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
 

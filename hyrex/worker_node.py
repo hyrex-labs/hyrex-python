@@ -68,7 +68,7 @@ class WorkerNode:
         self.logger.info("Manager shutdown successful.")
 
     def _signal_handler(self, signum, frame):
-        self.logger.info("SIGTERM received by worker manager. Beginning shutdown.")
+        self.logger.info("SIGTERM received by worker node. Beginning shutdown.")
         self._stop_requested = True
 
     def add_new_worker_process(self):
@@ -120,6 +120,7 @@ class WorkerNode:
                         self.logger.warning(
                             f"Worker process {worker_id} exited with code {retcode}"
                         )
+                        # TODO: Make sure worker is marked as stopped?
                         del self.worker_map[worker_id]
                         # Replace the exited worker.
                         self.logger.info("Creating new worker process.")
