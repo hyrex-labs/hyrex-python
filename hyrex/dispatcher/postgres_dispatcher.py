@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import threading
 import time
 from queue import Empty, Queue
@@ -23,43 +24,43 @@ class PostgresDispatcher(Dispatcher):
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
-        # Start the batch enqueue thread
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
         self.stopping = False
 
-    def mark_success(self, task_id: UUID):
+    @contextmanager
+    def transaction(self):
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
-                cur.execute(sql.MARK_TASK_SUCCESS, [task_id])
+                try:
+                    yield cur
+                except InterruptedError:
+                    conn.rollback()
+                    raise
             conn.commit()
+
+    def mark_success(self, task_id: UUID):
+        with self.transaction() as cur:
+            cur.execute(sql.MARK_TASK_SUCCESS, [task_id])
 
     def mark_failed(self, task_id: UUID):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.MARK_TASK_FAILED, [task_id])
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.MARK_TASK_FAILED, [task_id])
 
     def attempt_retry(self, task_id: UUID):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(
-                    sql.CONDITIONALLY_RETRY_TASK,
-                    [task_id, uuid7()],
-                )
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(
+                sql.CONDITIONALLY_RETRY_TASK,
+                [task_id, uuid7()],
+            )
 
     def reset_or_cancel_task(self, task_id: UUID):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
 
     def cancel_task(self, task_id: UUID):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.MARK_TASK_CANCELED, [task_id])
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.MARK_TASK_CANCELED, [task_id])
 
     def dequeue(
         self,
@@ -68,18 +69,17 @@ class PostgresDispatcher(Dispatcher):
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         dequeued_tasks = []
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                if queue == constants.DEFAULT_QUEUE:
-                    cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [worker_id])
-                else:
-                    cur.execute(sql.FETCH_TASK, [queue, worker_id])
-                row = cur.fetchone()
-                if row:
-                    task_id, task_name, task_args = row
-                    dequeued_tasks.append(
-                        DequeuedTask(id=task_id, name=task_name, args=task_args)
-                    )
+        with self.transaction() as cur:
+            if queue == constants.DEFAULT_QUEUE:
+                cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [worker_id])
+            else:
+                cur.execute(sql.FETCH_TASK, [queue, worker_id])
+            row = cur.fetchone()
+            if row:
+                task_id, task_name, task_args = row
+                dequeued_tasks.append(
+                    DequeuedTask(id=task_id, name=task_name, args=task_args)
+                )
         return dequeued_tasks
 
     def enqueue(self, task: HyrexTask):
@@ -142,19 +142,13 @@ class PostgresDispatcher(Dispatcher):
             for task in tasks
         ]
 
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.executemany(
-                    sql.ENQUEUE_TASK,
-                    task_data,
-                )
-            conn.commit()
+        with self.transaction() as cur:
+            cur.executemany(
+                sql.ENQUEUE_TASK,
+                task_data,
+            )
 
     def stop(self, timeout: float = 5.0) -> bool:
-        """
-        Stops the batching process and flushes remaining tasks.
-        Returns True if shutdown completed within timeout, False otherwise.
-        """
         self.logger.info("Stopping dispatcher...")
         self.stopping = True
 
@@ -180,35 +174,27 @@ class PostgresDispatcher(Dispatcher):
         return clean_shutdown
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.GET_TASK_STATUS, [task_id])
-                result = cur.fetchone()
-                if result is None:
-                    raise ValueError(f"Task id {task_id} not found in DB.")
-                return result[0]
+        with self.transaction() as cur:
+            cur.execute(sql.GET_TASK_STATUS, [task_id])
+            result = cur.fetchone()
+            if result is None:
+                raise ValueError(f"Task id {task_id} not found in DB.")
+            return result[0]
 
     def register_worker(self, worker_id: UUID, worker_name: str, queue: str):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.REGISTER_WORKER, [worker_id, worker_name, queue])
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.REGISTER_WORKER, [worker_id, worker_name, queue])
 
     def mark_worker_stopped(self, worker_id: UUID):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.MARK_WORKER_STOPPED, [worker_id])
-            conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.MARK_WORKER_STOPPED, [worker_id])
 
     def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
-                result = cur.fetchall()
-                return [row[0] for row in result]
+        with self.transaction() as cur:
+            cur.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
+            result = cur.fetchall()
+            return [row[0] for row in result]
 
     def save_result(self, task_id: UUID, result: str):
-        with self.pool.connection() as conn:
-            with RawCursor(conn) as cur:
-                cur.execute(sql.SAVE_RESULT, [task_id, result])
-                conn.commit()
+        with self.transaction() as cur:
+            cur.execute(sql.SAVE_RESULT, [task_id, result])
