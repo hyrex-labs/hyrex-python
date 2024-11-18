@@ -14,7 +14,7 @@ class HyrexAdmin(Process):
         self.stop_requested = False
 
     def run(self):
-        self.dispatcher = get_dispatcher()
+        self.dispatcher = get_dispatcher(worker=True)
 
         time.sleep(1)
         pass

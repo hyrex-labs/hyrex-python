@@ -7,6 +7,7 @@ from typing import Callable
 from uuid_extensions import uuid7
 
 from hyrex import constants
+from hyrex.dispatcher import get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
 from hyrex.worker.hyrex_admin import HyrexAdmin
@@ -30,7 +31,7 @@ class HyrexWorker:
         self.queue = queue
         self.num_processes = num_processes
 
-        self.task_registry: dict[str, TaskWrapper] = {}
+        self.task_registry: HyrexRegistry = HyrexRegistry(get_dispatcher(worker=True))
         self.error_callback = error_callback
 
         self.stop_requested = False

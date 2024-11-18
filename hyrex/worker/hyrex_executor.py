@@ -8,7 +8,7 @@ import threading
 import time
 import traceback
 from datetime import datetime, timezone
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 from typing import Callable
 from uuid import UUID
 
@@ -18,6 +18,7 @@ from uuid_extensions import uuid7
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
+from hyrex.worker.message_queues import MessageToWorker, WorkerMessageType
 
 
 def generate_executor_name():
@@ -35,8 +36,8 @@ class HyrexExecutor(Process):
 
         self.name = generate_executor_name()
         self.task_registry: dict[str, TaskWrapper] = {}
-        self.dispatcher = get_dispatcher()
-        self.error_callback = error_callback
+        self.dispatcher = get_dispatcher(worker=True)
+        # self.error_callback = error_callback
 
         # For graceful shutdowns
         self.stopping = False

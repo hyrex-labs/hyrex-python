@@ -10,10 +10,10 @@ from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
 
+# Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
 class PostgresLiteDispatcher(Dispatcher):
     def __init__(self, conn_string: str):
         self.conn_string = conn_string
-        # TODO: Set min/max size based on worker threads
         self.pool = ConnectionPool(conn_string, open=True)
 
     def mark_success(self, task_id: UUID):

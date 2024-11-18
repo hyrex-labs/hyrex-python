@@ -50,9 +50,9 @@ class HyrexRegistry(dict[str, "TaskWrapper"]):
             # Set the new handler, which calls both new and old handlers
             signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
 
-    def __init__(self):
+    def __init__(self, *, _dispatcher: Dispatcher = None):
         self.logger = logging.getLogger(__name__)
-        self.dispatcher = get_dispatcher()
+        self.dispatcher = _dispatcher or get_dispatcher()
         self._setup_signal_handlers()
 
     def task(
