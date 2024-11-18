@@ -12,7 +12,7 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.models import create_tables
-from hyrex.worker_node import WorkerNode
+from hyrex.worker.worker_node import WorkerNode
 
 cli = typer.Typer()
 
@@ -34,16 +34,39 @@ def is_valid_uuid(id: UUID):
 
 
 @cli.command()
+def init_db(
+    database_string: str = typer.Option(
+        os.getenv(EnvVars.DATABASE_URL),
+        "--database-string",
+        help="Database connection string",
+    )
+):
+    """
+    Creates the tables for hyrex tasks/workers in the given Postgres database
+    """
+    if database_string:
+        create_tables(database_string)
+        typer.echo("Hyrex tables initialized.")
+        return
+
+    typer.echo(
+        f"Error: Database connection string must be provided either through the --database-string flag or the {EnvVars.DATABASE_URL} env variable."
+    )
+
+
+@cli.command()
 def run_worker(
-    app: str = typer.Argument(..., help="Module path to the Hyrex worker"),
+    worker_module_path: str = typer.Argument(
+        ..., help="Module path to the Hyrex worker"
+    ),
     queue: str = typer.Option(
-        constants.DEFAULT_QUEUE,
+        None,
         "--queue",
         "-q",
         help="The name of the queue to process",
     ),
     num_processes: int = typer.Option(
-        8, "--num-processes", "-p", help="Number of worker processes to run"
+        None, "--num-processes", "-p", help="Number of executor processes to run"
     ),
     log_level: LogLevel = typer.Option(
         "INFO",
@@ -59,16 +82,26 @@ def run_worker(
     Run multiple worker processes using the specified worker module path
     """
     if log_level:
-        # logging.getLogger("hyrex").setLevel(level=getattr(logging, log_level.upper()))
         logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    worker_node = WorkerNode(
-        app_module=app, queue=queue, num_workers=num_processes, log_level=log_level
-    )
-    worker_node.run()
+    try:
+        sys.path.append(str(Path.cwd()))
+        module_path, instance_name = worker_module_path.split(":")
+        # Import the worker module
+        worker_module = importlib.import_module(module_path)
+        worker_instance = getattr(worker_module, instance_name)
+        if queue:
+            worker_instance.set_queue(queue)
+        if num_processes:
+            worker_instance.set_num_processes(num_processes)
+        worker_instance.run()
+
+    except ModuleNotFoundError as e:
+        typer.echo(f"Error: {e}")
+        sys.exit(1)
 
 
-# For internal usage only
+# For internal usage only - to be removed.
 @cli.command()
 def worker_process(
     app_module: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
@@ -124,27 +157,6 @@ def worker_process(
     except ModuleNotFoundError as e:
         typer.echo(f"Error: {e}")
         sys.exit(1)
-
-
-@cli.command()
-def init_db(
-    database_string: str = typer.Option(
-        os.getenv(EnvVars.DATABASE_URL),
-        "--database-string",
-        help="Database connection string",
-    )
-):
-    """
-    Creates the tables for hyrex tasks/workers in the given Postgres database
-    """
-    if database_string:
-        create_tables(database_string)
-        typer.echo("Hyrex tables initialized.")
-        return
-
-    typer.echo(
-        f"Error: Database connection string must be provided either through the --database-string flag or the {EnvVars.DATABASE_URL} env variable."
-    )
 
 
 if __name__ == "__main__":

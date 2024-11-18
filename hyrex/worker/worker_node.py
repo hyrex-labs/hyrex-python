@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import time
+from multiprocessing import Process
 from uuid import UUID
 
 from uuid_extensions import uuid7
@@ -14,20 +15,42 @@ from hyrex.dispatcher import get_dispatcher
 class WorkerNode:
     def __init__(
         self,
-        app_module: str,
+        worker_module_path: str,
         queue: str = constants.DEFAULT_QUEUE,
         num_workers: int = 8,
         log_level: str = None,
     ):
         self.logger = logging.getLogger(__name__)
-        self.log_level = log_level  # For passing log level on to worker processes
-
-        self.app_module = app_module
+        self.log_level = log_level
+        self.module_path, self.instance_name = worker_module_path.split(":")
         self.dispatcher = get_dispatcher()
         self.queue = queue
         self.num_workers = num_workers
-        self.worker_map = {}
-        self._stop_requested = False
+
+        self.stop_requested = False
+        self.task_id_to_process: dict[str, Process] = {}
+        self.executor_id_to_process: dict[str, Process] = {}
+        self.executor_processes: list[Process] = []
+        self.listener: Process = None
+
+        self.executor_message_queue = Queue()
+        self.listener_message_queue = Queue()
+
+    def spawn_worker(self):
+        def worker_process():
+            # Create fresh instance for each process
+            worker_instance = getattr(self.worker_module, self.instance_name)
+            worker_instance.set_worker_id(worker_id)
+            if self.queue:
+                worker_instance.set_queue(self.queue)
+            worker_instance.run()
+
+        process = Process(target=worker_process)
+        process.start()
+        pass
+
+    def spawn_listener(self):
+        pass
 
     def terminate_worker(self, worker_id: UUID):
         if worker_id not in self.worker_map:
@@ -90,8 +113,6 @@ class WorkerNode:
             self.logger.error(f"Failed to start worker {worker_id}: {e}")
 
     def run(self):
-        # Note: This overrides the Hyrex instance signal handler,
-        # which makes the manager responsible for stopping the dispatcher.
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
 

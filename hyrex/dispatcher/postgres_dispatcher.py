@@ -1,6 +1,6 @@
-from contextlib import contextmanager
 import threading
 import time
+from contextlib import contextmanager
 from queue import Empty, Queue
 from typing import List
 from uuid import UUID

@@ -24,7 +24,7 @@ class StatusEnum(StrEnum):
     queued = "queued"
 
 
-class HyrexWorker(SQLModel, table=True):
+class HyrexExecutor(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid7, primary_key=True)
     name: str
 
@@ -48,7 +48,7 @@ class HyrexTask(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), index=True), default=None
     )
 
-    worker_id: UUID | None
+    executor_id: UUID | None
 
     queued: datetime | None = Field(
         sa_column=Column(DateTime(timezone=True)), default_factory=utcnow
@@ -98,5 +98,5 @@ def create_tables(conn_string):
         with conn.cursor() as cur:
             cur.execute(sql.CREATE_HYREX_TASK_TABLE)
             cur.execute(sql.CREATE_HYREX_RESULT_TABLE)
-            cur.execute(sql.CREATE_HYREX_WORKER_TABLE)
+            cur.execute(sql.CREATE_HYREX_EXECUTOR_TABLE)
         conn.commit()

@@ -21,7 +21,7 @@ primary key,
     status          statusenum not null default 'queued'::statusenum,
     attempt_number  smallint   not null default 0,
     scheduled_start timestamp with time zone,
-    worker_id       uuid,
+    executor_id       uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
     finished        timestamp with time zone
@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS hyrextaskresult (
 );
 """
 
-CREATE_HYREX_WORKER_TABLE = """
-create table if not exists hyrexworker
+CREATE_HYREX_EXECUTOR_TABLE = """
+create table if not exists hyrexexecutor
 (
     id      uuid    not null
 primary key,
@@ -91,7 +91,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $1
+SET status = 'running', started = CURRENT_TIMESTAMP, executor_id = $1
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
@@ -167,8 +167,8 @@ RESET_OR_CANCEL_TASK = """
                    WHEN status = 'up_for_cancel' THEN 'canceled'::statusenum 
                    ELSE 'queued'::statusenum 
                END, 
-       worker_id = CASE 
-                     WHEN status = 'up_for_cancel' THEN worker_id  -- Keep the current value
+       executor_id = CASE 
+                     WHEN status = 'up_for_cancel' THEN executor_id  -- Keep the current value
                      ELSE NULL
                    END,
        started = CASE 
@@ -188,7 +188,7 @@ MARK_TASK_CANCELED = """
 """
 
 GET_WORKERS_TO_CANCEL = """
-    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY($1);
+    SELECT executor_id FROM hyrextask WHERE status = 'up_for_cancel' AND executor_id = ANY($1);
 """
 
 GET_TASK_STATUS = """
