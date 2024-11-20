@@ -19,6 +19,7 @@ class PlatformDispatcher(Dispatcher):
     ENQUEUE_TASK_PATH = "/connect/enqueue-task"
 
     def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
+        super().__init__()
         self.api_key = api_key
 
         self.local_queue = Queue()
@@ -198,11 +199,11 @@ class PlatformDispatcher(Dispatcher):
                 raise
             self.logger.error(f"Exception while getting task status: {str(e)}")
 
-    def register_worker(self, worker_id: UUID):
+    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         pass
 
-    def mark_worker_stopped(self, worker_id: UUID):
+    def disconnect_executor(self, executor_id: UUID):
         pass
 
-    def get_workers_to_cancel(self, worker_ids: list[UUID]):
-        pass
+    # def get_workers_to_cancel(self, worker_ids: list[UUID]):
+    #     pass

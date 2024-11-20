@@ -18,7 +18,7 @@ from uuid_extensions import uuid7
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
-from hyrex.worker.message_queues import MessageToWorker, WorkerMessageType
+from hyrex.worker.messages import WorkerMessage, WorkerMessageType
 
 
 def generate_executor_name():
@@ -30,24 +30,31 @@ def generate_executor_name():
 
 class HyrexExecutor(Process):
 
-    def __init__(self, queue: str = "*"):
+    def __init__(self, executor_id: UUID, queue: str = "*"):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
+        self.queue = queue
+        self.executor_id = executor_id
+
         self.name = generate_executor_name()
         self.task_registry: dict[str, TaskWrapper] = {}
-        self.dispatcher = get_dispatcher(worker=True)
+        self.dispatcher = get_dispatcher()
         # self.error_callback = error_callback
 
-        # For graceful shutdowns
-        self.stopping = False
+        # For graceful shutdowns. Use stop_event to wake up from sleeping
         self._stop_event = threading.Event()
+        self.setup_signal_handlers()
 
-    def set_worker_id(self, worker_id: UUID):
-        self.worker_id = worker_id
+    def setup_signal_handlers(self):
+        def signal_handler(signum, frame):
+            signame = signal.Signals(signum).name
+            self.logger.info(f"\nReceived {signame}. Starting graceful shutdown...")
+            self.stop_event.set()
 
-    def set_queue(self, queue: str):
-        self.queue = queue
+        # Register the handler for both SIGTERM and SIGINT
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
     def process_item(self, task_name: str, args: dict):
         task_func = self.task_registry[task_name]
@@ -56,7 +63,7 @@ class HyrexExecutor(Process):
         return result
 
     def fetch_task(self) -> list[DequeuedTask]:
-        return self.dispatcher.dequeue(worker_id=self.worker_id, queue=self.queue)
+        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=self.queue)
 
     def mark_task_success(self, task_id: UUID):
         self.dispatcher.mark_success(task_id=task_id)
@@ -71,7 +78,7 @@ class HyrexExecutor(Process):
         self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
     def process(self):
-        while not self.stopping:
+        while not self._stop_event.is_set():
             try:
                 tasks: list[DequeuedTask] = self.fetch_task()
                 if not tasks:
@@ -96,27 +103,19 @@ class HyrexExecutor(Process):
                 self.mark_task_success(task.id)
 
                 self.logger.info(
-                    f"Worker {self.name}: Completed processing item {task.id}"
+                    f"Executor {self.name}: Completed processing item {task.id}"
                 )
 
-            except InterruptedError:
-                if "task" in locals():
-                    self.logger.info(
-                        f"Worker {self.name}: Processing of item {task.id} was interrupted"
-                    )
-                    self.reset_or_cancel_task(task.id)
-                    self.logger.info(
-                        f"Successfully updated task {task.id} on worker {self.name} after interruption"
-                    )
-                raise  # Re-raise the InterruptedError to properly shut down the worker
-
             except Exception as e:
-                self.logger.error(f"Worker {self.name}: Error processing item {str(e)}")
+                self.logger.error(
+                    f"Executor {self.name}: Error processing item {str(e)}"
+                )
                 self.logger.error(e)
                 self.logger.error("Traceback:\n%s", traceback.format_exc())
-                if self.error_callback:
-                    task_name = locals().get("task.name", "Unknown task name")
-                    self.error_callback(task_name, e)
+                # TODO: Implement error callback
+                # if self.error_callback:
+                #     task_name = locals().get("task.name", "Unknown task name")
+                #     self.error_callback(task_name, e)
 
                 if "task" in locals():
                     self.mark_task_failed(task.id)
@@ -124,34 +123,14 @@ class HyrexExecutor(Process):
 
                 self._stop_event.wait(1.0)  # Add delay after error
 
-    def stop(self):
-        self.dispatcher.mark_worker_stopped(worker_id=self.worker_id)
-        self.dispatcher.stop()
-
-    def _signal_handler(self, signum, frame):
-        self.logger.info("SIGTERM received, stopping worker...")
-        self.stopping = True
-        self._stop_event.set()  # Wake up from any waiting sleeps
-
     def run(self):
-        if not self.worker_id:
-            raise RuntimeError("HyrexWorker must have an ID set.")
-
-        if not self.queue:
-            raise RuntimeError("HyrexWorker must have a queue set.")
-
-        self.dispatcher.register_worker(
-            worker_id=self.worker_id, worker_name=self.name, queue=self.queue
+        self.dispatcher.register_executor(
+            executor_id=self.executor_id, executor_name=self.name, queue=self.queue
         )
 
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
-        signal.signal(signal.SIGALRM, self._alarm_handler)
 
         # Run processing loop
-        self.logger.info(f"Worker process {self.name} started - checking for tasks.")
-        try:
-            self.process()
-        except InterruptedError:
-            self.stop()
-            self.logger.info(f"Worker {self.name} stopped.")
+        self.logger.info(f"Executor process {self.name} started - checking for tasks.")
+        self.process()

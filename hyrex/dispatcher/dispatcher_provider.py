@@ -1,5 +1,5 @@
-from enum import StrEnum
 import os
+from enum import StrEnum
 
 from hyrex.config import EnvVars
 

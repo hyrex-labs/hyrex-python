@@ -1,6 +1,6 @@
 import logging
-import threading
-from abc import ABC, ABCMeta, abstractmethod
+import signal
+from abc import ABC, abstractmethod
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -9,38 +9,41 @@ from hyrex import constants
 from hyrex.models import HyrexTask, StatusEnum
 
 
-class SingletonMeta(ABCMeta):
-    _instances = {}
-    _init_args = {}
-    _lock = threading.Lock()
-
-    def __call__(cls, *args, **kwargs):
-        # If the instance does not exist, create it and store args
-        if cls not in cls._instances:
-            with cls._lock:
-                if cls not in cls._instances:
-                    instance = super().__call__(*args, **kwargs)
-                    cls._instances[cls] = instance
-                    cls._init_args[cls] = (args, kwargs)
-        else:
-            # Check if the new args differ from the initial args
-            if (args, kwargs) != cls._init_args[cls]:
-                raise ValueError(
-                    f"Singleton instance already created with "
-                    f"different arguments: {cls._init_args[cls]} vs {args, kwargs}"
-                )
-
-        return cls._instances[cls]
-
-
 class DequeuedTask(BaseModel):
     id: UUID
     name: str
     args: dict
 
 
-class Dispatcher(ABC, metaclass=SingletonMeta):
+class Dispatcher(ABC):
     logger = logging.getLogger(__name__)
+
+    def _signal_handler(self, signum, frame):
+        signame = signal.Signals(signum).name
+        self.logger.info(f"\nReceived {signame}. Shutting down Hyrex dispatcher...")
+        self.stop()
+
+    def _chain_signal_handlers(self, new_handler, old_handler):
+        """Return a function that calls both the new and old signal handlers."""
+
+        def wrapper(signum, frame):
+            # Call the new handler first
+            new_handler(signum, frame)
+            # Then call the previous handler (if it exists)
+            if old_handler and callable(old_handler):
+                old_handler(signum, frame)
+
+        return wrapper
+
+    def _setup_signal_handlers(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            old_handler = signal.getsignal(sig)  # Get the existing handler
+            new_handler = self._signal_handler  # Your new handler
+            # Set the new handler, which calls both new and old handlers
+            signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
+
+    def __init__(self):
+        self._setup_signal_handlers()
 
     @abstractmethod
     def enqueue(
@@ -52,7 +55,7 @@ class Dispatcher(ABC, metaclass=SingletonMeta):
     @abstractmethod
     def dequeue(
         self,
-        worker_id: UUID,
+        executor_id: UUID,
         queue: str = constants.DEFAULT_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
@@ -83,20 +86,20 @@ class Dispatcher(ABC, metaclass=SingletonMeta):
     def save_result(self, task_id: UUID, result: str):
         pass
 
-    @abstractmethod
-    def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
-        pass
+    # @abstractmethod
+    # def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
+    #     pass
 
     @abstractmethod
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         pass
 
     @abstractmethod
-    def register_worker(self, worker_id: UUID, worker_name: str, queue: str):
+    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         pass
 
     @abstractmethod
-    def mark_worker_stopped(self, worker_id: UUID):
+    def disconnect_executor(self, executor_id: UUID):
         pass
 
     @abstractmethod

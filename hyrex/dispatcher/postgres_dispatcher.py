@@ -17,6 +17,7 @@ from hyrex.models import HyrexTask, StatusEnum
 
 class PostgresDispatcher(Dispatcher):
     def __init__(self, conn_string: str, batch_size=200, flush_interval=0.05):
+        super().__init__()
         self.conn_string = conn_string
         self.pool = ConnectionPool(conn_string, open=True)
 
@@ -181,19 +182,13 @@ class PostgresDispatcher(Dispatcher):
                 raise ValueError(f"Task id {task_id} not found in DB.")
             return result[0]
 
-    def register_worker(self, worker_id: UUID, worker_name: str, queue: str):
+    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         with self.transaction() as cur:
-            cur.execute(sql.REGISTER_WORKER, [worker_id, worker_name, queue])
+            cur.execute(sql.REGISTER_WORKER, [executor_id, executor_name, queue])
 
-    def mark_worker_stopped(self, worker_id: UUID):
+    def disconnect_executor(self, executor_id: UUID):
         with self.transaction() as cur:
-            cur.execute(sql.MARK_WORKER_STOPPED, [worker_id])
-
-    def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
-        with self.transaction() as cur:
-            cur.execute(sql.GET_WORKERS_TO_CANCEL, (worker_ids,))
-            result = cur.fetchall()
-            return [row[0] for row in result]
+            cur.execute(sql.MARK_WORKER_STOPPED, [executor_id])
 
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:

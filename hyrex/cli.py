@@ -12,7 +12,8 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.models import create_tables
-from hyrex.worker.worker_node import WorkerNode
+
+# from hyrex.worker.worker_node import WorkerNode
 
 cli = typer.Typer()
 
@@ -81,8 +82,19 @@ def run_worker(
     """
     Run multiple worker processes using the specified worker module path
     """
-    if log_level:
-        logging.basicConfig(level=getattr(logging, log_level.upper()))
+
+    # TODO: Clean up logging init
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(
+            "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+    )
+    logger = logging.getLogger("hyrex")
+    logger.setLevel(level=getattr(logging, log_level.upper()))
+    logger.addHandler(handler)
+
+    os.environ[EnvVars.WORKER_PROCESS] = "true"
 
     try:
         sys.path.append(str(Path.cwd()))
@@ -101,62 +113,62 @@ def run_worker(
         sys.exit(1)
 
 
-# For internal usage only - to be removed.
-@cli.command()
-def worker_process(
-    app_module: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
-    queue: str = typer.Option(
-        constants.DEFAULT_QUEUE,
-        "--queue",
-        "-q",
-        help="The name of the queue to process",
-    ),
-    worker_id: str = typer.Option(
-        None, "--worker-id", help="Optional UUID for the worker."
-    ),
-    log_level: LogLevel = typer.Option(
-        "INFO",
-        "--log-level",
-        "-l",
-        help="Set the log level",
-        case_sensitive=False,
-        show_default=True,
-        show_choices=True,
-    ),
-):
-    """
-    Run a single worker process
-    """
-    if log_level:
-        handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter(
-                "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-        )
-        logger = logging.getLogger("hyrex")
-        logger.setLevel(level=getattr(logging, log_level.upper()))
-        logger.addHandler(handler)
+# # For internal usage only - to be removed.
+# @cli.command()
+# def worker_process(
+#     app_module: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
+#     queue: str = typer.Option(
+#         constants.DEFAULT_QUEUE,
+#         "--queue",
+#         "-q",
+#         help="The name of the queue to process",
+#     ),
+#     worker_id: str = typer.Option(
+#         None, "--worker-id", help="Optional UUID for the worker."
+#     ),
+#     log_level: LogLevel = typer.Option(
+#         "INFO",
+#         "--log-level",
+#         "-l",
+#         help="Set the log level",
+#         case_sensitive=False,
+#         show_default=True,
+#         show_choices=True,
+#     ),
+# ):
+#     """
+#     Run a single worker process
+#     """
+#     if log_level:
+#         handler = logging.StreamHandler()
+#         handler.setFormatter(
+#             logging.Formatter(
+#                 "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+#             )
+#         )
+#         logger = logging.getLogger("hyrex")
+#         logger.setLevel(level=getattr(logging, log_level.upper()))
+#         logger.addHandler(handler)
 
-    if worker_id is None:
-        worker_id = uuid7()
-    elif not is_valid_uuid(worker_id):
-        raise ValueError("Worker ID must be a valid UUID.")
+#     if worker_id is None:
+#         worker_id = uuid7()
+#     elif not is_valid_uuid(worker_id):
+#         raise ValueError("Worker ID must be a valid UUID.")
 
-    sys.path.append(str(Path.cwd()))
+#     sys.path.append(str(Path.cwd()))
 
-    try:
-        module_path, instance_name = app_module.split(":")
-        # Import the worker module
-        worker_module = importlib.import_module(module_path)
-        worker_instance = getattr(worker_module, instance_name)
-        worker_instance.set_worker_id(worker_id)
-        worker_instance.set_queue(queue)
-        worker_instance.run()
+#     try:
+#         module_path, instance_name = app_module.split(":")
+#         # Import the worker module
+#         worker_module = importlib.import_module(module_path)
+#         worker_instance = getattr(worker_module, instance_name)
+#         worker_instance.set_worker_id(worker_id)
+#         worker_instance.set_queue(queue)
+#         worker_instance.run()
 
-    except ModuleNotFoundError as e:
-        typer.echo(f"Error: {e}")
-        sys.exit(1)
+#     except ModuleNotFoundError as e:
+#         typer.echo(f"Error: {e}")
+#         sys.exit(1)
 
 
 if __name__ == "__main__":

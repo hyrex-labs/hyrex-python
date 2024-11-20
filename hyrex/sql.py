@@ -24,7 +24,8 @@ primary key,
     executor_id       uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
-    finished        timestamp with time zone
+    finished        timestamp with time zone,
+    last_heartbeat  timestamp with time zone
 );
 
 create index if not exists ix_hyrextask_task_name
@@ -59,7 +60,8 @@ primary key,
     name    varchar not null,
     queue   varchar not null,
     started timestamp,
-    stopped timestamp
+    stopped timestamp,
+    last_heartbeat timestamp with time zone
 );
 """
 
@@ -187,21 +189,17 @@ MARK_TASK_CANCELED = """
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
-GET_WORKERS_TO_CANCEL = """
-    SELECT executor_id FROM hyrextask WHERE status = 'up_for_cancel' AND executor_id = ANY($1);
-"""
-
 GET_TASK_STATUS = """
     SELECT status FROM hyrextask WHERE id = $1
 """
 
-REGISTER_WORKER = """
-    INSERT INTO hyrexworker (id, name, queue, started)
+REGISTER_EXECUTOR = """
+    INSERT INTO hyrexexecutor (id, name, queue, started)
     VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
 """
 
-MARK_WORKER_STOPPED = """
-    UPDATE hyrexworker
+DISCONNECT_EXECUTOR = """
+    UPDATE hyrexexecutor
     SET stopped = CURRENT_TIMESTAMP
     WHERE id = $1
 """
