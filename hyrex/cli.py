@@ -13,7 +13,7 @@ from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.models import create_tables
 from hyrex.worker.logging import LogLevel
-from hyrex.worker.root import WorkerRootProcess
+from hyrex.worker.root_process import WorkerRootProcess
 
 cli = typer.Typer()
 
@@ -63,7 +63,7 @@ def run_worker(
         help="The name of the queue to process",
     ),
     num_processes: int = typer.Option(
-        None, "--num-processes", "-p", help="Number of executor processes to run"
+        8, "--num-processes", "-p", help="Number of executor processes to run"
     ),
     log_level: LogLevel = typer.Option(
         "INFO",
@@ -82,7 +82,7 @@ def run_worker(
     # Prevents HyrexRegistry instances from creating their own dispatchers
     os.environ[EnvVars.WORKER_PROCESS] = "true"
 
-    validate_worker_module_path()
+    validate_worker_module_path(worker_module_path)
 
     try:
         worker_root = WorkerRootProcess(

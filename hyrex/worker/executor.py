@@ -6,10 +6,9 @@ import os
 import signal
 import socket
 import sys
-import threading
 import traceback
 from datetime import datetime, timezone
-from multiprocessing import Process
+from multiprocessing import Process, Queue, Event
 from pathlib import Path
 from uuid import UUID
 
@@ -18,7 +17,7 @@ from uuid_extensions import uuid7
 
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.worker.messages import RootProcessMessage, RootProcessMessageType
+from hyrex.worker.messages import RootMessage, RootMessageType
 from hyrex.worker.worker import HyrexWorker
 from hyrex.worker.logging import LogLevel, init_logging
 
@@ -34,6 +33,7 @@ class WorkerExecutor(Process):
 
     def __init__(
         self,
+        root_message_queue: Queue,
         log_level: LogLevel,
         worker_module_path: str,
         executor_id: UUID,
@@ -43,6 +43,9 @@ class WorkerExecutor(Process):
         self.logger = logging.getLogger(__name__)
         self.log_level = log_level
 
+        self.root_message_queue = root_message_queue
+        self._stop_event = Event()
+
         self.worker_module_path = worker_module_path
         self.queue = queue
         self.executor_id = executor_id
@@ -51,7 +54,7 @@ class WorkerExecutor(Process):
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
 
-    def load_worker_module(self):
+    def load_worker_module_variables(self):
         sys.path.append(str(Path.cwd()))
         module_path, instance_name = self.worker_module_path.split(":")
         # Import the worker module
@@ -97,79 +100,69 @@ class WorkerExecutor(Process):
         self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
     def process(self):
-        while not self._stop_event.is_set():
-            try:
-                tasks: list[DequeuedTask] = self.fetch_task()
-                if not tasks:
-                    # No unprocessed items, wait a bit before trying again
-                    self._stop_event.wait(1.0)
-                    return
+        try:
+            tasks: list[DequeuedTask] = self.fetch_task()
+            if not tasks:
+                # No unprocessed items, wait a bit before trying again
+                self._stop_event.wait(1.0)
+                return
 
-                task = tasks[0]
-                result = self.process_item(task.name, task.args)
+            task = tasks[0]
+            result = self.process_item(task.name, task.args)
 
-                if result is not None:
-                    if isinstance(result, BaseModel):
-                        result = result.model_dump_json()
-                    elif isinstance(result, dict):
-                        result = json.dumps(result)
-                    else:
-                        raise TypeError("Return value must be JSON-serializable.")
+            if result is not None:
+                if isinstance(result, BaseModel):
+                    result = result.model_dump_json()
+                elif isinstance(result, dict):
+                    result = json.dumps(result)
+                else:
+                    raise TypeError("Return value must be JSON-serializable.")
 
-                    self.dispatcher.save_result(task.id, result)
+                self.dispatcher.save_result(task.id, result)
 
-                self.mark_task_success(task.id)
+            self.mark_task_success(task.id)
 
-                self.logger.info(
-                    f"Executor {self.name}: Completed processing item {task.id}"
-                )
+            self.logger.info(
+                f"Executor {self.name}: Completed processing item {task.id}"
+            )
 
-            except Exception as e:
-                self.logger.error(
-                    f"Executor {self.name}: Error processing item {str(e)}"
-                )
-                self.logger.error(e)
-                self.logger.error("Traceback:\n%s", traceback.format_exc())
-                if self.error_callback:
-                    task_name = locals().get("task.name", "Unknown task name")
-                    self.error_callback(task_name, e)
+        except Exception as e:
+            self.logger.error(f"Executor {self.name}: Error processing item {str(e)}")
+            self.logger.error(e)
+            self.logger.error("Traceback:\n%s", traceback.format_exc())
+            if self.error_callback:
+                task_name = locals().get("task.name", "Unknown task name")
+                self.error_callback(task_name, e)
 
-                if "task" in locals():
-                    self.mark_task_failed(task.id)
-                    self.attempt_retry(task.id)
+            if "task" in locals():
+                self.mark_task_failed(task.id)
+                self.attempt_retry(task.id)
 
-                self._stop_event.wait(1.0)  # Add delay after error
+            self._stop_event.wait(1.0)  # Add delay after error
 
     def run(self):
         os.setpgrp()
         init_logging(self.log_level)
-
-        self.logger.info("Starting executor process.")
+        self.setup_signal_handlers()
 
         # Retrieve task registry, error callback, and queue.
         self.load_worker_module_variables()
 
         self.dispatcher = get_dispatcher()
-        self.task_registry.set_dispatcher(self.dispatcher)
-        # self.error_callback = error_callback
-
-        # For graceful shutdowns. Use stop_event to wake up from sleeping
-        self._stop_event = threading.Event()
-        self.setup_signal_handlers()
-
         self.dispatcher.register_executor(
             executor_id=self.executor_id, executor_name=self.name, queue=self.queue
         )
+        self.task_registry.set_dispatcher(self.dispatcher)
 
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            signal.signal(sig, self._signal_handler)
-
-        # Run processing loop
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
-        self.process()
+
+        while not self._stop_event.is_set():
+            self.process()
 
         self.stop()
 
     def stop(self):
+        self.logger.info(f"Stopping {self.name}...")
         if self.dispatcher:
+            self.dispatcher.disconnect_executor(self.executor_id)
             self.dispatcher.stop()

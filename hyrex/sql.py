@@ -13,6 +13,7 @@ create table if not exists hyrextask
     id              uuid       not null
 primary key,
     root_id         uuid       not null,
+    parent_id       uuid,
     task_name       varchar    not null,
     args            json       not null,
     queue           varchar    not null,
@@ -21,11 +22,11 @@ primary key,
     status          statusenum not null default 'queued'::statusenum,
     attempt_number  smallint   not null default 0,
     scheduled_start timestamp with time zone,
-    executor_id       uuid,
+    executor_id     uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
-    finished        timestamp with time zone,
-    last_heartbeat  timestamp with time zone
+    last_heartbeat  timestamp with time zone,
+    finished        timestamp with time zone
 );
 
 create index if not exists ix_hyrextask_task_name
@@ -59,9 +60,9 @@ create table if not exists hyrexexecutor
 primary key,
     name    varchar not null,
     queue   varchar not null,
-    started timestamp,
-    stopped timestamp,
-    last_heartbeat timestamp with time zone
+    started timestamp with time zone default CURRENT_TIMESTAMP,
+    last_heartbeat timestamp with time zone,
+    stopped timestamp with time zone
 );
 """
 

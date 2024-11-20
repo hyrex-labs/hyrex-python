@@ -56,7 +56,7 @@ class Dispatcher(ABC):
     def dequeue(
         self,
         executor_id: UUID,
-        queue: str = constants.DEFAULT_QUEUE,
+        queue: str = constants.ANY_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         pass

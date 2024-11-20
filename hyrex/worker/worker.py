@@ -10,7 +10,7 @@ class HyrexWorker:
     """
 
     def __init__(
-        self, queue: str = constants.DEFAULT_QUEUE, error_callback: Callable = None
+        self, queue: str = constants.ANY_QUEUE, error_callback: Callable = None
     ):
         self.queue = queue
         self.error_callback = error_callback

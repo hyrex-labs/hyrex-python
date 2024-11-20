@@ -110,7 +110,7 @@ class PlatformDispatcher(Dispatcher):
     def dequeue(
         self,
         worker_id: UUID,
-        queue: str = constants.DEFAULT_QUEUE,
+        queue: str = constants.ANY_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         fetch_url = f"{self.HYREX_PLATFORM_URL}{self.DEQUEUE_TASK_PATH}"

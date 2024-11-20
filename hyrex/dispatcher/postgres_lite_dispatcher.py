@@ -49,17 +49,17 @@ class PostgresLiteDispatcher(Dispatcher):
 
     def dequeue(
         self,
-        worker_id: UUID,
-        queue: str = constants.DEFAULT_QUEUE,
+        executor_id: UUID,
+        queue: str = constants.ANY_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         dequeued_tasks = []
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
-                if queue == constants.DEFAULT_QUEUE:
-                    cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [worker_id])
+                if queue == constants.ANY_QUEUE:
+                    cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
                 else:
-                    cur.execute(sql.FETCH_TASK, [queue, worker_id])
+                    cur.execute(sql.FETCH_TASK, [queue, executor_id])
                 row = cur.fetchone()
                 if row:
                     task_id, task_name, task_args = row
@@ -110,17 +110,17 @@ class PostgresLiteDispatcher(Dispatcher):
     def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
-                cur.execute(sql.REGISTER_WORKER, [executor_id, executor_name, queue])
+                cur.execute(sql.REGISTER_EXECUTOR, [executor_id, executor_name, queue])
             conn.commQit()
 
     def disconnect_executor(self, executor_id: UUID):
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
-                cur.execute(sql.MARK_WORKER_STOPPED, [executor_id])
+                cur.execute(sql.DISCONNECT_EXECUTOR, [executor_id])
             conn.commit()
 
-    def get_workers_to_cancel(self, worker_ids: list[UUID]):
-        pass
-
     def save_result(self, task_id: UUID, result: str):
-        pass
+        with self.connection_pool() as conn:
+            with RawCursor(conn) as cur:
+                cur.execute(sql.SAVE_RESULT, [task_id, result])
+            conn.commit()

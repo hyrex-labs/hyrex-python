@@ -65,16 +65,16 @@ class PostgresDispatcher(Dispatcher):
 
     def dequeue(
         self,
-        worker_id: UUID,
-        queue: str = constants.DEFAULT_QUEUE,
+        executor_id: UUID,
+        queue: str = constants.ANY_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         dequeued_tasks = []
         with self.transaction() as cur:
-            if queue == constants.DEFAULT_QUEUE:
-                cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [worker_id])
+            if queue == constants.ANY_QUEUE:
+                cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
             else:
-                cur.execute(sql.FETCH_TASK, [queue, worker_id])
+                cur.execute(sql.FETCH_TASK, [queue, executor_id])
             row = cur.fetchone()
             if row:
                 task_id, task_name, task_args = row
@@ -184,11 +184,11 @@ class PostgresDispatcher(Dispatcher):
 
     def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         with self.transaction() as cur:
-            cur.execute(sql.REGISTER_WORKER, [executor_id, executor_name, queue])
+            cur.execute(sql.REGISTER_EXECUTOR, [executor_id, executor_name, queue])
 
     def disconnect_executor(self, executor_id: UUID):
         with self.transaction() as cur:
-            cur.execute(sql.MARK_WORKER_STOPPED, [executor_id])
+            cur.execute(sql.DISCONNECT_EXECUTOR, [executor_id])
 
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:

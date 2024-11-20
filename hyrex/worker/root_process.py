@@ -15,8 +15,8 @@ from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.messages import (
     AdminMessage,
     AdminMessageType,
-    WorkerMessage,
-    WorkerMessageType,
+    RootMessage,
+    RootMessageType,
 )
 from hyrex.worker.logging import LogLevel, init_logging
 
@@ -27,9 +27,10 @@ class WorkerRootProcess:
         log_level: LogLevel,
         worker_module_path: str,
         queue: str = None,
-        num_processes: int = None,
+        num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
         self.logger = logging.getLogger(__name__)
+        self.log_level = log_level
         init_logging(log_level=log_level)
 
         self.worker_module_path = worker_module_path
@@ -41,7 +42,7 @@ class WorkerRootProcess:
         self.executor_id_to_process: dict[str, Process] = {}
         self.executor_processes: list[Process] = []
         self.admin_process: Process = None
-        self.worker_message_queue = Queue()
+        self.root_message_queue = Queue()
         self.admin_message_queue = Queue()
 
         self.setup_signal_handlers()
@@ -68,6 +69,8 @@ class WorkerRootProcess:
     def _spawn_executor(self):
         executor_id = uuid7()
         executor = WorkerExecutor(
+            log_level=self.log_level,
+            root_message_queue=self.root_message_queue,
             worker_module_path=self.worker_module_path,
             queue=self.queue,
             executor_id=executor_id,
@@ -76,25 +79,30 @@ class WorkerRootProcess:
         self.executor_processes.append(executor)
 
     def _spawn_admin(self):
-        admin = WorkerAdmin(queue=self.queue)
+        admin = WorkerAdmin(
+            root_message_queue=self.root_message_queue,
+            admin_message_queue=self.admin_message_queue,
+            log_level=self.log_level,
+            queue=self.queue,
+        )
         admin.start()
         self.admin_process = admin
 
     def _message_listener(self):
         while True:
             # Blocking
-            raw_message = self.worker_message_queue.get()
+            raw_message = self.root_message_queue.get()
 
             if raw_message == None:
                 break
 
-            message = WorkerMessage.model_validate(raw_message)
+            message = RootMessage.model_validate(raw_message)
 
-            if message.type == WorkerMessageType.SET_EXECUTOR_TASK:
+            if message.type == RootMessageType.CANCEL_TASK:
                 pass
-            elif message.type == WorkerMessageType.HEARTBEAT_REQUEST:
+            elif message.type == RootMessageType.SET_EXECUTOR_TASK:
                 pass
-            elif message.type == WorkerMessageType.CANCEL_TASK:
+            elif message.type == RootMessageType.HEARTBEAT_REQUEST:
                 pass
 
     def kill_task(self, task_id: str):
@@ -106,13 +114,12 @@ class WorkerRootProcess:
         self.message_listener_thread = threading.Thread(target=self._message_listener)
         self.message_listener_thread.start()
 
+        self.logger.info("Spawning admin process.")
         self._spawn_admin()
 
-        # for _ in range(self.num_processes):
-        for _ in range(1):
+        self.logger.info(f"Spawning {self.num_processes} task executor processes.")
+        for _ in range(self.num_processes):
             self._spawn_executor()
-
-        # last_heartbeat = datetime.now(timezone=timezone.utc)
 
         while not self.stop_event.is_set():
             self.logger.info("Running action loop")
@@ -123,6 +130,7 @@ class WorkerRootProcess:
     def stop(self):
         try:
             # Stop all executors
+            self.logger.info("Stopping executor processes.")
             for executor_process in self.executor_processes:
                 executor_process._stop_event.set()
                 executor_process.join(timeout=constants.WORKER_EXECUTOR_PROCESS_TIMEOUT)
@@ -138,6 +146,7 @@ class WorkerRootProcess:
 
         try:
             # Stop admin
+            self.logger.info("Stopping admin process.")
             self.admin_process._stop_event.set()
             self.admin_process.join(timeout=constants.WORKER_ADMIN_PROCESS_TIMEOUT)
             if self.admin_process.is_alive():
@@ -152,7 +161,7 @@ class WorkerRootProcess:
 
         try:
             # Stop internal message listener
-            self.worker_message_queue.put(None)
+            self.root_message_queue.put(None)
             self.message_listener_thread.join()
             if self.message_listener_thread.is_alive():
                 self.logger.warning("Message listener thread did not exit cleanly.")

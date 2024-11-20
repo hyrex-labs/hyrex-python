@@ -33,12 +33,16 @@ class HyrexExecutor(SQLModel, table=True):
     started: datetime | None = Field(
         sa_column=DateTime(timezone=True), default_factory=utcnow
     )
+    last_heartbeat: datetime | None = Field(
+        sa_column=Column(DateTime(timezone=True)), default=None
+    )
     stopped: datetime | None = Field(sa_column=DateTime(timezone=True), default=None)
 
 
 class HyrexTask(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid7, primary_key=True)
     root_id: UUID
+    parent_id: UUID | None
 
     # These 4 are indexed
     task_name: str = Field(index=True)
@@ -54,6 +58,9 @@ class HyrexTask(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True)), default_factory=utcnow
     )
     started: datetime | None = Field(
+        sa_column=Column(DateTime(timezone=True)), default=None
+    )
+    last_heartbeat: datetime | None = Field(
         sa_column=Column(DateTime(timezone=True)), default=None
     )
     finished: datetime | None = Field(
