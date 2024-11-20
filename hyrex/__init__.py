@@ -3,7 +3,7 @@
 import logging
 
 from .hyrex_registry import HyrexRegistry
-from .worker.hyrex_worker import HyrexWorker
+from .worker.worker import HyrexWorker
 
 # Set up null handler at library root level
 logging.getLogger("hyrex").addHandler(logging.NullHandler())

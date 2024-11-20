@@ -17,7 +17,7 @@ class AdminMessage(BaseModel):
     executor_ids: list[str]
 
 
-class WorkerMessageType(StrEnum):
+class RootMessageType(StrEnum):
     HEARTBEAT_REQUEST = "heartbeat_request"
     CANCEL_TASK = "cancel_task"
     SET_EXECUTOR_TASK = "set_executor_task"
@@ -36,9 +36,9 @@ class SetExecutorTask(BaseModel):
     task_id: str
 
 
-# Incoming messages to main worker process
-class WorkerMessage(BaseModel):
-    type: WorkerMessageType
+# Incoming messages to root process
+class RootMessage(BaseModel):
+    type: RootMessageType
     message: Union[CancelTask, SetExecutorTask, HeartbeatRequest]
     task_id: str
     executor_id: str

@@ -12,26 +12,10 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.models import create_tables
-
-# from hyrex.worker.worker_node import WorkerNode
+from hyrex.worker.logging import LogLevel
+from hyrex.worker.root import WorkerRootProcess
 
 cli = typer.Typer()
-
-
-class LogLevel(str, Enum):
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-
-
-def is_valid_uuid(id: UUID):
-    try:
-        UUID(id)
-        return True
-    except ValueError:
-        return False
 
 
 @cli.command()
@@ -53,6 +37,18 @@ def init_db(
     typer.echo(
         f"Error: Database connection string must be provided either through the --database-string flag or the {EnvVars.DATABASE_URL} env variable."
     )
+
+
+def validate_worker_module_path(worker_module_path):
+    try:
+        sys.path.append(str(Path.cwd()))
+        module_path, instance_name = worker_module_path.split(":")
+        # Import the worker module
+        worker_module = importlib.import_module(module_path)
+        worker_instance = getattr(worker_module, instance_name)
+    except ModuleNotFoundError as e:
+        typer.echo(f"Error: {e}")
+        sys.exit(1)
 
 
 @cli.command()
@@ -83,92 +79,23 @@ def run_worker(
     Run multiple worker processes using the specified worker module path
     """
 
-    # TODO: Clean up logging init
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter(
-            "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-    )
-    logger = logging.getLogger("hyrex")
-    logger.setLevel(level=getattr(logging, log_level.upper()))
-    logger.addHandler(handler)
-
+    # Prevents HyrexRegistry instances from creating their own dispatchers
     os.environ[EnvVars.WORKER_PROCESS] = "true"
 
+    validate_worker_module_path()
+
     try:
-        sys.path.append(str(Path.cwd()))
-        module_path, instance_name = worker_module_path.split(":")
-        # Import the worker module
-        worker_module = importlib.import_module(module_path)
-        worker_instance = getattr(worker_module, instance_name)
-        if queue:
-            worker_instance.set_queue(queue)
-        if num_processes:
-            worker_instance.set_num_processes(num_processes)
-        worker_instance.run()
+        worker_root = WorkerRootProcess(
+            log_level=log_level.upper(),
+            worker_module_path=worker_module_path,
+            queue=queue,
+            num_processes=num_processes,
+        )
+        worker_root.run()
 
-    except ModuleNotFoundError as e:
-        typer.echo(f"Error: {e}")
+    except Exception as e:
+        typer.echo(f"Error running worker: {e}")
         sys.exit(1)
-
-
-# # For internal usage only - to be removed.
-# @cli.command()
-# def worker_process(
-#     app_module: str = typer.Argument(..., help="Module path to the Hyrex app instance"),
-#     queue: str = typer.Option(
-#         constants.DEFAULT_QUEUE,
-#         "--queue",
-#         "-q",
-#         help="The name of the queue to process",
-#     ),
-#     worker_id: str = typer.Option(
-#         None, "--worker-id", help="Optional UUID for the worker."
-#     ),
-#     log_level: LogLevel = typer.Option(
-#         "INFO",
-#         "--log-level",
-#         "-l",
-#         help="Set the log level",
-#         case_sensitive=False,
-#         show_default=True,
-#         show_choices=True,
-#     ),
-# ):
-#     """
-#     Run a single worker process
-#     """
-#     if log_level:
-#         handler = logging.StreamHandler()
-#         handler.setFormatter(
-#             logging.Formatter(
-#                 "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
-#             )
-#         )
-#         logger = logging.getLogger("hyrex")
-#         logger.setLevel(level=getattr(logging, log_level.upper()))
-#         logger.addHandler(handler)
-
-#     if worker_id is None:
-#         worker_id = uuid7()
-#     elif not is_valid_uuid(worker_id):
-#         raise ValueError("Worker ID must be a valid UUID.")
-
-#     sys.path.append(str(Path.cwd()))
-
-#     try:
-#         module_path, instance_name = app_module.split(":")
-#         # Import the worker module
-#         worker_module = importlib.import_module(module_path)
-#         worker_instance = getattr(worker_module, instance_name)
-#         worker_instance.set_worker_id(worker_id)
-#         worker_instance.set_queue(queue)
-#         worker_instance.run()
-
-#     except ModuleNotFoundError as e:
-#         typer.echo(f"Error: {e}")
-#         sys.exit(1)
 
 
 if __name__ == "__main__":

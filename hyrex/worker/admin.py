@@ -5,10 +5,11 @@ import time
 from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
+from hyrex.worker.logging import LogLevel, init_logging
 
 
-class HyrexAdmin(Process):
-    def __init__(self, queue: str):
+class WorkerAdmin(Process):
+    def __init__(self, log_level: LogLevel, queue: str):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
@@ -28,16 +29,7 @@ class HyrexAdmin(Process):
 
     def run(self):
         os.setpgrp()
-        handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter(
-                "[PID: %(process)d] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-        )
-        logger = logging.getLogger("hyrex")
-        # logger.setLevel(level=getattr(logging, log_level.upper()))
-        logger.setLevel(logging.INFO)
-        logger.addHandler(handler)
+        init_logging(self.log_level)
 
         self.logger.info("Starting HyrexAdmin process.")
         self.dispatcher = get_dispatcher(worker=True)

@@ -1,7 +1,16 @@
 import logging
+from enum import StrEnum
 
 
-def init_logging():
+class LogLevel(StrEnum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+
+def init_logging(log_level: str):
     handler = logging.StreamHandler()
     handler.setFormatter(
         logging.Formatter(
@@ -9,6 +18,5 @@ def init_logging():
         )
     )
     logger = logging.getLogger("hyrex")
-    # logger.setLevel(level=getattr(logging, log_level.upper()))
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level=getattr(logging, log_level.upper()))
     logger.addHandler(handler)

@@ -10,32 +10,31 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher import get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.worker.hyrex_admin import HyrexAdmin
-from hyrex.worker.hyrex_executor import HyrexExecutor
+from hyrex.worker.admin import WorkerAdmin
+from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.messages import (
     AdminMessage,
     AdminMessageType,
     WorkerMessage,
     WorkerMessageType,
 )
+from hyrex.worker.logging import LogLevel, init_logging
 
 
-class HyrexWorker:
+class WorkerRootProcess:
     def __init__(
         self,
-        queue: str = constants.DEFAULT_QUEUE,
-        num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
-        error_callback: Callable = None,
+        log_level: LogLevel,
+        worker_module_path: str,
+        queue: str = None,
+        num_processes: int = None,
     ):
         self.logger = logging.getLogger(__name__)
+        init_logging(log_level=log_level)
 
-        self.dispatcher = get_dispatcher()
-
+        self.worker_module_path = worker_module_path
         self.queue = queue
         self.num_processes = num_processes
-
-        self.task_registry: HyrexRegistry = HyrexRegistry()
-        self.error_callback = error_callback
 
         self.stop_event = threading.Event()
         self.task_id_to_executor_id: dict[str, str] = {}
@@ -57,13 +56,6 @@ class HyrexWorker:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
-    def add_registry(self, registry: HyrexRegistry):
-        #
-        registry.set_dispatcher(self.dispatcher)
-
-        for task_name, task_wrapper in registry.items():
-            self.task_registry[task_name] = task_wrapper
-
     def cancel_task(self, task_id: str):
         pass
 
@@ -75,12 +67,16 @@ class HyrexWorker:
 
     def _spawn_executor(self):
         executor_id = uuid7()
-        executor = HyrexExecutor(queue=self.queue, executor_id=executor_id)
+        executor = WorkerExecutor(
+            worker_module_path=self.worker_module_path,
+            queue=self.queue,
+            executor_id=executor_id,
+        )
         executor.start()
         self.executor_processes.append(executor)
 
     def _spawn_admin(self):
-        admin = HyrexAdmin(queue=self.queue)
+        admin = WorkerAdmin(queue=self.queue)
         admin.start()
         self.admin_process = admin
 
@@ -113,7 +109,8 @@ class HyrexWorker:
         self._spawn_admin()
 
         # for _ in range(self.num_processes):
-        #     self._spawn_executor()
+        for _ in range(1):
+            self._spawn_executor()
 
         # last_heartbeat = datetime.now(timezone=timezone.utc)
 
@@ -126,10 +123,23 @@ class HyrexWorker:
     def stop(self):
         try:
             # Stop all executors
+            for executor_process in self.executor_processes:
+                executor_process._stop_event.set()
+                executor_process.join(timeout=constants.WORKER_EXECUTOR_PROCESS_TIMEOUT)
+                if executor_process.is_alive():
+                    self.logger.warning(
+                        "Executor process did not exit cleanly, force killing."
+                    )
+                    executor_process.kill()
+                    executor_process.join(timeout=1.0)
 
+        except Exception as e:
+            print(f"Error during executor shutdown: {e}")
+
+        try:
             # Stop admin
             self.admin_process._stop_event.set()
-            self.admin_process.join(timeout=5.0)
+            self.admin_process.join(timeout=constants.WORKER_ADMIN_PROCESS_TIMEOUT)
             if self.admin_process.is_alive():
                 self.logger.warning(
                     "Admin process did not exit cleanly, force killing."
@@ -137,15 +147,17 @@ class HyrexWorker:
                 self.admin_process.kill()
                 self.admin_process.join(timeout=1.0)
 
+        except Exception as e:
+            print(f"Error during admin shutdown: {e}")
+
+        try:
             # Stop internal message listener
             self.worker_message_queue.put(None)
             self.message_listener_thread.join()
             if self.message_listener_thread.is_alive():
                 self.logger.warning("Message listener thread did not exit cleanly.")
 
-            self.dispatcher.stop()
-
         except Exception as e:
-            print(f"Error during shutdown: {e}")
+            print(f"Error during main process shutdown: {e}")
 
-        self.logger.info("Successfully stopped.")
+        self.logger.info("Worker root process completed.")
