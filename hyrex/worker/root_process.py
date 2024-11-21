@@ -1,25 +1,21 @@
 import logging
 import signal
 import threading
-from datetime import datetime, timezone
 from multiprocessing import Process, Queue
-from typing import Callable
+from uuid import UUID
 
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher import get_dispatcher
-from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
-from hyrex.worker.messages import (
-    AdminMessage,
-    AdminMessageType,
-    RootMessage,
-    RootMessageType,
-    SetExecutorTask,
-)
 from hyrex.worker.logging import LogLevel, init_logging
+from hyrex.worker.messages.admin_messages import NewExecutorMessage
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+)
 
 
 class WorkerRootProcess:
@@ -37,6 +33,8 @@ class WorkerRootProcess:
         self.worker_module_path = worker_module_path
         self.queue = queue
         self.num_processes = num_processes
+
+        self.heartbeat_requested = False
 
         self.stop_event = threading.Event()
         self.task_id_to_executor_id: dict[str, str] = {}
@@ -58,9 +56,6 @@ class WorkerRootProcess:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
-    def cancel_task(self, task_id: str):
-        pass
-
     def set_queue(self, queue: str):
         self.queue = queue
 
@@ -78,6 +73,8 @@ class WorkerRootProcess:
         )
         executor.start()
         self.executor_processes.append(executor)
+        # Notify admin of new executor
+        self.admin_message_queue.put(NewExecutorMessage(executor_id=executor_id))
 
     def _spawn_admin(self):
         admin = WorkerAdmin(
@@ -92,33 +89,31 @@ class WorkerRootProcess:
     def _message_listener(self):
         while True:
             # Blocking
-            raw_message = self.root_message_queue.get()
+            message = self.root_message_queue.get()
 
-            if raw_message == None:
+            if message == None:
                 break
 
-            message = RootMessage.model_validate(raw_message)
+            if isinstance(message, CancelTaskMessage):
+                self.cancel_task(message.task_id)
+            elif isinstance(message, SetExecutorTaskMessage):
+                self.set_executor_task(
+                    executor_id=message.executor_id, task_id=message.task_id
+                )
+            elif isinstance(message, HeartbeatRequestMessage):
+                self.heartbeat_requested = True
 
-            if message.message_type == RootMessageType.CANCEL_TASK:
-                # TODO
-                pass
-            elif message.message_type == RootMessageType.SET_EXECUTOR_TASK:
-                self.set_executor_task(SetExecutorTask.model_validate(message.payload))
-            elif message.message_type == RootMessageType.HEARTBEAT_REQUEST:
-                # TODO
-                pass
-
-    def set_executor_task(self, payload: SetExecutorTask):
+    def set_executor_task(self, executor_id: UUID, task_id: UUID):
         # Delete existing task mapping
-        for task_id, executor_id in self.task_id_to_executor_id.items():
-            if executor_id == payload.executor_id:
-                del self.task_id_to_executor_id[task_id]
+        for k, v in self.task_id_to_executor_id.items():
+            if v == executor_id:
+                del self.task_id_to_executor_id[k]
                 break
         # Add new mapping (unless task_id is None)
-        if payload.task_id:
-            self.task_id_to_executor_id[payload.task_id] = payload.executor_id
+        if task_id:
+            self.task_id_to_executor_id[task_id] = executor_id
 
-    def kill_task(self, task_id: str):
+    def cancel_task(self, task_id: UUID):
         executor_id = self.task_id_to_executor_id.get(task_id)
         if executor_id:
             executor_process = self.executor_id_to_process[executor_id]
@@ -126,7 +121,7 @@ class WorkerRootProcess:
             self.logger.info(f"Killed executor process to cancel task {task_id}")
 
             # Notify admin of successful termination
-            # TODO
+            self.admin_message_queue.put()
 
     def run(self):
         self.message_listener_thread = threading.Thread(target=self._message_listener)

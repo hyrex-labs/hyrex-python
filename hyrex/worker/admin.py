@@ -1,15 +1,18 @@
 import logging
 import os
 import signal
-import time
 import threading
+import time
 from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages import (
-    AdminMessage,
-    AdminMessageType,
+from hyrex.worker.messages.admin_messages import (
+    NewExecutorMessage,
+    ExecutorStoppedMessage,
+    TaskCanceledMessage,
+    ExecutorHeartbeatMessage,
+    TaskHeartbeatMessage,
 )
 
 
@@ -27,6 +30,8 @@ class WorkerAdmin(Process):
 
         # Hyrex queue for tasks
         self.queue = queue
+
+        self.current_executors = []
 
         # Outgoing messages to root process
         self.root_message_queue = root_message_queue
@@ -47,14 +52,26 @@ class WorkerAdmin(Process):
     def _message_listener(self):
         while True:
             # Blocking
-            raw_message = self.admin_message_queue.get()
+            message = self.admin_message_queue.get()
 
-            if raw_message == None:
+            if message == None:
                 break
 
-            message = AdminMessage.model_validate(raw_message)
-
-            if message.message_type == AdminMessageType.NEW_EXECUTOR:
+            if isinstance(message, NewExecutorMessage):
+                self.current_executors.append(message.executor_id)
+            elif isinstance(message, ExecutorStoppedMessage):
+                # TODO
+                # Mark executor as stopped (if not already)
+                # Mark "running" tasks with this executor ID as ???
+                pass
+            elif isinstance(message, TaskCanceledMessage):
+                # TODO
+                pass
+            elif isinstance(message, ExecutorHeartbeatMessage):
+                # TODO
+                pass
+            elif isinstance(message, TaskHeartbeatMessage):
+                # TODO
                 pass
 
     def run(self):

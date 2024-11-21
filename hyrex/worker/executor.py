@@ -8,7 +8,7 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
-from multiprocessing import Process, Queue, Event
+from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from uuid import UUID
 
@@ -17,9 +17,10 @@ from uuid_extensions import uuid7
 
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.worker.messages import RootMessage, RootMessageType, SetExecutorTask
-from hyrex.worker.worker import HyrexWorker
 from hyrex.worker.logging import LogLevel, init_logging
+from hyrex.worker.messages.root_messages import (RootMessage, RootMessageType,
+                                                 SetExecutorTaskPayload)
+from hyrex.worker.worker import HyrexWorker
 
 
 def generate_executor_name():
@@ -103,7 +104,9 @@ class WorkerExecutor(Process):
         self.root_message_queue.put(
             RootMessage(
                 message_type=RootMessageType.SET_EXECUTOR_TASK,
-                payload=SetExecutorTask(executor_id=self.executor_id, task_id=task_id),
+                payload=SetExecutorTaskPayload(
+                    executor_id=self.executor_id, task_id=task_id
+                ),
             )
         )
 
