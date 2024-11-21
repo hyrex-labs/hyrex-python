@@ -1,5 +1,6 @@
 from enum import StrEnum
 from typing import Union
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -10,11 +11,16 @@ class AdminMessageType(StrEnum):
     NEW_EXECUTOR = "new_executor"
 
 
+class NewExecutor(BaseModel):
+    executor_id: UUID
+
+
 # Incoming messages to admin process
 class AdminMessage(BaseModel):
-    type: AdminMessageType
-    task_ids: list[str]
-    executor_ids: list[str]
+    message_type: AdminMessageType
+    # TODO: Update to payload
+    task_ids: list[UUID]
+    executor_ids: list[UUID]
 
 
 class RootMessageType(StrEnum):
@@ -24,7 +30,7 @@ class RootMessageType(StrEnum):
 
 
 class CancelTask(BaseModel):
-    task_id: str
+    task_id: UUID
 
 
 class HeartbeatRequest(BaseModel):
@@ -32,13 +38,11 @@ class HeartbeatRequest(BaseModel):
 
 
 class SetExecutorTask(BaseModel):
-    executor_id: str
-    task_id: str
+    executor_id: UUID
+    task_id: UUID | None
 
 
 # Incoming messages to root process
 class RootMessage(BaseModel):
-    type: RootMessageType
-    message: Union[CancelTask, SetExecutorTask, HeartbeatRequest]
-    task_id: str
-    executor_id: str
+    message_type: RootMessageType
+    payload: Union[CancelTask, SetExecutorTask, HeartbeatRequest]

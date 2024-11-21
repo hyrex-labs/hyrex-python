@@ -17,7 +17,7 @@ from uuid_extensions import uuid7
 
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.worker.messages import RootMessage, RootMessageType
+from hyrex.worker.messages import RootMessage, RootMessageType, SetExecutorTask
 from hyrex.worker.worker import HyrexWorker
 from hyrex.worker.logging import LogLevel, init_logging
 
@@ -78,7 +78,6 @@ class WorkerExecutor(Process):
         signal.signal(signal.SIGINT, signal_handler)
 
     def process_item(self, task_name: str, args: dict):
-        # TODO: Update current task_id with root process
         task_func = self.task_registry[task_name]
         context = task_func.context_klass(**args)
         result = asyncio.run(task_func.async_call(context))
@@ -99,15 +98,26 @@ class WorkerExecutor(Process):
     def reset_or_cancel_task(self, task_id: UUID):
         self.dispatcher.reset_or_cancel_task(task_id=task_id)
 
+    # Notifies root process of current task being processed.
+    def update_current_task(self, task_id: UUID):
+        self.root_message_queue.put(
+            RootMessage(
+                message_type=RootMessageType.SET_EXECUTOR_TASK,
+                payload=SetExecutorTask(executor_id=self.executor_id, task_id=task_id),
+            )
+        )
+
     def process(self):
         try:
             tasks: list[DequeuedTask] = self.fetch_task()
             if not tasks:
-                # No unprocessed items, wait a bit before trying again
-                self._stop_event.wait(1.0)
+                # No unprocessed items, clear current task and wait a bit before trying again
+                self.update_current_task(None)
+                self._stop_event.wait(0.5)
                 return
 
             task = tasks[0]
+            self.update_current_task(task.id)
             result = self.process_item(task.name, task.args)
 
             if result is not None:
@@ -138,7 +148,7 @@ class WorkerExecutor(Process):
                 self.mark_task_failed(task.id)
                 self.attempt_retry(task.id)
 
-            self._stop_event.wait(1.0)  # Add delay after error
+            self._stop_event.wait(0.5)  # Add delay after error
 
     def run(self):
         os.setpgrp()

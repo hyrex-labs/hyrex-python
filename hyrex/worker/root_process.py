@@ -17,6 +17,7 @@ from hyrex.worker.messages import (
     AdminMessageType,
     RootMessage,
     RootMessageType,
+    SetExecutorTask,
 )
 from hyrex.worker.logging import LogLevel, init_logging
 
@@ -98,21 +99,39 @@ class WorkerRootProcess:
 
             message = RootMessage.model_validate(raw_message)
 
-            if message.type == RootMessageType.CANCEL_TASK:
+            if message.message_type == RootMessageType.CANCEL_TASK:
+                # TODO
                 pass
-            elif message.type == RootMessageType.SET_EXECUTOR_TASK:
+            elif message.message_type == RootMessageType.SET_EXECUTOR_TASK:
+                self.set_executor_task(SetExecutorTask.model_validate(message.payload))
+            elif message.message_type == RootMessageType.HEARTBEAT_REQUEST:
+                # TODO
                 pass
-            elif message.type == RootMessageType.HEARTBEAT_REQUEST:
-                pass
+
+    def set_executor_task(self, payload: SetExecutorTask):
+        # Delete existing task mapping
+        for task_id, executor_id in self.task_id_to_executor_id.items():
+            if executor_id == payload.executor_id:
+                del self.task_id_to_executor_id[task_id]
+                break
+        # Add new mapping (unless task_id is None)
+        if payload.task_id:
+            self.task_id_to_executor_id[payload.task_id] = payload.executor_id
 
     def kill_task(self, task_id: str):
         executor_id = self.task_id_to_executor_id.get(task_id)
         if executor_id:
             executor_process = self.executor_id_to_process[executor_id]
+            executor_process.kill()
+            self.logger.info(f"Killed executor process to cancel task {task_id}")
+
+            # Notify admin of successful termination
+            # TODO
 
     def run(self):
         self.message_listener_thread = threading.Thread(target=self._message_listener)
         self.message_listener_thread.start()
+        self.logger.info("Incoming message queue now active...")
 
         self.logger.info("Spawning admin process.")
         self._spawn_admin()
@@ -122,7 +141,12 @@ class WorkerRootProcess:
             self._spawn_executor()
 
         while not self.stop_event.is_set():
-            self.logger.info("Running action loop")
+            # Send heartbeat for tasks/executors if enough time has elapsed or request has been sent
+
+            # Check admin and restart if it has died
+
+            # Check all executors and restart any that have died
+
             self.stop_event.wait(1)
 
         self.stop()
@@ -165,6 +189,8 @@ class WorkerRootProcess:
             self.message_listener_thread.join()
             if self.message_listener_thread.is_alive():
                 self.logger.warning("Message listener thread did not exit cleanly.")
+            else:
+                self.logger.info("Message listener thread closed successfully.")
 
         except Exception as e:
             print(f"Error during main process shutdown: {e}")
