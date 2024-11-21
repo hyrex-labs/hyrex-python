@@ -1,6 +1,8 @@
 import logging
 import signal
 import threading
+import time
+from datetime import datetime, timezone
 from multiprocessing import Process, Queue
 from uuid import UUID
 
@@ -10,7 +12,13 @@ from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import NewExecutorMessage
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
 from hyrex.worker.messages.root_messages import (
     CancelTaskMessage,
     HeartbeatRequestMessage,
@@ -76,6 +84,26 @@ class WorkerRootProcess:
         # Notify admin of new executor
         self.admin_message_queue.put(NewExecutorMessage(executor_id=executor_id))
 
+    def check_executor_processes(self):
+        # Check each executor and respawn any that are lost.
+        for process in self.executor_processes:
+            if not process.is_alive():
+                # First, find the executor_id
+                for k, v in self.executor_id_to_process.items():
+                    if process == v:
+                        executor_id = k
+
+                # Now clean up everything
+                process.join(timeout=1.0)
+                self.clear_executor_task(executor_id=executor_id)
+                # Notify admin of stopped message
+                self.admin_message_queue.put(
+                    ExecutorStoppedMessage(executor_id=executor_id)
+                )
+
+                # Replace the executor process
+                self._spawn_executor()
+
     def _spawn_admin(self):
         admin = WorkerAdmin(
             root_message_queue=self.root_message_queue,
@@ -85,6 +113,13 @@ class WorkerRootProcess:
         )
         admin.start()
         self.admin_process = admin
+
+    def check_admin_process(self):
+        if not self.admin_process or not self.admin_process.is_alive():
+            self.logger.warning("Admin process not running, respawning...")
+            if self.admin_process:  # Clean up old process if it exists
+                self.admin_process.join(timeout=1.0)
+            self._spawn_admin()
 
     def _message_listener(self):
         while True:
@@ -103,12 +138,14 @@ class WorkerRootProcess:
             elif isinstance(message, HeartbeatRequestMessage):
                 self.heartbeat_requested = True
 
-    def set_executor_task(self, executor_id: UUID, task_id: UUID):
-        # Delete existing task mapping
+    def clear_executor_task(self, executor_id: UUID):
         for k, v in self.task_id_to_executor_id.items():
             if v == executor_id:
                 del self.task_id_to_executor_id[k]
                 break
+
+    def set_executor_task(self, executor_id: UUID, task_id: UUID):
+        self.clear_executor_task(executor_id=executor_id)
         # Add new mapping (unless task_id is None)
         if task_id:
             self.task_id_to_executor_id[task_id] = executor_id
@@ -121,7 +158,10 @@ class WorkerRootProcess:
             self.logger.info(f"Killed executor process to cancel task {task_id}")
 
             # Notify admin of successful termination
-            self.admin_message_queue.put()
+            self.admin_message_queue.put(
+                ExecutorStoppedMessage(executor_id=executor_id)
+            )
+            self.admin_message_queue.put(TaskCanceledMessage(task_id=task_id))
 
     def run(self):
         self.message_listener_thread = threading.Thread(target=self._message_listener)
@@ -135,13 +175,43 @@ class WorkerRootProcess:
         for _ in range(self.num_processes):
             self._spawn_executor()
 
-        while not self.stop_event.is_set():
-            # Send heartbeat for tasks/executors if enough time has elapsed or request has been sent
+        self.send_heartbeats()
+        last_heartbeat = time.monotonic()
 
-            # Check admin and restart if it has died
+        try:
+            while not self.stop_event.is_set():
+                self.logger.debug(
+                    f"Current executor processes: {len(self.executor_processes)}\nExecutor tasks: {self.task_id_to_executor_id}\n"
+                )
+                # Check admin and restart if it has died
+                self.check_admin_process()
 
-            # Check all executors and restart any that have died
+                # Check all executors and restart any that have died
+                self.check_executor_processes()
 
+                # Send heartbeat if requested or we're overdue
+                current_time = time.monotonic()
+                if (
+                    self.heartbeat_requested
+                    or current_time - last_heartbeat
+                    > constants.WORKER_HEARTBEAT_FREQUENCY
+                ):
+                    self.admin_message_queue.put(
+                        ExecutorHeartbeatMessage(
+                            executor_ids=self.executor_id_to_process.keys(),
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                    )
+                    self.admin_message_queue.put(
+                        TaskHeartbeatMessage(
+                            task_ids=self.task_id_to_executor_id.keys(),
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                    )
+                    last_heartbeat = datetime.now(timezone.utc)
+
+        finally:
+            # Interruptible sleep
             self.stop_event.wait(1)
 
         self.stop()
@@ -149,9 +219,9 @@ class WorkerRootProcess:
     def stop(self):
         try:
             # Stop all executors
-            self.logger.info("Stopping executor processes.")
             for executor_process in self.executor_processes:
                 executor_process._stop_event.set()
+            for executor_process in self.executor_processes:
                 executor_process.join(timeout=constants.WORKER_EXECUTOR_PROCESS_TIMEOUT)
                 if executor_process.is_alive():
                     self.logger.warning(

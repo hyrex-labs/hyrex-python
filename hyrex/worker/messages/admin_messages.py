@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -16,8 +17,10 @@ class TaskCanceledMessage(BaseModel):
 
 
 class ExecutorHeartbeatMessage(BaseModel):
+    timestamp: datetime
     executor_ids: list[UUID]
 
 
 class TaskHeartbeatMessage(BaseModel):
+    timestamp: datetime
     task_ids: list[UUID]

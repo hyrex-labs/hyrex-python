@@ -8,12 +8,13 @@ from multiprocessing import Event, Process, Queue
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.admin_messages import (
-    NewExecutorMessage,
-    ExecutorStoppedMessage,
-    TaskCanceledMessage,
     ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
     TaskHeartbeatMessage,
 )
+from hyrex.worker.messages.root_messages import CancelTaskMessage
 
 
 class WorkerAdmin(Process):
@@ -61,6 +62,7 @@ class WorkerAdmin(Process):
                 self.current_executors.append(message.executor_id)
             elif isinstance(message, ExecutorStoppedMessage):
                 # TODO
+                self.current_executors.remove()
                 # Mark executor as stopped (if not already)
                 # Mark "running" tasks with this executor ID as ???
                 pass
@@ -86,16 +88,16 @@ class WorkerAdmin(Process):
         self.message_listener_thread.start()
         self.logger.info("Message listener thread now active...")
 
-        while not self._stop_event.is_set():
+        try:
+            while not self._stop_event.is_set():
+                # Get "up_for_cancel" tasks, send to main process
+                tasks_to_cancel = []
+                for task_id in tasks_to_cancel:
+                    self.root_message_queue.put(CancelTaskMessage(task_id=task_id))
 
-            # Get "up_for_cancel" tasks, send to main process
-            tasks_to_cancel = []
-
-            # Check for heartbeat request
-
-            self._stop_event.wait(1)
-
-        self.stop()
+                self._stop_event.wait(0.5)
+        finally:
+            self.stop()
 
     def stop(self):
         try:
