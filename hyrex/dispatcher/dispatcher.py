@@ -1,6 +1,7 @@
 import logging
 import signal
 from abc import ABC, abstractmethod
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -100,6 +101,14 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def disconnect_executor(self, executor_id: UUID):
+        pass
+
+    @abstractmethod
+    def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        pass
+
+    @abstractmethod
+    def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         pass
 
     @abstractmethod

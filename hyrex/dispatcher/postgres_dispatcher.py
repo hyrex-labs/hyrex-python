@@ -1,6 +1,7 @@
 import threading
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from queue import Empty, Queue
 from typing import List
 from uuid import UUID
@@ -193,6 +194,14 @@ class PostgresDispatcher(Dispatcher):
     def disconnect_executor(self, executor_id: UUID):
         with self.transaction() as cur:
             cur.execute(sql.DISCONNECT_EXECUTOR, [executor_id])
+
+    def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        # TODO
+        pass
+
+    def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
+        # TODO
+        pass
 
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:

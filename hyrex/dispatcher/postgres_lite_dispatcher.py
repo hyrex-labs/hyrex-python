@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from psycopg import RawCursor
@@ -122,6 +123,14 @@ class PostgresLiteDispatcher(Dispatcher):
             with RawCursor(conn) as cur:
                 cur.execute(sql.DISCONNECT_EXECUTOR, [executor_id])
             conn.commit()
+
+    def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        # TODO
+        pass
+
+    def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
+        # TODO
+        pass
 
     def save_result(self, task_id: UUID, result: str):
         with self.connection_pool() as conn:

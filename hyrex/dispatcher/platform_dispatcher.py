@@ -1,5 +1,6 @@
 import threading
 import time
+from datetime import datetime
 from queue import Empty, Queue
 from uuid import UUID
 
@@ -203,6 +204,12 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def disconnect_executor(self, executor_id: UUID):
+        pass
+
+    def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        pass
+
+    def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         pass
 
     # def get_workers_to_cancel(self, worker_ids: list[UUID]):
