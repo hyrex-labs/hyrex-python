@@ -12,14 +12,18 @@ from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+)
 
 
 class WorkerRootProcess:
@@ -159,6 +163,20 @@ class WorkerRootProcess:
             )
             self.admin_message_queue.put(TaskCanceledMessage(task_id=task_id))
 
+    def send_heartbeats(self):
+        self.admin_message_queue.put(
+            ExecutorHeartbeatMessage(
+                executor_ids=self.executor_id_to_process.keys(),
+                timestamp=datetime.now(timezone.utc),
+            )
+        )
+        self.admin_message_queue.put(
+            TaskHeartbeatMessage(
+                task_ids=self.task_id_to_executor_id.keys(),
+                timestamp=datetime.now(timezone.utc),
+            )
+        )
+
     def run(self):
         self.message_listener_thread = threading.Thread(target=self._message_listener)
         self.message_listener_thread.start()
@@ -192,19 +210,9 @@ class WorkerRootProcess:
                     or current_time - last_heartbeat
                     > constants.WORKER_HEARTBEAT_FREQUENCY
                 ):
-                    self.admin_message_queue.put(
-                        ExecutorHeartbeatMessage(
-                            executor_ids=self.executor_id_to_process.keys(),
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                    )
-                    self.admin_message_queue.put(
-                        TaskHeartbeatMessage(
-                            task_ids=self.task_id_to_executor_id.keys(),
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                    )
-                    last_heartbeat = datetime.now(timezone.utc)
+                    self.send_heartbeats()
+                    last_heartbeat = time.monotonic()
+                    self.heartbeat_requested = False
 
         finally:
             # Interruptible sleep

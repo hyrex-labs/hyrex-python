@@ -19,7 +19,11 @@ class PostgresDispatcher(Dispatcher):
     def __init__(self, conn_string: str, batch_size=200, flush_interval=0.05):
         super().__init__()
         self.conn_string = conn_string
-        self.pool = ConnectionPool(conn_string, open=True)
+        self.pool = ConnectionPool(
+            conn_string + "?keepalives=1&keepalives_idle=60&keepalives_interval=10",
+            open=True,
+            max_idle=300,
+        )
 
         self.local_queue = Queue()
         self.batch_size = batch_size

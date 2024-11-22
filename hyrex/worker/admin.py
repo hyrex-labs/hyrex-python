@@ -7,11 +7,13 @@ from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
 from hyrex.worker.messages.root_messages import CancelTaskMessage
 
 
@@ -88,7 +90,9 @@ class WorkerAdmin(Process):
 
         try:
             while not self._stop_event.is_set():
-                # Get "up_for_cancel" tasks, send to main process
+                self.logging.debug()
+
+                # TODO Get "up_for_cancel" tasks, send to main process
                 tasks_to_cancel = []
                 for task_id in tasks_to_cancel:
                     self.root_message_queue.put(CancelTaskMessage(task_id=task_id))

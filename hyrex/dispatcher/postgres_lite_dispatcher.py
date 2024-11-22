@@ -15,7 +15,11 @@ class PostgresLiteDispatcher(Dispatcher):
     def __init__(self, conn_string: str):
         super().__init__()
         self.conn_string = conn_string
-        self.pool = ConnectionPool(conn_string, open=True)
+        self.pool = ConnectionPool(
+            conn_string + "?keepalives=1&keepalives_idle=60&keepalives_interval=10",
+            open=True,
+            max_idle=300,
+        )
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:

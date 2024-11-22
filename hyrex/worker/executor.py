@@ -19,11 +19,7 @@ from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.root_messages import (
-    RootMessage,
-    RootMessageType,
-    SetExecutorTaskPayload,
-)
+from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -106,12 +102,7 @@ class WorkerExecutor(Process):
     # Notifies root process of current task being processed.
     def update_current_task(self, task_id: UUID):
         self.root_message_queue.put(
-            RootMessage(
-                message_type=RootMessageType.SET_EXECUTOR_TASK,
-                payload=SetExecutorTaskPayload(
-                    executor_id=self.executor_id, task_id=task_id
-                ),
-            )
+            SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
     def process(self):
@@ -124,13 +115,12 @@ class WorkerExecutor(Process):
                 return
 
             task = tasks[0]
-            os.setenv(EnvVars.PARENT_TASK, task.id)
             # Notify root process of new task
             self.update_current_task(task.id)
             # Set parent task env var for any sub-tasks
-            os.setenv(EnvVars.PARENT_TASK, task.id)
+            os.environ[EnvVars.PARENT_TASK] = str(task.id)
             result = self.process_item(task.name, task.args)
-            os.unset(EnvVars.PARENT_TASK)
+            del os.environ[EnvVars.PARENT_TASK]
 
             if result is not None:
                 if isinstance(result, BaseModel):
