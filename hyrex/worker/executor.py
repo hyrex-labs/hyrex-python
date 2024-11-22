@@ -15,11 +15,15 @@ from uuid import UUID
 from pydantic import BaseModel
 from uuid_extensions import uuid7
 
+from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.root_messages import (RootMessage, RootMessageType,
-                                                 SetExecutorTaskPayload)
+from hyrex.worker.messages.root_messages import (
+    RootMessage,
+    RootMessageType,
+    SetExecutorTaskPayload,
+)
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -120,8 +124,13 @@ class WorkerExecutor(Process):
                 return
 
             task = tasks[0]
+            os.setenv(EnvVars.PARENT_TASK, task.id)
+            # Notify root process of new task
             self.update_current_task(task.id)
+            # Set parent task env var for any sub-tasks
+            os.setenv(EnvVars.PARENT_TASK, task.id)
             result = self.process_item(task.name, task.args)
+            os.unset(EnvVars.PARENT_TASK)
 
             if result is not None:
                 if isinstance(result, BaseModel):
