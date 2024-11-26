@@ -194,6 +194,18 @@ GET_TASK_STATUS = """
     SELECT status FROM hyrextask WHERE id = $1
 """
 
+TASK_HEARTBEAT = """
+    UPDATE hyrextask 
+    SET last_heartbeat = $1 
+    WHERE id = ANY($2)
+"""
+
+EXECUTOR_HEARTBEAT = """
+    UPDATE hyrexexecutor 
+    SET last_heartbeat = $1 
+    WHERE id = ANY($2)
+"""
+
 REGISTER_EXECUTOR = """
     INSERT INTO hyrexexecutor (id, name, queue, started)
     VALUES ($1, $2, $3, CURRENT_TIMESTAMP)

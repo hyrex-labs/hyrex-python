@@ -12,14 +12,18 @@ from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+)
 
 
 class WorkerRootProcess:
@@ -68,15 +72,16 @@ class WorkerRootProcess:
 
     def _spawn_executor(self):
         executor_id = uuid7()
-        executor = WorkerExecutor(
+        executor_process = WorkerExecutor(
             log_level=self.log_level,
             root_message_queue=self.root_message_queue,
             worker_module_path=self.worker_module_path,
             queue=self.queue,
             executor_id=executor_id,
         )
-        executor.start()
-        self.executor_processes.append(executor)
+        executor_process.start()
+        self.executor_processes.append(executor_process)
+        self.executor_id_to_process[executor_id] = executor_process
         # Notify admin of new executor
         self.admin_message_queue.put(NewExecutorMessage(executor_id=executor_id))
 
@@ -160,6 +165,8 @@ class WorkerRootProcess:
             self.admin_message_queue.put(TaskCanceledMessage(task_id=task_id))
 
     def send_heartbeats(self):
+        self.logger.debug("Sending task and executor heartbeats.")
+
         self.admin_message_queue.put(
             ExecutorHeartbeatMessage(
                 executor_ids=self.executor_id_to_process.keys(),
@@ -185,6 +192,8 @@ class WorkerRootProcess:
         for _ in range(self.num_processes):
             self._spawn_executor()
 
+        # Let processes initialize before sending first heartbeat
+        self.stop_event.wait(5.0)
         self.send_heartbeats()
         last_heartbeat = time.monotonic()
 
@@ -210,11 +219,11 @@ class WorkerRootProcess:
                     last_heartbeat = time.monotonic()
                     self.heartbeat_requested = False
 
-        finally:
-            # Interruptible sleep
-            self.stop_event.wait(1)
+                # Interruptible sleep
+                self.stop_event.wait(1)
 
-        self.stop()
+        finally:
+            self.stop()
 
     def stop(self):
         try:

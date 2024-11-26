@@ -125,15 +125,19 @@ class PostgresLiteDispatcher(Dispatcher):
             conn.commit()
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
-        # TODO
-        pass
+        with self.pool.connection() as conn:
+            with RawCursor(conn) as cur:
+                cur.execute(sql.EXECUTOR_HEARTBEAT, [timestamp, executor_ids])
+            conn.commit()
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
-        # TODO
-        pass
+        with self.pool.connection() as conn:
+            with RawCursor(conn) as cur:
+                cur.execute(sql.TASK_HEARTBEAT, [timestamp, task_ids])
+            conn.commit()
 
     def save_result(self, task_id: UUID, result: str):
-        with self.connection_pool() as conn:
+        with self.pool.connection() as conn:
             with RawCursor(conn) as cur:
                 cur.execute(sql.SAVE_RESULT, [task_id, result])
             conn.commit()

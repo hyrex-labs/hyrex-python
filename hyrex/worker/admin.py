@@ -7,11 +7,13 @@ from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
 from hyrex.worker.messages.root_messages import CancelTaskMessage
 
 
@@ -56,6 +58,8 @@ class WorkerAdmin(Process):
             if message == None:
                 break
 
+            self.logger.debug(f"Message received: {message}")
+
             if isinstance(message, NewExecutorMessage):
                 self.current_executors.append(message.executor_id)
             elif isinstance(message, ExecutorStoppedMessage):
@@ -68,18 +72,18 @@ class WorkerAdmin(Process):
                 # TODO
                 pass
             elif isinstance(message, ExecutorHeartbeatMessage):
-                # TODO
-                pass
+                self.dispatcher.executor_heartbeat(
+                    message.executor_ids, message.timestamp
+                )
             elif isinstance(message, TaskHeartbeatMessage):
-                # TODO
-                pass
+                self.dispatcher.task_heartbeat(message.task_ids, message.timestamp)
 
     def run(self):
         os.setpgrp()
         init_logging(self.log_level)
 
         self.logger.info("Initializing admin.")
-        self.dispatcher = get_dispatcher(worker=True)
+        self.dispatcher = get_dispatcher()
         self.setup_signal_handlers()
 
         self.message_listener_thread = threading.Thread(target=self._message_listener)
@@ -88,8 +92,6 @@ class WorkerAdmin(Process):
 
         try:
             while not self._stop_event.is_set():
-                self.logging.debug()
-
                 # TODO Get "up_for_cancel" tasks, send to main process
                 tasks_to_cancel = []
                 for task_id in tasks_to_cancel:

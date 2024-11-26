@@ -196,12 +196,12 @@ class PostgresDispatcher(Dispatcher):
             cur.execute(sql.DISCONNECT_EXECUTOR, [executor_id])
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
-        # TODO
-        pass
+        with self.transaction() as cur:
+            cur.execute(sql.EXECUTOR_HEARTBEAT, [timestamp, executor_ids])
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
-        # TODO
-        pass
+        with self.transaction() as cur:
+            cur.execute(sql.TASK_HEARTBEAT, [timestamp, task_ids])
 
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:
