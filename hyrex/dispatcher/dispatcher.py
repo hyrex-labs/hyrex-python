@@ -112,5 +112,9 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def get_tasks_up_for_cancel(self):
+        pass
+
+    @abstractmethod
     def stop(self):
         pass

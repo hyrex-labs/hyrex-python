@@ -47,7 +47,6 @@ class WorkerRootProcess:
         self.stop_event = threading.Event()
         self.task_id_to_executor_id: dict[str, str] = {}
         self.executor_id_to_process: dict[str, Process] = {}
-        self.executor_processes: list[Process] = []
         self.admin_process: Process = None
         self.root_message_queue = Queue()
         self.admin_message_queue = Queue()
@@ -80,30 +79,33 @@ class WorkerRootProcess:
             executor_id=executor_id,
         )
         executor_process.start()
-        self.executor_processes.append(executor_process)
         self.executor_id_to_process[executor_id] = executor_process
         # Notify admin of new executor
         self.admin_message_queue.put(NewExecutorMessage(executor_id=executor_id))
 
     def check_executor_processes(self):
-        # Check each executor and respawn any that are lost.
-        for process in self.executor_processes:
-            if not process.is_alive():
-                # First, find the executor_id
-                for k, v in self.executor_id_to_process.items():
-                    if process == v:
-                        executor_id = k
+        # Check each executor and respawn if process has died.
+        stopped_executors = []
+        for executor_id, process in self.executor_id_to_process.items():
+            if process.exitcode:
+                self.logger.info(f"Process {process.pid} stopped. Cleaning up.")
+                stopped_executors.append(executor_id)
 
-                # Now clean up everything
-                process.join(timeout=1.0)
-                self.clear_executor_task(executor_id=executor_id)
-                # Notify admin of stopped message
-                self.admin_message_queue.put(
-                    ExecutorStoppedMessage(executor_id=executor_id)
-                )
+        for executor_id in stopped_executors:
+            # Now clean up everything
+            self.executor_id_to_process[executor_id].join(timeout=1.0)
+            del self.executor_id_to_process[executor_id]
+            # Let message thread clear the task ID mapping to avoid concurrent access issues.
+            self.root_message_queue.put(
+                SetExecutorTaskMessage(executor_id=executor_id, task_id=None)
+            )
+            # Notify admin of stopped message
+            self.admin_message_queue.put(
+                ExecutorStoppedMessage(executor_id=executor_id)
+            )
 
-                # Replace the executor process
-                self._spawn_executor()
+            # Replace the executor process
+            self._spawn_executor()
 
     def _spawn_admin(self):
         admin = WorkerAdmin(
@@ -192,16 +194,10 @@ class WorkerRootProcess:
         for _ in range(self.num_processes):
             self._spawn_executor()
 
-        # Let processes initialize before sending first heartbeat
-        self.stop_event.wait(5.0)
-        self.send_heartbeats()
         last_heartbeat = time.monotonic()
 
         try:
             while not self.stop_event.is_set():
-                self.logger.debug(
-                    f"Current executor processes: {len(self.executor_processes)}\nExecutor tasks: {self.task_id_to_executor_id}\n"
-                )
                 # Check admin and restart if it has died
                 self.check_admin_process()
 
@@ -228,9 +224,9 @@ class WorkerRootProcess:
     def stop(self):
         try:
             # Stop all executors
-            for executor_process in self.executor_processes:
+            for executor_process in self.executor_id_to_process.values():
                 executor_process._stop_event.set()
-            for executor_process in self.executor_processes:
+            for executor_process in self.executor_id_to_process.values():
                 executor_process.join(timeout=constants.WORKER_EXECUTOR_PROCESS_TIMEOUT)
                 if executor_process.is_alive():
                     self.logger.warning(

@@ -203,6 +203,11 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.TASK_HEARTBEAT, [timestamp, task_ids])
 
+    def get_tasks_up_for_cancel(self):
+        with self.transaction() as cur:
+            cur.execute(sql.GET_TASKS_UP_FOR_CANCEL)
+            return [row[0] for row in cur.fetchall()]
+
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:
             cur.execute(sql.SAVE_RESULT, [task_id, result])

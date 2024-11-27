@@ -63,11 +63,9 @@ class WorkerAdmin(Process):
             if isinstance(message, NewExecutorMessage):
                 self.current_executors.append(message.executor_id)
             elif isinstance(message, ExecutorStoppedMessage):
-                # TODO
-                self.current_executors.remove()
                 # Mark executor as stopped (if not already)
-                # Mark "running" tasks with this executor ID as ???
-                pass
+                self.dispatcher.disconnect_executor(message.executor_id)
+                # TODO: Mark "running" tasks with this executor ID as ???
             elif isinstance(message, TaskCanceledMessage):
                 # TODO
                 pass
@@ -92,8 +90,8 @@ class WorkerAdmin(Process):
 
         try:
             while not self._stop_event.is_set():
-                # TODO Get "up_for_cancel" tasks, send to main process
-                tasks_to_cancel = []
+                # Get "up_for_cancel" tasks, send to main process
+                tasks_to_cancel = self.dispatcher.get_tasks_up_for_cancel()
                 for task_id in tasks_to_cancel:
                     self.root_message_queue.put(CancelTaskMessage(task_id=task_id))
 

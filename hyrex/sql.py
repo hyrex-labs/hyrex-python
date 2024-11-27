@@ -190,6 +190,10 @@ MARK_TASK_CANCELED = """
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
+GET_TASKS_UP_FOR_CANCEL = """
+    SELECT id FROM hyrextask WHERE status = 'up_for_cancel'
+"""
+
 GET_TASK_STATUS = """
     SELECT status FROM hyrextask WHERE id = $1
 """
@@ -207,14 +211,14 @@ EXECUTOR_HEARTBEAT = """
 """
 
 REGISTER_EXECUTOR = """
-    INSERT INTO hyrexexecutor (id, name, queue, started)
-    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+    INSERT INTO hyrexexecutor (id, name, queue, started, last_heartbeat)
+    VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 """
 
 DISCONNECT_EXECUTOR = """
     UPDATE hyrexexecutor
     SET stopped = CURRENT_TIMESTAMP
-    WHERE id = $1
+    WHERE id = $1 AND stopped IS NULL
 """
 
 SAVE_RESULT = """

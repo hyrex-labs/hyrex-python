@@ -212,5 +212,8 @@ class PlatformDispatcher(Dispatcher):
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         pass
 
+    def get_tasks_up_for_cancel(self):
+        pass
+
     # def get_workers_to_cancel(self, worker_ids: list[UUID]):
     #     pass
