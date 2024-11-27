@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hyrex"
 version = "0.7.0"
-description = "Hyrex is a modern, open-source task orchestration framework."
+description = "Hyrex is a modern, open-source, Postgres-based task orchestration framework."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
