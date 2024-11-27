@@ -4,7 +4,7 @@ CREATE_HYREX_TASK_TABLE = """
 DO $$
 BEGIN
 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statusenum' AND typnamespace = 'public'::regnamespace) THEN
-CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled');
+CREATE TYPE statusenum AS ENUM ('success', 'failed', 'running', 'queued', 'up_for_cancel', 'canceled', 'lost', 'waiting');
 END IF;
 END $$;
 
@@ -13,6 +13,7 @@ create table if not exists hyrextask
     id              uuid       not null
 primary key,
     root_id         uuid       not null,
+    parent_id       uuid,
     task_name       varchar    not null,
     args            json       not null,
     queue           varchar    not null,
@@ -21,9 +22,10 @@ primary key,
     status          statusenum not null default 'queued'::statusenum,
     attempt_number  smallint   not null default 0,
     scheduled_start timestamp with time zone,
-    worker_id       uuid,
+    executor_id     uuid,
     queued          timestamp with time zone default CURRENT_TIMESTAMP,
     started         timestamp with time zone,
+    last_heartbeat  timestamp with time zone,
     finished        timestamp with time zone
 );
 
@@ -51,15 +53,16 @@ CREATE TABLE IF NOT EXISTS hyrextaskresult (
 );
 """
 
-CREATE_HYREX_WORKER_TABLE = """
-create table if not exists hyrexworker
+CREATE_HYREX_EXECUTOR_TABLE = """
+create table if not exists hyrexexecutor
 (
     id      uuid    not null
 primary key,
     name    varchar not null,
     queue   varchar not null,
-    started timestamp,
-    stopped timestamp
+    started timestamp with time zone default CURRENT_TIMESTAMP,
+    last_heartbeat timestamp with time zone,
+    stopped timestamp with time zone
 );
 """
 
@@ -75,7 +78,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $2
+SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, worker_id = $2
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
@@ -91,7 +94,7 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, worker_id = $1
+SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $1
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
@@ -152,13 +155,13 @@ INSERT INTO hyrextask (
 MARK_TASK_SUCCESS = """
     UPDATE hyrextask 
     SET status = 'success', finished = CURRENT_TIMESTAMP
-    WHERE id = $1
+    WHERE id = $1 AND status = 'running'
 """
 
 MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
-    WHERE id = $1
+    WHERE id = $1 AND status = 'failed'
 """
 
 RESET_OR_CANCEL_TASK = """
@@ -167,8 +170,8 @@ RESET_OR_CANCEL_TASK = """
                    WHEN status = 'up_for_cancel' THEN 'canceled'::statusenum 
                    ELSE 'queued'::statusenum 
                END, 
-       worker_id = CASE 
-                     WHEN status = 'up_for_cancel' THEN worker_id  -- Keep the current value
+       executor_id = CASE 
+                     WHEN status = 'up_for_cancel' THEN executor_id  -- Keep the current value
                      ELSE NULL
                    END,
        started = CASE 
@@ -178,7 +181,7 @@ RESET_OR_CANCEL_TASK = """
    WHERE id = $1
 """
 
-MARK_TASK_CANCELED = """
+TRY_TO_CANCEL_TASK = """
     UPDATE hyrextask
     SET status = CASE 
                 WHEN status = 'running' THEN 'up_for_cancel'::statusenum 
@@ -187,23 +190,47 @@ MARK_TASK_CANCELED = """
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
-GET_WORKERS_TO_CANCEL = """
-    SELECT worker_id FROM hyrextask WHERE status = 'up_for_cancel' AND worker_id = ANY($1);
+TASK_CANCELED = """
+    UPDATE hyrextask
+    SET status = 'canceled'
+    WHERE id = $1 AND status = 'up_for_cancel';
+"""
+
+GET_TASKS_UP_FOR_CANCEL = """
+    SELECT id FROM hyrextask WHERE status = 'up_for_cancel'
 """
 
 GET_TASK_STATUS = """
     SELECT status FROM hyrextask WHERE id = $1
 """
 
-REGISTER_WORKER = """
-    INSERT INTO hyrexworker (id, name, queue, started)
-    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+TASK_HEARTBEAT = """
+    UPDATE hyrextask 
+    SET last_heartbeat = $1 
+    WHERE id = ANY($2)
 """
 
-MARK_WORKER_STOPPED = """
-    UPDATE hyrexworker
+EXECUTOR_HEARTBEAT = """
+    UPDATE hyrexexecutor 
+    SET last_heartbeat = $1 
+    WHERE id = ANY($2)
+"""
+
+REGISTER_EXECUTOR = """
+    INSERT INTO hyrexexecutor (id, name, queue, started, last_heartbeat)
+    VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+"""
+
+DISCONNECT_EXECUTOR = """
+    UPDATE hyrexexecutor
     SET stopped = CURRENT_TIMESTAMP
-    WHERE id = $1
+    WHERE id = $1 AND stopped IS NULL
+"""
+
+MARK_RUNNING_TASKS_LOST = """
+    UPDATE hyrextask
+    SET status = 'lost'
+    WHERE status = 'running' AND executor_id = $1
 """
 
 SAVE_RESULT = """

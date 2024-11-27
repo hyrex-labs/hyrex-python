@@ -1,5 +1,6 @@
 import threading
 import time
+from datetime import datetime
 from queue import Empty, Queue
 from uuid import UUID
 
@@ -19,6 +20,7 @@ class PlatformDispatcher(Dispatcher):
     ENQUEUE_TASK_PATH = "/connect/enqueue-task"
 
     def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
+        super().__init__()
         self.api_key = api_key
 
         self.local_queue = Queue()
@@ -101,15 +103,15 @@ class PlatformDispatcher(Dispatcher):
         """
         Stops the batching process and flushes remaining tasks.
         """
-        self.logger.info("Stopping dispatcher...")
+        self.logger.debug("Stopping dispatcher...")
         self.running = False
         self.thread.join()
-        self.logger.info("Dispatcher stopped successfully!")
+        self.logger.debug("Dispatcher stopped successfully!")
 
     def dequeue(
         self,
         worker_id: UUID,
-        queue: str = constants.DEFAULT_QUEUE,
+        queue: str = constants.ANY_QUEUE,
         num_tasks: int = 1,
     ) -> list[DequeuedTask]:
         fetch_url = f"{self.HYREX_PLATFORM_URL}{self.DEQUEUE_TASK_PATH}"
@@ -166,16 +168,15 @@ class PlatformDispatcher(Dispatcher):
     def mark_failed(self, task_id: UUID):
         self._update_task_status(task_id, StatusEnum.failed)
 
-    # TODO: Update this once platform supports a full reset
-    def reset_or_cancel_task(self, task_id: UUID):
-        self._update_task_status(task_id, StatusEnum.queued)
-
     def attempt_retry(self, task_id: UUID):
         raise NotImplementedError("Retries not yet implemented on Hyrex platform")
 
     # TODO: Implement
-    def cancel_task(self, task_id: UUID):
-        pass
+    def try_to_cancel_task(self, task_id: UUID):
+        raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
+
+    def task_canceled(self, task_id: UUID):
+        raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:
         get_status_url = f"{self.HYREX_PLATFORM_URL}{self.GET_STATUS_PATH}"
@@ -198,11 +199,23 @@ class PlatformDispatcher(Dispatcher):
                 raise
             self.logger.error(f"Exception while getting task status: {str(e)}")
 
-    def register_worker(self, worker_id: UUID):
+    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         pass
 
-    def mark_worker_stopped(self, worker_id: UUID):
+    def disconnect_executor(self, executor_id: UUID):
         pass
 
-    def get_workers_to_cancel(self, worker_ids: list[UUID]):
+    def mark_running_tasks_lost(self, executor_id: UUID):
         pass
+
+    def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        pass
+
+    def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
+        pass
+
+    def get_tasks_up_for_cancel(self):
+        pass
+
+    # def get_workers_to_cancel(self, worker_ids: list[UUID]):
+    #     pass
