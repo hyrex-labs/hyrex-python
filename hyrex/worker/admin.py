@@ -40,16 +40,6 @@ class WorkerAdmin(Process):
         self.admin_message_queue = admin_message_queue
         self._stop_event = Event()
 
-    def setup_signal_handlers(self):
-        def signal_handler(signum, frame):
-            signame = signal.Signals(signum).name
-            self.logger.info(f"\nReceived {signame}. Starting graceful shutdown...")
-            self._stop_event.set()
-
-        # Register the handler for both SIGTERM and SIGINT
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
-
     def _message_listener(self):
         while True:
             # Blocking
@@ -65,10 +55,9 @@ class WorkerAdmin(Process):
             elif isinstance(message, ExecutorStoppedMessage):
                 # Mark executor as stopped (if not already)
                 self.dispatcher.disconnect_executor(message.executor_id)
-                # TODO: Mark "running" tasks with this executor ID as ???
+                self.dispatcher.mark_running_tasks_lost(message.executor_id)
             elif isinstance(message, TaskCanceledMessage):
-                # TODO
-                pass
+                self.dispatcher.task_canceled(message.task_id)
             elif isinstance(message, ExecutorHeartbeatMessage):
                 self.dispatcher.executor_heartbeat(
                     message.executor_ids, message.timestamp
@@ -77,12 +66,14 @@ class WorkerAdmin(Process):
                 self.dispatcher.task_heartbeat(message.task_ids, message.timestamp)
 
     def run(self):
-        os.setpgrp()
         init_logging(self.log_level)
 
         self.logger.info("Initializing admin.")
-        self.dispatcher = get_dispatcher()
-        self.setup_signal_handlers()
+        self.dispatcher = get_dispatcher(worker=True)
+
+        # Ignore signals, let main process manage shutdown.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         self.message_listener_thread = threading.Thread(target=self._message_listener)
         self.message_listener_thread.start()
@@ -96,6 +87,13 @@ class WorkerAdmin(Process):
                     self.root_message_queue.put(CancelTaskMessage(task_id=task_id))
 
                 self._stop_event.wait(0.5)
+
+                # Confirm parent is still alive
+                if os.getppid() == 1:
+                    self.logger.warning(
+                        "Root process died unexpectedly. Shutting down."
+                    )
+                    self._stop_event.set()
         finally:
             self.stop()
 

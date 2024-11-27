@@ -21,7 +21,7 @@ class Dispatcher(ABC):
 
     def _signal_handler(self, signum, frame):
         signame = signal.Signals(signum).name
-        self.logger.info(f"\nReceived {signame}. Shutting down Hyrex dispatcher...")
+        self.logger.debug(f"\nReceived {signame}. Shutting down Hyrex dispatcher...")
         self.stop()
 
     def _chain_signal_handlers(self, new_handler, old_handler):
@@ -71,15 +71,15 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def reset_or_cancel_task(self, task_id: UUID):
-        pass
-
-    @abstractmethod
     def attempt_retry(self, task_id: UUID):
         pass
 
     @abstractmethod
-    def cancel_task(self, task_id: UUID):
+    def try_to_cancel_task(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def task_canceled(self, task_id: UUID):
         pass
 
     # Result must be a JSON string

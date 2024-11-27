@@ -68,16 +68,6 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def setup_signal_handlers(self):
-        def signal_handler(signum, frame):
-            signame = signal.Signals(signum).name
-            self.logger.info(f"\nReceived {signame}. Starting graceful shutdown...")
-            self._stop_event.set()
-
-        # Register the handler for both SIGTERM and SIGINT
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
-
     def process_item(self, task_name: str, args: dict):
         task_func = self.task_registry[task_name]
         context = task_func.context_klass(**args)
@@ -153,25 +143,34 @@ class WorkerExecutor(Process):
             self._stop_event.wait(0.5)  # Add delay after error
 
     def run(self):
-        os.setpgrp()
         init_logging(self.log_level)
-        self.setup_signal_handlers()
 
         # Retrieve task registry, error callback, and queue.
         self.load_worker_module_variables()
 
-        self.dispatcher = get_dispatcher()
+        self.dispatcher = get_dispatcher(worker=True)
         self.dispatcher.register_executor(
             executor_id=self.executor_id, executor_name=self.name, queue=self.queue
         )
         self.task_registry.set_dispatcher(self.dispatcher)
 
+        # Ignore signals, let main process manage shutdown.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 
-        while not self._stop_event.is_set():
-            self.process()
-
-        self.stop()
+        try:
+            while not self._stop_event.is_set():
+                self.process()
+                # Confirm parent is still alive
+                if os.getppid() == 1:
+                    self.logger.warning(
+                        "Root process died unexpectedly. Shutting down."
+                    )
+                    self._stop_event.set()
+        finally:
+            self.stop()
 
     def stop(self):
         self.logger.info(f"Stopping {self.name}...")

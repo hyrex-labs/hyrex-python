@@ -44,7 +44,7 @@ class WorkerRootProcess:
 
         self.heartbeat_requested = False
 
-        self.stop_event = threading.Event()
+        self._stop_event = threading.Event()
         self.task_id_to_executor_id: dict[str, str] = {}
         self.executor_id_to_process: dict[str, Process] = {}
         self.admin_process: Process = None
@@ -57,7 +57,7 @@ class WorkerRootProcess:
         def signal_handler(signum, frame):
             signame = signal.Signals(signum).name
             self.logger.info(f"\nReceived {signame}. Starting graceful shutdown...")
-            self.stop_event.set()
+            self._stop_event.set()
 
         # Register the handler for both SIGTERM and SIGINT
         signal.signal(signal.SIGTERM, signal_handler)
@@ -87,7 +87,7 @@ class WorkerRootProcess:
         # Check each executor and respawn if process has died.
         stopped_executors = []
         for executor_id, process in self.executor_id_to_process.items():
-            if process.exitcode:
+            if process.exitcode != None:
                 self.logger.info(f"Process {process.pid} stopped. Cleaning up.")
                 stopped_executors.append(executor_id)
 
@@ -133,7 +133,7 @@ class WorkerRootProcess:
                 break
 
             if isinstance(message, CancelTaskMessage):
-                self.cancel_task(message.task_id)
+                self.cancel_running_task(message.task_id)
             elif isinstance(message, SetExecutorTaskMessage):
                 self.set_executor_task(
                     executor_id=message.executor_id, task_id=message.task_id
@@ -153,7 +153,7 @@ class WorkerRootProcess:
         if task_id:
             self.task_id_to_executor_id[task_id] = executor_id
 
-    def cancel_task(self, task_id: UUID):
+    def cancel_running_task(self, task_id: UUID):
         executor_id = self.task_id_to_executor_id.get(task_id)
         if executor_id:
             executor_process = self.executor_id_to_process[executor_id]
@@ -197,7 +197,7 @@ class WorkerRootProcess:
         last_heartbeat = time.monotonic()
 
         try:
-            while not self.stop_event.is_set():
+            while not self._stop_event.is_set():
                 # Check admin and restart if it has died
                 self.check_admin_process()
 
@@ -216,7 +216,7 @@ class WorkerRootProcess:
                     self.heartbeat_requested = False
 
                 # Interruptible sleep
-                self.stop_event.wait(1)
+                self._stop_event.wait(1)
 
         finally:
             self.stop()

@@ -60,13 +60,13 @@ class PostgresDispatcher(Dispatcher):
                 [task_id, uuid7()],
             )
 
-    def reset_or_cancel_task(self, task_id: UUID):
+    def try_to_cancel_task(self, task_id: UUID):
         with self.transaction() as cur:
-            cur.execute(sql.RESET_OR_CANCEL_TASK, [task_id])
+            cur.execute(sql.TRY_TO_CANCEL_TASK, [task_id])
 
-    def cancel_task(self, task_id: UUID):
+    def task_canceled(self, task_id: UUID):
         with self.transaction() as cur:
-            cur.execute(sql.MARK_TASK_CANCELED, [task_id])
+            cur.execute(sql.TASK_CANCELED, [task_id])
 
     def dequeue(
         self,
@@ -155,7 +155,7 @@ class PostgresDispatcher(Dispatcher):
             )
 
     def stop(self, timeout: float = 5.0) -> bool:
-        self.logger.info("Stopping dispatcher...")
+        self.logger.debug("Stopping dispatcher...")
         self.stopping = True
 
         # Signal the batch thread to stop and wait with timeout
@@ -173,7 +173,7 @@ class PostgresDispatcher(Dispatcher):
             )
             self.pool.close(timeout=1.0)
 
-        self.logger.info(
+        self.logger.debug(
             "Dispatcher stopped %s.",
             "successfully" if clean_shutdown else "with timeout",
         )
@@ -207,6 +207,10 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.GET_TASKS_UP_FOR_CANCEL)
             return [row[0] for row in cur.fetchall()]
+
+    def mark_running_tasks_lost(self, executor_id: UUID):
+        with self.transaction() as cur:
+            cur.execute(sql.MARK_RUNNING_TASKS_LOST, [executor_id])
 
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:

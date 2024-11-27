@@ -22,6 +22,8 @@ class StatusEnum(StrEnum):
     canceled = "canceled"
     running = "running"
     queued = "queued"
+    waiting = "waiting"
+    lost = "lost"
 
 
 class HyrexExecutor(SQLModel, table=True):
