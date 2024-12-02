@@ -1,18 +1,17 @@
 import asyncio
 import logging
+import os
 import re
 import time
 from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
-import requests
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import Engine, create_engine
-from sqlmodel import Session, select
 from uuid_extensions import uuid7
 
 from hyrex import constants
+from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher
 from hyrex.models import HyrexTask, StatusEnum
 
@@ -171,6 +170,7 @@ class TaskWrapper(Generic[T]):
         task = HyrexTask(
             id=task_id,
             root_id=task_id,
+            parent_id=os.environ.get(EnvVars.PARENT_TASK_ID),
             task_name=self.task_identifier,
             queue=queue or self.queue,
             args=context.model_dump(),

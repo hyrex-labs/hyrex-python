@@ -104,6 +104,7 @@ CONDITIONALLY_RETRY_TASK = """
 WITH existing_task AS (
     SELECT
         root_id,
+        parent_id,
         task_name,
         args,
         queue,
@@ -117,6 +118,7 @@ WITH existing_task AS (
 INSERT INTO hyrextask (
     id,
     root_id,
+    parent_id,
     queued,
     status,
     task_name,
@@ -129,6 +131,7 @@ INSERT INTO hyrextask (
 SELECT
     $2 AS id,
     root_id,
+    parent_id,
     CURRENT_TIMESTAMP as queued,
     'queued' AS status,
     task_name,
@@ -144,12 +147,13 @@ ENQUEUE_TASK = """
 INSERT INTO hyrextask (
     id,
     root_id,
+    parent_id,
     task_name,
     args,
     queue,
     max_retries,
     priority
-) VALUES ($1, $2, $3, $4, $5, $6, $7);
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 """
 
 MARK_TASK_SUCCESS = """
@@ -161,7 +165,7 @@ MARK_TASK_SUCCESS = """
 MARK_TASK_FAILED = """
     UPDATE hyrextask 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
-    WHERE id = $1 AND status = 'failed'
+    WHERE id = $1 AND status = 'running'
 """
 
 RESET_OR_CANCEL_TASK = """
