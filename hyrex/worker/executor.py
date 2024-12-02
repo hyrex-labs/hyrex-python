@@ -108,9 +108,9 @@ class WorkerExecutor(Process):
             # Notify root process of new task
             self.update_current_task(task.id)
             # Set parent task env var for any sub-tasks
-            os.environ[EnvVars.PARENT_TASK] = str(task.id)
+            os.environ[EnvVars.PARENT_TASK_ID] = str(task.id)
             result = self.process_item(task.name, task.args)
-            del os.environ[EnvVars.PARENT_TASK]
+            del os.environ[EnvVars.PARENT_TASK_ID]
 
             if result is not None:
                 if isinstance(result, BaseModel):

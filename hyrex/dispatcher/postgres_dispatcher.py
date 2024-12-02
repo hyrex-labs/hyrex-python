@@ -139,6 +139,7 @@ class PostgresDispatcher(Dispatcher):
             (
                 task.id,
                 task.root_id,
+                task.parent_id,
                 task.task_name,
                 Json(task.args),
                 task.queue,

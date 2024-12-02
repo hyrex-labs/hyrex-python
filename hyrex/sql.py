@@ -144,12 +144,13 @@ ENQUEUE_TASK = """
 INSERT INTO hyrextask (
     id,
     root_id,
+    parent_id,
     task_name,
     args,
     queue,
     max_retries,
     priority
-) VALUES ($1, $2, $3, $4, $5, $6, $7);
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 """
 
 MARK_TASK_SUCCESS = """
