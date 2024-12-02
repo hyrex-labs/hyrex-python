@@ -168,23 +168,6 @@ MARK_TASK_FAILED = """
     WHERE id = $1 AND status = 'running'
 """
 
-RESET_OR_CANCEL_TASK = """
-   UPDATE hyrextask 
-   SET status = CASE 
-                   WHEN status = 'up_for_cancel' THEN 'canceled'::statusenum 
-                   ELSE 'queued'::statusenum 
-               END, 
-       executor_id = CASE 
-                     WHEN status = 'up_for_cancel' THEN executor_id  -- Keep the current value
-                     ELSE NULL
-                   END,
-       started = CASE 
-                   WHEN status = 'up_for_cancel' THEN started  -- Keep the current value
-                   ELSE NULL
-                 END
-   WHERE id = $1
-"""
-
 TRY_TO_CANCEL_TASK = """
     UPDATE hyrextask
     SET status = CASE 
