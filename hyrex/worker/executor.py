@@ -21,6 +21,7 @@ from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.worker import HyrexWorker
+from hyrex.worker.utils import is_process_alive
 
 
 def generate_executor_name():
@@ -54,6 +55,9 @@ class WorkerExecutor(Process):
         self.name = generate_executor_name()
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
+
+        # To check if root process is running
+        self.parent_pid = os.getpid()
 
     def load_worker_module_variables(self):
         sys.path.append(str(Path.cwd()))
@@ -164,7 +168,7 @@ class WorkerExecutor(Process):
             while not self._stop_event.is_set():
                 self.process()
                 # Confirm parent is still alive
-                if os.getppid() == 1:
+                if not is_process_alive(self.parent_pid):
                     self.logger.warning(
                         "Root process died unexpectedly. Shutting down."
                     )
