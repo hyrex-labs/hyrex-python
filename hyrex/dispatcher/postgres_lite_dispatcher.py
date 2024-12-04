@@ -100,8 +100,7 @@ class PostgresLiteDispatcher(Dispatcher):
         Stops the batching process and flushes remaining tasks.
         """
         self.logger.debug("Stopping dispatcher...")
-        if self.pool:
-            self.pool.close()
+        self.pool.close()
         self.logger.debug("Dispatcher stopped successfully!")
 
     def get_task_status(self, task_id: UUID) -> StatusEnum:

@@ -46,7 +46,7 @@ class Dispatcher(ABC):
 
     def __init__(self):
         self._setup_signal_handlers()
-        atexit.register(self.stop())
+        atexit.register(self.stop)
 
     @abstractmethod
     def enqueue(
