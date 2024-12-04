@@ -1,3 +1,4 @@
+import atexit
 import logging
 import signal
 from abc import ABC, abstractmethod
@@ -45,6 +46,7 @@ class Dispatcher(ABC):
 
     def __init__(self):
         self._setup_signal_handlers()
+        atexit.register(self.stop())
 
     @abstractmethod
     def enqueue(
