@@ -166,13 +166,14 @@ class PostgresDispatcher(Dispatcher):
         clean_shutdown = not self.thread.is_alive()
 
         # Close the connection pool
-        if clean_shutdown:
-            self.pool.close()
-        else:
-            self.logger.warning(
-                "Batch thread did not stop cleanly, forcing connection pool to close"
-            )
-            self.pool.close(timeout=1.0)
+        if self.pool:
+            if clean_shutdown:
+                self.pool.close()
+            else:
+                self.logger.warning(
+                    "Batch thread did not stop cleanly, forcing connection pool to close"
+                )
+                self.pool.close(timeout=1.0)
 
         self.logger.debug(
             "Dispatcher stopped %s.",
