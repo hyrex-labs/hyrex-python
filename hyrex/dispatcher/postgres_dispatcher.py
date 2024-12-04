@@ -34,6 +34,8 @@ class PostgresDispatcher(Dispatcher):
         self.thread.start()
         self.stopping = False
 
+        self.register_shutdown_handlers()
+
     @contextmanager
     def transaction(self):
         with self.pool.connection() as conn:

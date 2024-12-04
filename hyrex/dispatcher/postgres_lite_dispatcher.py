@@ -21,6 +21,8 @@ class PostgresLiteDispatcher(Dispatcher):
             max_idle=300,
         )
 
+        self.register_shutdown_handlers()
+
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:
             with RawCursor(conn) as cur:

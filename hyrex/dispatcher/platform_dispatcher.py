@@ -31,6 +31,8 @@ class PlatformDispatcher(Dispatcher):
         self.thread = threading.Thread(target=self._batch_enqueue)
         self.thread.start()
 
+        self.register_shutdown_handlers()
+
     def enqueue(
         self,
         task: HyrexTask,
