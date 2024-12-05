@@ -28,8 +28,10 @@ class PlatformDispatcher(Dispatcher):
         self.batch_size = batch_size
         self.flush_interval = flush_interval
 
-        self.thread = threading.Thread(target=self._batch_enqueue)
+        self.thread = threading.Thread(target=self._batch_enqueue, daemon=True)
         self.thread.start()
+
+        self.register_shutdown_handlers()
 
     def enqueue(
         self,

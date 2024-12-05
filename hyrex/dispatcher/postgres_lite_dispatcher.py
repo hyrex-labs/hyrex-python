@@ -14,13 +14,14 @@ from hyrex.models import HyrexTask, StatusEnum
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
 class PostgresLiteDispatcher(Dispatcher):
     def __init__(self, conn_string: str):
-        super().__init__()
         self.conn_string = conn_string
         self.pool = ConnectionPool(
             conn_string + "?keepalives=1&keepalives_idle=60&keepalives_interval=10",
             open=True,
             max_idle=300,
         )
+
+        self.register_shutdown_handlers()
 
     def mark_success(self, task_id: UUID):
         with self.pool.connection() as conn:

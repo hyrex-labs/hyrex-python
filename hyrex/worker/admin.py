@@ -15,6 +15,7 @@ from hyrex.worker.messages.admin_messages import (
     TaskHeartbeatMessage,
 )
 from hyrex.worker.messages.root_messages import CancelTaskMessage
+from hyrex.worker.utils import is_process_alive
 
 
 class WorkerAdmin(Process):
@@ -39,6 +40,9 @@ class WorkerAdmin(Process):
         # Incoming messages
         self.admin_message_queue = admin_message_queue
         self._stop_event = Event()
+
+        # To check if root process is running
+        self.parent_pid = os.getpid()
 
     def _message_listener(self):
         while True:
@@ -89,7 +93,7 @@ class WorkerAdmin(Process):
                 self._stop_event.wait(0.5)
 
                 # Confirm parent is still alive
-                if os.getppid() == 1:
+                if not is_process_alive(self.parent_pid):
                     self.logger.warning(
                         "Root process died unexpectedly. Shutting down."
                     )

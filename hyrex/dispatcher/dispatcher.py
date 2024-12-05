@@ -1,3 +1,4 @@
+import atexit
 import logging
 import signal
 from abc import ABC, abstractmethod
@@ -43,8 +44,12 @@ class Dispatcher(ABC):
             # Set the new handler, which calls both new and old handlers
             signal.signal(sig, self._chain_signal_handlers(new_handler, old_handler))
 
-    def __init__(self):
+    def register_shutdown_handlers(self):
         self._setup_signal_handlers()
+        atexit.register(self.stop)
+
+    def __init__(self):
+        pass
 
     @abstractmethod
     def enqueue(
