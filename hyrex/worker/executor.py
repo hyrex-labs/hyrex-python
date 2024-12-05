@@ -52,7 +52,6 @@ class WorkerExecutor(Process):
         self.queue = queue
         self.executor_id = executor_id
 
-        self.name = generate_executor_name()
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
 
@@ -148,6 +147,8 @@ class WorkerExecutor(Process):
 
     def run(self):
         init_logging(self.log_level)
+
+        self.name = generate_executor_name()
 
         # Retrieve task registry, error callback, and queue.
         self.load_worker_module_variables()
