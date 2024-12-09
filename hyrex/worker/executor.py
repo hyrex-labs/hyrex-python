@@ -1,8 +1,10 @@
 import asyncio
+from fnmatch import fnmatch
 import importlib
 import json
 import logging
 import os
+import random
 import signal
 import socket
 import sys
@@ -21,7 +23,7 @@ from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.worker import HyrexWorker
-from hyrex.worker.utils import is_process_alive
+from hyrex.worker.utils import is_process_alive, glob_to_similar, is_glob_pattern
 
 
 def generate_executor_name():
@@ -39,7 +41,7 @@ class WorkerExecutor(Process):
         log_level: LogLevel,
         worker_module_path: str,
         executor_id: UUID,
-        queue: str,
+        queue_pattern: str,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -49,7 +51,13 @@ class WorkerExecutor(Process):
         self._stop_event = Event()
 
         self.worker_module_path = worker_module_path
-        self.queue = queue
+        self.queue_pattern = queue_pattern
+        if is_glob_pattern(self.queue_pattern):
+            self.postgres_queue_pattern = glob_to_similar(self.queue_pattern)
+        else:
+            self.postgres_queue_pattern = None
+        # Currently known queues to fetch tasks from, along with their concurrency limits
+        self.queues_with_concurrency = dict[str, int | None]
         self.executor_id = executor_id
 
         self.dispatcher = None
@@ -57,6 +65,17 @@ class WorkerExecutor(Process):
 
         # To check if root process is running
         self.parent_pid = os.getpid()
+
+    def queue_matches_pattern(self, queue: str):
+        return fnmatch(queue, self.queue_pattern)
+
+    def update_queue_list(self):
+        self.queues = self.dispatcher.get_queues_for_pattern(
+            self.postgres_queue_pattern
+        )
+        random.shuffle(self.queues)
+
+        # 3. Update concurrency values
 
     def load_worker_module_variables(self):
         sys.path.append(str(Path.cwd()))
@@ -77,8 +96,8 @@ class WorkerExecutor(Process):
         result = asyncio.run(task_func.async_call(context))
         return result
 
-    def fetch_task(self) -> list[DequeuedTask]:
-        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=self.queue)
+    def fetch_task(self, queue: str) -> DequeuedTask:
+        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=queue)
 
     def mark_task_success(self, task_id: UUID):
         self.dispatcher.mark_success(task_id=task_id)

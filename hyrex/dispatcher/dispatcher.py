@@ -63,8 +63,7 @@ class Dispatcher(ABC):
         self,
         executor_id: UUID,
         queue: str = constants.ANY_QUEUE,
-        num_tasks: int = 1,
-    ) -> list[DequeuedTask]:
+    ) -> DequeuedTask:
         pass
 
     @abstractmethod
@@ -117,7 +116,11 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def get_tasks_up_for_cancel(self):
+    def get_tasks_up_for_cancel(self) -> list[UUID]:
+        pass
+
+    @abstractmethod
+    def get_queues_for_pattern(self, pattern: str) -> list[str]:
         pass
 
     @abstractmethod

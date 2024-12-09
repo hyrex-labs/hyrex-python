@@ -12,18 +12,14 @@ from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (
-    ExecutorHeartbeatMessage,
-    ExecutorStoppedMessage,
-    NewExecutorMessage,
-    TaskCanceledMessage,
-    TaskHeartbeatMessage,
-)
-from hyrex.worker.messages.root_messages import (
-    CancelTaskMessage,
-    HeartbeatRequestMessage,
-    SetExecutorTaskMessage,
-)
+from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
+                                                  ExecutorStoppedMessage,
+                                                  NewExecutorMessage,
+                                                  TaskCanceledMessage,
+                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.root_messages import (CancelTaskMessage,
+                                                 HeartbeatRequestMessage,
+                                                 SetExecutorTaskMessage)
 
 
 class WorkerRootProcess:
@@ -31,7 +27,7 @@ class WorkerRootProcess:
         self,
         log_level: LogLevel,
         worker_module_path: str,
-        queue: str = None,
+        queue_pattern: str = None,
         num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
         self.logger = logging.getLogger(__name__)
@@ -39,7 +35,7 @@ class WorkerRootProcess:
         init_logging(log_level=log_level)
 
         self.worker_module_path = worker_module_path
-        self.queue = queue
+        self.queue_pattern = queue_pattern
         self.num_processes = num_processes
 
         self.heartbeat_requested = False
@@ -63,19 +59,13 @@ class WorkerRootProcess:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
-    def set_queue(self, queue: str):
-        self.queue = queue
-
-    def set_processes(self, processes: int):
-        self.processes = processes
-
     def _spawn_executor(self):
         executor_id = uuid7()
         executor_process = WorkerExecutor(
             log_level=self.log_level,
             root_message_queue=self.root_message_queue,
             worker_module_path=self.worker_module_path,
-            queue=self.queue,
+            queue_pattern=self.queue_pattern,
             executor_id=executor_id,
         )
         executor_process.start()
@@ -112,7 +102,7 @@ class WorkerRootProcess:
             root_message_queue=self.root_message_queue,
             admin_message_queue=self.admin_message_queue,
             log_level=self.log_level,
-            queue=self.queue,
+            queue_pattern=self.queue_pattern,
         )
         admin.start()
         self.admin_process = admin
