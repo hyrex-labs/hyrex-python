@@ -70,6 +70,7 @@ class HyrexRegistry(dict[str, TaskWrapper]):
                 return task_wrapper(context)
 
             wrapper.send = task_wrapper.send
+            wrapper.withConfig = task_wrapper.withConfig
             return wrapper
 
         if func is not None:
