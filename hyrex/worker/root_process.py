@@ -12,14 +12,18 @@ from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+)
 
 
 class WorkerRootProcess:
@@ -27,7 +31,7 @@ class WorkerRootProcess:
         self,
         log_level: LogLevel,
         worker_module_path: str,
-        queue_pattern: str = None,
+        queue: str = None,
         num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
         self.logger = logging.getLogger(__name__)
@@ -35,7 +39,7 @@ class WorkerRootProcess:
         init_logging(log_level=log_level)
 
         self.worker_module_path = worker_module_path
-        self.queue_pattern = queue_pattern
+        self.queue = queue
         self.num_processes = num_processes
 
         self.heartbeat_requested = False
@@ -65,7 +69,7 @@ class WorkerRootProcess:
             log_level=self.log_level,
             root_message_queue=self.root_message_queue,
             worker_module_path=self.worker_module_path,
-            queue_pattern=self.queue_pattern,
+            queue=self.queue,
             executor_id=executor_id,
         )
         executor_process.start()
@@ -102,7 +106,7 @@ class WorkerRootProcess:
             root_message_queue=self.root_message_queue,
             admin_message_queue=self.admin_message_queue,
             log_level=self.log_level,
-            queue_pattern=self.queue_pattern,
+            queue=self.queue,
         )
         admin.start()
         self.admin_process = admin

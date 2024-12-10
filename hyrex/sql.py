@@ -253,5 +253,5 @@ SAVE_RESULT = """
 """
 
 GET_UNIQUE_QUEUES_FOR_PATTERN = """
-    SELECT DISTINCT queue FROM hyrextask WHERE status = 'queued' AND queue SIMILAR TO $1
+    SELECT DISTINCT queue FROM hyrextask WHERE status = 'queued' AND queue ~ $1
 """

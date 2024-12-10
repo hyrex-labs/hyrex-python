@@ -56,9 +56,9 @@ def run_worker(
     worker_module_path: str = typer.Argument(
         ..., help="Module path to the Hyrex worker"
     ),
-    queue_pattern: str = typer.Option(
+    queue: str = typer.Option(
         constants.ANY_QUEUE,
-        "--queue-pattern",
+        "--queue",
         "-q",
         help="Which queue(s) to pull tasks from. Glob patterns supported. Defaults to `*`",
     ),
@@ -89,7 +89,7 @@ def run_worker(
         worker_root = WorkerRootProcess(
             log_level=log_level.upper(),
             worker_module_path=worker_module_path,
-            queue_pattern=queue_pattern,
+            queue=queue,
             num_processes=num_processes,
         )
         worker_root.run()

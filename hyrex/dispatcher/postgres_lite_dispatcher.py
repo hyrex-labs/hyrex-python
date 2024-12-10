@@ -142,5 +142,4 @@ class PostgresLiteDispatcher(Dispatcher):
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         with self.transaction() as cur:
             cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
-            queues = [row[0] for row in cur.fetchall()]
-            return random.shuffle(queues)
+            return [row[0] for row in cur.fetchall()]
