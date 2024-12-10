@@ -52,13 +52,6 @@ class WorkerExecutor(Process):
 
         self.worker_module_path = worker_module_path
         self.queue = queue
-        if is_glob_pattern(self.queue):
-            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
-            self.logger.debug(
-                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
-            )
-        else:
-            self.postgres_queue_pattern = None
         self.executor_id = executor_id
 
         self.dispatcher = None
@@ -190,6 +183,7 @@ class WorkerExecutor(Process):
             no_task_count = 0
 
             while self.queue_list and not self._stop_event.is_set():
+                self.check_root_process()
                 queue = self.queue_list.pop()
                 # Don't wait if queue doesn't have task, move directly to next one.
                 if not self.process(queue=queue, wait_between_tasks=False):
@@ -208,6 +202,15 @@ class WorkerExecutor(Process):
 
         # Retrieve task registry, error callback, and queue.
         self.load_worker_module_variables()
+
+        # Convert queue pattern to Postgres regex syntax if needed.
+        if is_glob_pattern(self.queue):
+            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
+            self.logger.debug(
+                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
+            )
+        else:
+            self.postgres_queue_pattern = None
 
         self.dispatcher = get_dispatcher(worker=True)
         self.dispatcher.register_executor(
