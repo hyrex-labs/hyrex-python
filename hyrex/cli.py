@@ -57,7 +57,7 @@ def run_worker(
         ..., help="Module path to the Hyrex worker"
     ),
     queue: str = typer.Option(
-        constants.ANY_QUEUE,
+        None,
         "--queue",
         "-q",
         help="Which queue(s) to pull tasks from. Glob patterns supported. Defaults to `*`",
