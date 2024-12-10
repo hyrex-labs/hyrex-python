@@ -1,8 +1,10 @@
 import asyncio
+from fnmatch import fnmatch
 import importlib
 import json
 import logging
 import os
+import random
 import signal
 import socket
 import sys
@@ -21,7 +23,7 @@ from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.worker import HyrexWorker
-from hyrex.worker.utils import is_process_alive
+from hyrex.worker.utils import is_process_alive, glob_to_postgres_regex, is_glob_pattern
 
 
 def generate_executor_name():
@@ -50,6 +52,13 @@ class WorkerExecutor(Process):
 
         self.worker_module_path = worker_module_path
         self.queue = queue
+        if is_glob_pattern(self.queue):
+            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
+            self.logger.debug(
+                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
+            )
+        else:
+            self.postgres_queue_pattern = None
         self.executor_id = executor_id
 
         self.dispatcher = None
@@ -57,6 +66,20 @@ class WorkerExecutor(Process):
 
         # To check if root process is running
         self.parent_pid = os.getpid()
+
+    def update_queue_list(self):
+        self.logger.debug("Updating internal queue list from pattern...")
+        self.queue_list = self.dispatcher.get_queues_for_pattern(
+            self.postgres_queue_pattern
+        )
+        self.logger.debug(f"Queues found: {self.queue_list}")
+        if self.queue_list:
+            random.shuffle(self.queue_list)
+        else:
+            self._stop_event.wait(0.5)
+            return
+
+        # 3. Update concurrency values
 
     def load_worker_module_variables(self):
         sys.path.append(str(Path.cwd()))
@@ -77,8 +100,8 @@ class WorkerExecutor(Process):
         result = asyncio.run(task_func.async_call(context))
         return result
 
-    def fetch_task(self) -> list[DequeuedTask]:
-        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=self.queue)
+    def fetch_task(self, queue: str) -> DequeuedTask:
+        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=queue)
 
     def mark_task_success(self, task_id: UUID):
         self.dispatcher.mark_success(task_id=task_id)
@@ -98,16 +121,17 @@ class WorkerExecutor(Process):
             SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
-    def process(self):
+    def process(self, queue: str, wait_between_tasks: bool = True):
+        """Returns True if a task is found and attempted, False otherwise"""
         try:
-            tasks: list[DequeuedTask] = self.fetch_task()
-            if not tasks:
+            task: DequeuedTask = self.fetch_task(queue=queue)
+            if not task:
                 # No unprocessed items, clear current task and wait a bit before trying again
                 self.update_current_task(None)
-                self._stop_event.wait(0.5)
-                return
+                if wait_between_tasks:
+                    self._stop_event.wait(0.5)
+                return False
 
-            task = tasks[0]
             # Notify root process of new task
             self.update_current_task(task.id)
             # Set parent task env var for any sub-tasks
@@ -130,6 +154,7 @@ class WorkerExecutor(Process):
             self.logger.info(
                 f"Executor {self.name}: Completed processing item {task.id}"
             )
+            return True
 
         except Exception as e:
             self.logger.error(f"Executor {self.name}: Error processing item {str(e)}")
@@ -144,6 +169,37 @@ class WorkerExecutor(Process):
                 self.attempt_retry(task.id)
 
             self._stop_event.wait(0.5)  # Add delay after error
+            return True
+
+    def check_root_process(self):
+        # Confirm parent is still alive
+        if not is_process_alive(self.parent_pid):
+            self.logger.warning("Root process died unexpectedly. Shutting down.")
+            self._stop_event.set()
+
+    def run_static_queue_loop(self):
+        while not self._stop_event.is_set():
+            # Queue pattern is a static string - fetch from it directly.
+            self.process(self.queue)
+            self.check_root_process()
+
+    def run_round_robin_loop(self):
+        while not self._stop_event.is_set():
+            self.update_queue_list()
+
+            no_task_count = 0
+
+            while self.queue_list and not self._stop_event.is_set():
+                queue = self.queue_list.pop()
+                # Don't wait if queue doesn't have task, move directly to next one.
+                if not self.process(queue=queue, wait_between_tasks=False):
+                    no_task_count += 1
+                else:
+                    no_task_count = 0
+
+                # We're not hitting populated queues - pause and refresh queue list.
+                if no_task_count >= 3:
+                    break
 
     def run(self):
         init_logging(self.log_level)
@@ -155,7 +211,9 @@ class WorkerExecutor(Process):
 
         self.dispatcher = get_dispatcher(worker=True)
         self.dispatcher.register_executor(
-            executor_id=self.executor_id, executor_name=self.name, queue=self.queue
+            executor_id=self.executor_id,
+            executor_name=self.name,
+            queue=self.queue,
         )
         self.task_registry.set_dispatcher(self.dispatcher)
 
@@ -166,14 +224,10 @@ class WorkerExecutor(Process):
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 
         try:
-            while not self._stop_event.is_set():
-                self.process()
-                # Confirm parent is still alive
-                if not is_process_alive(self.parent_pid):
-                    self.logger.warning(
-                        "Root process died unexpectedly. Shutting down."
-                    )
-                    self._stop_event.set()
+            if self.postgres_queue_pattern:
+                self.run_round_robin_loop()
+            else:
+                self.run_static_queue_loop()
         finally:
             self.stop()
 

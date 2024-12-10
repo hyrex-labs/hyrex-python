@@ -63,12 +63,6 @@ class WorkerRootProcess:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
-    def set_queue(self, queue: str):
-        self.queue = queue
-
-    def set_processes(self, processes: int):
-        self.processes = processes
-
     def _spawn_executor(self):
         executor_id = uuid7()
         executor_process = WorkerExecutor(

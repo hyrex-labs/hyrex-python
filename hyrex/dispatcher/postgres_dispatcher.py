@@ -1,3 +1,4 @@
+import random
 import threading
 import time
 from contextlib import contextmanager
@@ -74,9 +75,8 @@ class PostgresDispatcher(Dispatcher):
         self,
         executor_id: UUID,
         queue: str = constants.ANY_QUEUE,
-        num_tasks: int = 1,
-    ) -> list[DequeuedTask]:
-        dequeued_tasks = []
+    ) -> DequeuedTask:
+        dequeued_task = None
         with self.transaction() as cur:
             if queue == constants.ANY_QUEUE:
                 cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
@@ -85,10 +85,9 @@ class PostgresDispatcher(Dispatcher):
             row = cur.fetchone()
             if row:
                 task_id, task_name, task_args = row
-                dequeued_tasks.append(
-                    DequeuedTask(id=task_id, name=task_name, args=task_args)
-                )
-        return dequeued_tasks
+                dequeued_task = DequeuedTask(id=task_id, name=task_name, args=task_args)
+
+        return dequeued_task
 
     def enqueue(self, task: HyrexTask):
         if self.stopping:
@@ -206,7 +205,7 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.TASK_HEARTBEAT, [timestamp, task_ids])
 
-    def get_tasks_up_for_cancel(self):
+    def get_tasks_up_for_cancel(self) -> list[UUID]:
         with self.transaction() as cur:
             cur.execute(sql.GET_TASKS_UP_FOR_CANCEL)
             return [row[0] for row in cur.fetchall()]
@@ -218,3 +217,8 @@ class PostgresDispatcher(Dispatcher):
     def save_result(self, task_id: UUID, result: str):
         with self.transaction() as cur:
             cur.execute(sql.SAVE_RESULT, [task_id, result])
+
+    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+        with self.transaction() as cur:
+            cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
+            return [row[0] for row in cur.fetchall()]

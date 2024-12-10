@@ -60,7 +60,7 @@ def run_worker(
         None,
         "--queue",
         "-q",
-        help="The name of the queue to process",
+        help="Which queue(s) to pull tasks from. Glob patterns supported. Defaults to `*`",
     ),
     num_processes: int = typer.Option(
         8, "--num-processes", "-p", help="Number of executor processes to run"
@@ -83,6 +83,7 @@ def run_worker(
     os.environ[EnvVars.WORKER_PROCESS] = "true"
 
     validate_worker_module_path(worker_module_path)
+    # TODO: Validate queue pattern?
 
     try:
         worker_root = WorkerRootProcess(

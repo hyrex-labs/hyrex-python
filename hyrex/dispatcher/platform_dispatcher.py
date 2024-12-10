@@ -114,16 +114,15 @@ class PlatformDispatcher(Dispatcher):
         self,
         worker_id: UUID,
         queue: str = constants.ANY_QUEUE,
-        num_tasks: int = 1,
-    ) -> list[DequeuedTask]:
+    ) -> DequeuedTask:
         fetch_url = f"{self.HYREX_PLATFORM_URL}{self.DEQUEUE_TASK_PATH}"
-        dequeued_tasks = []
         try:
             headers = {"x-project-api-key": self.api_key}
+            dequeued_task = None
             json_body = {
                 "queue": queue,
                 "worker_id": str(worker_id),
-                "num_tasks": num_tasks,
+                "num_tasks": 1,
             }
             response = requests.post(fetch_url, headers=headers, json=json_body)
 
@@ -131,17 +130,16 @@ class PlatformDispatcher(Dispatcher):
                 data = response.json()
                 if data["tasks"]:
                     task = data["tasks"][0]
-                    dequeued_tasks.append(
-                        DequeuedTask(
-                            id=task["id"], name=task["task_name"], args=task["args"]
-                        )
+                    dequeued_task = DequeuedTask(
+                        id=task["id"], name=task["task_name"], args=task["args"]
                     )
+
             else:
                 self.logger.error(f"Error fetching task: {response.status_code}")
                 error_body = response.text()  # Get the response body as text
                 self.logger.error(f"Response body: {error_body}")
 
-            return dequeued_tasks
+            return dequeued_task
 
         except Exception as e:
             self.logger.error(f"Exception while fetching task: {str(e)}")
@@ -216,8 +214,8 @@ class PlatformDispatcher(Dispatcher):
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         pass
 
-    def get_tasks_up_for_cancel(self):
+    def get_tasks_up_for_cancel(self) -> list[UUID]:
         pass
 
-    # def get_workers_to_cancel(self, worker_ids: list[UUID]):
-    #     pass
+    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+        pass

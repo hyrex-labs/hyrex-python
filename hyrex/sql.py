@@ -78,10 +78,37 @@ WITH next_task AS (
     LIMIT 1
 )
 UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, worker_id = $2
+SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+"""
+
+FETCH_TASK_WITH_CONCURRENCY = """
+BEGIN;
+
+WITH lock_result AS (
+    SELECT pg_try_advisory_xact_lock(hashtext($1)) AS lock_acquired
+),
+next_task AS (
+    SELECT id
+    FROM hyrextask, lock_result
+    WHERE
+        lock_acquired = TRUE
+        AND queue = $1
+        AND status = 'queued'
+        AND (SELECT COUNT(*) FROM hyrextask WHERE queue = $1 AND status = 'running') < $2
+
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+)
+UPDATE hyrextask
+SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
+FROM next_task
+WHERE hyrextask.id = next_task.id
+RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+
+COMMIT;
 """
 
 FETCH_TASK_FROM_ANY_QUEUE = """
@@ -223,4 +250,8 @@ MARK_RUNNING_TASKS_LOST = """
 SAVE_RESULT = """
     INSERT INTO hyrextaskresult (task_id, result)
     VALUES ($1, $2);
+"""
+
+GET_UNIQUE_QUEUES_FOR_PATTERN = """
+    SELECT DISTINCT queue FROM hyrextask WHERE status = 'queued' AND queue ~ $1
 """
