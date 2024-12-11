@@ -13,6 +13,7 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.models import HyrexTask, StatusEnum
 
 T = TypeVar("T", bound=BaseModel)
@@ -73,7 +74,7 @@ class TaskWrapper(Generic[T]):
         func: Callable[[T], Any],
         dispatcher: Dispatcher,
         cron: str | None,
-        queue: str = constants.DEFAULT_QUEUE,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
     ):
@@ -156,7 +157,7 @@ class TaskWrapper(Generic[T]):
 
     def withConfig(
         self,
-        queue: str = None,
+        queue: str | HyrexQueue = None,
         priority: int = None,
         max_retries: int = None,
     ) -> "TaskWrapper[T]":
@@ -184,7 +185,7 @@ class TaskWrapper(Generic[T]):
             root_id=task_id,
             parent_id=os.environ.get(EnvVars.PARENT_TASK_ID),
             task_name=self.task_identifier,
-            queue=self.queue,
+            queue=self.queue if isinstance(self.queue, str) else self.queue.name,
             args=context.model_dump(),
             max_retries=self.max_retries,
             priority=self.priority,

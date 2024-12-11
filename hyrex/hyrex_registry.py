@@ -4,35 +4,43 @@ import os
 from typing import Any, Callable
 
 from hyrex import constants
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.task import T, TaskWrapper
 
 
-class HyrexRegistry(dict[str, TaskWrapper]):
-    def __setitem__(self, key: str, value: TaskWrapper):
-        if not isinstance(key, str):
-            raise TypeError("Key must be an instance of str")
-        if not isinstance(value, TaskWrapper):
-            raise TypeError("Value must be an instance of TaskWrapper")
-        if key in self.keys():
-            raise KeyError(
-                f"Task {key} is already registered. Task names must be unique."
-            )
-
-        super().__setitem__(key, value)
-
-    def __getitem__(self, key: str) -> TaskWrapper:
-        if not isinstance(key, str):
-            raise TypeError("Key must be an instance of str")
-        return super().__getitem__(key)
-
+class HyrexRegistry:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         if os.getenv(EnvVars.WORKER_PROCESS):
             self.dispatcher = None
         else:
             self.dispatcher = get_dispatcher()
+
+        self.internal_task_registry: dict[str, TaskWrapper] = {}
+        self.internal_queue_registry: dict[str, HyrexQueue] = {}
+
+    def register_task(self, task_wrapper: TaskWrapper):
+        if self.internal_task_registry[task_wrapper.task_identifier]:
+            raise KeyError(
+                f"Task {task_wrapper.task_identifier} is already registered. Task names must be unique."
+            )
+        self.internal_task_registry[task_wrapper.task_identifier] = task_wrapper
+        if isinstance(task_wrapper.queue, str):
+            self.register_queue(HyrexQueue(name=task_wrapper.queue))
+        else:
+            self.register_queue(task_wrapper.queue)
+
+    def register_queue(self, queue: HyrexQueue):
+        if self.internal_queue_registry[queue.name] and not queue.equals(
+            self.internal_queue_registry[queue.name]
+        ):
+            raise KeyError(
+                f"Conflicting concurrency limits on queue name: {queue.name}"
+            )
+
+        self.internal_queue_registry[queue.name] = queue
 
     def set_dispatcher(self, dispatcher: Dispatcher):
         self.dispatcher = dispatcher
@@ -41,12 +49,12 @@ class HyrexRegistry(dict[str, TaskWrapper]):
 
     def task(
         self,
-        func=None,
+        func: Callable = None,
         *,
-        queue=constants.DEFAULT_QUEUE,
-        cron=None,
-        max_retries=0,
-        priority=constants.DEFAULT_PRIORITY,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        cron: str = None,
+        max_retries: int = 0,
+        priority: int = constants.DEFAULT_PRIORITY,
     ) -> TaskWrapper:
         """
         Create task decorator

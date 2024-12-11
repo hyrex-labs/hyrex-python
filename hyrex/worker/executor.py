@@ -1,5 +1,4 @@
 import asyncio
-from fnmatch import fnmatch
 import importlib
 import json
 import logging
@@ -10,6 +9,7 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from uuid import UUID
@@ -22,8 +22,9 @@ from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
+from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
+                                is_process_alive)
 from hyrex.worker.worker import HyrexWorker
-from hyrex.worker.utils import is_process_alive, glob_to_postgres_regex, is_glob_pattern
 
 
 def generate_executor_name():
