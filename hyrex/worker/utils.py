@@ -15,9 +15,19 @@ def is_process_alive(pid: int):
         return True
 
 
-def is_glob_pattern(s: str) -> bool:
-    """Check if a string contains any glob special characters."""
-    return any(c in s for c in "*?{}[]")
+def is_glob_pattern(pattern: str) -> bool:
+    """Check if pattern contains any unescaped glob special characters."""
+    i = 0
+    while i < len(pattern):
+        # Check for escape character
+        if pattern[i] == "\\" and i + 1 < len(pattern):
+            i += 2  # Skip both the escape char and the next char
+            continue
+        # Check for unescaped special characters
+        if pattern[i] in "*?{}[]":
+            return True
+        i += 1
+    return False
 
 
 def glob_to_postgres_regex(glob_pattern: str):

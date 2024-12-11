@@ -85,8 +85,6 @@ RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
-BEGIN;
-
 WITH lock_result AS (
     SELECT pg_try_advisory_xact_lock(hashtext($1)) AS lock_acquired
 ),
@@ -107,8 +105,6 @@ SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TI
 FROM next_task
 WHERE hyrextask.id = next_task.id
 RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
-
-COMMIT;
 """
 
 FETCH_TASK_FROM_ANY_QUEUE = """

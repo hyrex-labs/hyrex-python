@@ -17,5 +17,4 @@ class HyrexWorker:
         self.task_registry: HyrexRegistry = HyrexRegistry()
 
     def add_registry(self, registry: HyrexRegistry):
-        for task_name, task_wrapper in registry.items():
-            self.task_registry[task_name] = task_wrapper
+        self.task_registry.add_registry(registry)

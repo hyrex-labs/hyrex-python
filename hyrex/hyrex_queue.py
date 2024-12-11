@@ -14,4 +14,5 @@ class HyrexQueue(BaseModel):
 
 class HyrexQueuePattern(BaseModel):
     pattern: str
-    concurrency_limit: int = 0
+    # TODO: Decide on usefulness here
+    # concurrency_limit: int = 0

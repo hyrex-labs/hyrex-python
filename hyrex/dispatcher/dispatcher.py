@@ -63,6 +63,7 @@ class Dispatcher(ABC):
         self,
         executor_id: UUID,
         queue: str = constants.ANY_QUEUE,
+        concurrency_limit: int = 0,
     ) -> DequeuedTask:
         pass
 

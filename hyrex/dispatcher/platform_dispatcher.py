@@ -114,7 +114,9 @@ class PlatformDispatcher(Dispatcher):
         self,
         worker_id: UUID,
         queue: str = constants.ANY_QUEUE,
+        concurrency_limit: int = 0,
     ) -> DequeuedTask:
+        # TODO: Apply concurrency limit
         fetch_url = f"{self.HYREX_PLATFORM_URL}{self.DEQUEUE_TASK_PATH}"
         try:
             headers = {"x-project-api-key": self.api_key}

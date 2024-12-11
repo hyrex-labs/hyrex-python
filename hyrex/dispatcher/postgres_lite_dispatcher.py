@@ -60,13 +60,20 @@ class PostgresLiteDispatcher(Dispatcher):
         self,
         executor_id: UUID,
         queue: str = constants.ANY_QUEUE,
+        concurrency_limit=0,
     ) -> DequeuedTask:
         dequeued_task = None
         with self.transaction() as cur:
             if queue == constants.ANY_QUEUE:
                 cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
             else:
-                cur.execute(sql.FETCH_TASK, [queue, executor_id])
+                if concurrency_limit > 0:
+                    cur.execute(
+                        sql.FETCH_TASK_WITH_CONCURRENCY,
+                        [queue, concurrency_limit, executor_id],
+                    )
+                else:
+                    cur.execute(sql.FETCH_TASK, [queue, executor_id])
             row = cur.fetchone()
             if row:
                 task_id, task_name, task_args = row
