@@ -233,10 +233,6 @@ class WorkerExecutor(Process):
             while self.queue_list and not self._stop_event.is_set():
                 self.check_root_process()
                 queue = self.queue_list.pop()
-                if queue.concurrency_limit > 0:
-                    # TODO: handle
-                    pass
-                # Don't wait if queue doesn't have task, move directly to next one.
                 if not self.process(queue=queue):
                     no_task_count += 1
                 else:
