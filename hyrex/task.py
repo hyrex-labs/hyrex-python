@@ -13,6 +13,7 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.models import HyrexTask, StatusEnum
 
 T = TypeVar("T", bound=BaseModel)
@@ -67,15 +68,13 @@ class TaskRun:
 
 
 class TaskWrapper(Generic[T]):
-    ENQUEUE_TASK_PATH = "/connect/enqueue-task"
-
     def __init__(
         self,
         task_identifier: str,
         func: Callable[[T], Any],
         dispatcher: Dispatcher,
         cron: str | None,
-        queue: str = constants.DEFAULT_QUEUE,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
     ):
@@ -156,12 +155,26 @@ class TaskWrapper(Generic[T]):
                 except Exception as e:
                     self.logger.warning(f"Unschedule failed with exception {e}")
 
+    def withConfig(
+        self,
+        queue: str | HyrexQueue = None,
+        priority: int = None,
+        max_retries: int = None,
+    ) -> "TaskWrapper[T]":
+        new_wrapper = TaskWrapper(
+            task_identifier=self.task_identifier,
+            func=self.func,
+            dispatcher=self.dispatcher,
+            cron=self.cron,
+            queue=queue if queue is not None else self.queue,
+            priority=priority if priority is not None else self.priority,
+            max_retries=max_retries if max_retries is not None else self.max_retries,
+        )
+        return new_wrapper
+
     def send(
         self,
         context: T,
-        queue: str = None,
-        priority: int = None,
-        max_retries: int = None,
     ) -> TaskRun:
         self.logger.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
         self._check_type(context)
@@ -172,10 +185,10 @@ class TaskWrapper(Generic[T]):
             root_id=task_id,
             parent_id=os.environ.get(EnvVars.PARENT_TASK_ID),
             task_name=self.task_identifier,
-            queue=queue or self.queue,
+            queue=self.queue if isinstance(self.queue, str) else self.queue.name,
             args=context.model_dump(),
-            max_retries=max_retries if max_retries is not None else self.max_retries,
-            priority=priority if priority is not None else self.priority,
+            max_retries=self.max_retries,
+            priority=self.priority,
         )
 
         self.dispatcher.enqueue(task)

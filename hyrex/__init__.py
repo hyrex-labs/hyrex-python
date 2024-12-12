@@ -2,6 +2,7 @@
 # from .task_registry import TaskRegistry
 import logging
 
+from .hyrex_queue import HyrexQueue
 from .hyrex_registry import HyrexRegistry
 from .worker.worker import HyrexWorker
 

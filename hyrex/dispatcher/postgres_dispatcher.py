@@ -75,17 +75,47 @@ class PostgresDispatcher(Dispatcher):
         self,
         executor_id: UUID,
         queue: str = constants.ANY_QUEUE,
+        concurrency_limit: int = 0,
     ) -> DequeuedTask:
         dequeued_task = None
         with self.transaction() as cur:
+            # TODO: Remove this option?
             if queue == constants.ANY_QUEUE:
                 cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
             else:
-                cur.execute(sql.FETCH_TASK, [queue, executor_id])
+                if concurrency_limit > 0:
+                    cur.execute(
+                        sql.FETCH_TASK_WITH_CONCURRENCY,
+                        [queue, concurrency_limit, executor_id],
+                    )
+                else:
+                    cur.execute(sql.FETCH_TASK, [queue, executor_id])
             row = cur.fetchone()
             if row:
-                task_id, task_name, task_args = row
-                dequeued_task = DequeuedTask(id=task_id, name=task_name, args=task_args)
+                (
+                    task_id,
+                    root_id,
+                    parent_id,
+                    task_name,
+                    args,
+                    queue,
+                    priority,
+                    scheduled_start,
+                    queued,
+                    started,
+                ) = row
+                dequeued_task = DequeuedTask(
+                    id=task_id,
+                    root_id=root_id,
+                    parent_id=parent_id,
+                    task_name=task_name,
+                    args=args,
+                    queue=queue,
+                    priority=priority,
+                    scheduled_start=scheduled_start,
+                    queued=queued,
+                    started=started,
+                )
 
         return dequeued_task
 
@@ -136,7 +166,7 @@ class PostgresDispatcher(Dispatcher):
 
         :param tasks: List of tasks to insert.
         """
-        task_data = [
+        task_data = (
             (
                 task.id,
                 task.root_id,
@@ -148,7 +178,7 @@ class PostgresDispatcher(Dispatcher):
                 task.priority,
             )
             for task in tasks
-        ]
+        )
 
         with self.transaction() as cur:
             cur.executemany(

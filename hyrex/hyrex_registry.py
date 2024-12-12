@@ -6,27 +6,11 @@ from typing import Any, Callable
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.task import T, TaskWrapper
 
 
-class HyrexRegistry(dict[str, TaskWrapper]):
-    def __setitem__(self, key: str, value: TaskWrapper):
-        if not isinstance(key, str):
-            raise TypeError("Key must be an instance of str")
-        if not isinstance(value, TaskWrapper):
-            raise TypeError("Value must be an instance of TaskWrapper")
-        if key in self.keys():
-            raise KeyError(
-                f"Task {key} is already registered. Task names must be unique."
-            )
-
-        super().__setitem__(key, value)
-
-    def __getitem__(self, key: str) -> TaskWrapper:
-        if not isinstance(key, str):
-            raise TypeError("Key must be an instance of str")
-        return super().__getitem__(key)
-
+class HyrexRegistry:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         if os.getenv(EnvVars.WORKER_PROCESS):
@@ -34,19 +18,62 @@ class HyrexRegistry(dict[str, TaskWrapper]):
         else:
             self.dispatcher = get_dispatcher()
 
+        self.internal_task_registry: dict[str, TaskWrapper] = {}
+        self.internal_queue_registry: dict[str, HyrexQueue] = {}
+
+    def register_task(self, task_wrapper: TaskWrapper):
+        self.logger.debug(f"Registering task: {task_wrapper.task_identifier}")
+        if self.internal_task_registry.get(task_wrapper.task_identifier):
+            raise KeyError(
+                f"Task {task_wrapper.task_identifier} is already registered. Task names must be unique."
+            )
+        self.internal_task_registry[task_wrapper.task_identifier] = task_wrapper
+        self.logger.debug(f"All tasks: {self.internal_task_registry.keys()}")
+        if isinstance(task_wrapper.queue, str):
+            self.register_queue(HyrexQueue(name=task_wrapper.queue))
+        else:
+            self.register_queue(task_wrapper.queue)
+
+    def register_queue(self, queue: HyrexQueue):
+        if self.internal_queue_registry.get(queue.name) and not queue.equals(
+            self.internal_queue_registry[queue.name]
+        ):
+            raise KeyError(
+                f"Conflicting concurrency limits on queue name: {queue.name}"
+            )
+
+        self.internal_queue_registry[queue.name] = queue
+
+    def get_concurrency_limit(self, queue_name: str):
+        # TODO: Add queue patterns?
+        if self.internal_queue_registry.get(queue_name):
+            return self.internal_queue_registry[queue_name].concurrency_limit
+        else:
+            return 0
+
     def set_dispatcher(self, dispatcher: Dispatcher):
         self.dispatcher = dispatcher
-        for task_wrapper in self.values():
+        for task_wrapper in self.internal_task_registry.values():
             task_wrapper.dispatcher = dispatcher
+
+    def get_registered_tasks(self):
+        return self.internal_task_registry.values()
+
+    def get_task(self, task_name: str):
+        return self.internal_task_registry[task_name]
+
+    def add_registry(self, registry: "HyrexRegistry"):
+        for task_wrapper in registry.get_registered_tasks():
+            self.register_task(task_wrapper=task_wrapper)
 
     def task(
         self,
-        func=None,
+        func: Callable = None,
         *,
-        queue=constants.DEFAULT_QUEUE,
-        cron=None,
-        max_retries=0,
-        priority=constants.DEFAULT_PRIORITY,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        cron: str = None,
+        max_retries: int = 0,
+        priority: int = constants.DEFAULT_PRIORITY,
     ) -> TaskWrapper:
         """
         Create task decorator
@@ -63,13 +90,14 @@ class HyrexRegistry(dict[str, TaskWrapper]):
                 priority=priority,
                 dispatcher=self.dispatcher,
             )
-            self[task_identifier] = task_wrapper
+            self.register_task(task_wrapper=task_wrapper)
 
             @functools.wraps(func)
             def wrapper(context: T) -> Any:
                 return task_wrapper(context)
 
             wrapper.send = task_wrapper.send
+            wrapper.withConfig = task_wrapper.withConfig
             return wrapper
 
         if func is not None:

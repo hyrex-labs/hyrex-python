@@ -1,5 +1,4 @@
 import asyncio
-from fnmatch import fnmatch
 import importlib
 import json
 import logging
@@ -10,6 +9,7 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from uuid import UUID
@@ -19,11 +19,13 @@ from uuid_extensions import uuid7
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
-from hyrex.worker.utils import is_process_alive, glob_to_postgres_regex, is_glob_pattern
 
 
 def generate_executor_name():
@@ -52,13 +54,7 @@ class WorkerExecutor(Process):
 
         self.worker_module_path = worker_module_path
         self.queue = queue
-        if is_glob_pattern(self.queue):
-            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
-            self.logger.debug(
-                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
-            )
-        else:
-            self.postgres_queue_pattern = None
+        self.queue_list: list[HyrexQueue] = []
         self.executor_id = executor_id
 
         self.dispatcher = None
@@ -67,19 +63,31 @@ class WorkerExecutor(Process):
         # To check if root process is running
         self.parent_pid = os.getpid()
 
+    def get_concurrency_for_queue(self, queue_name: str):
+        return self.task_registry.get_concurrency_limit(queue_name=queue_name)
+
     def update_queue_list(self):
+        self.queue_list = []
         self.logger.debug("Updating internal queue list from pattern...")
-        self.queue_list = self.dispatcher.get_queues_for_pattern(
+        queue_names = self.dispatcher.get_queues_for_pattern(
             self.postgres_queue_pattern
         )
-        self.logger.debug(f"Queues found: {self.queue_list}")
-        if self.queue_list:
-            random.shuffle(self.queue_list)
+        self.logger.debug(f"Queues found: {queue_names}")
+        if queue_names:
+            random.shuffle(queue_names)
         else:
             self._stop_event.wait(0.5)
             return
 
-        # 3. Update concurrency values
+        for queue_name in queue_names:
+            self.queue_list.append(
+                HyrexQueue(
+                    name=queue_name,
+                    concurrency_limit=self.get_concurrency_for_queue(
+                        queue_name=queue_name
+                    ),
+                )
+            )
 
     def load_worker_module_variables(self):
         sys.path.append(str(Path.cwd()))
@@ -94,14 +102,37 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def process_item(self, task_name: str, args: dict):
-        task_func = self.task_registry[task_name]
-        context = task_func.context_klass(**args)
-        result = asyncio.run(task_func.async_call(context))
-        return result
+    def process_item(self, task: DequeuedTask):
+        task_func = self.task_registry.get_task(task.task_name)
 
-    def fetch_task(self, queue: str) -> DequeuedTask:
-        return self.dispatcher.dequeue(executor_id=self.executor_id, queue=queue)
+        try:
+            set_hyrex_context(
+                HyrexContext(
+                    task_id=task.id,
+                    root_id=task.root_id,
+                    parent_id=task.parent_id,
+                    task_name=task.task_name,
+                    queue=task.queue,
+                    priority=task.priority,
+                    scheduled_start=task.scheduled_start,
+                    queued=task.queued,
+                    started=task.started,
+                    executor_id=self.executor_id,
+                )
+            )
+
+            context = task_func.context_klass(**task.args)
+            result = asyncio.run(task_func.async_call(context))
+            return result
+        finally:
+            clear_hyrex_context()
+
+    def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
+        return self.dispatcher.dequeue(
+            executor_id=self.executor_id,
+            queue=queue,
+            concurrency_limit=concurrency_limit,
+        )
 
     def mark_task_success(self, task_id: UUID):
         self.dispatcher.mark_success(task_id=task_id)
@@ -121,22 +152,21 @@ class WorkerExecutor(Process):
             SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
-    def process(self, queue: str, wait_between_tasks: bool = True):
+    def process(self, queue: HyrexQueue):
         """Returns True if a task is found and attempted, False otherwise"""
         try:
-            task: DequeuedTask = self.fetch_task(queue=queue)
+
+            task: DequeuedTask = self.fetch_task(
+                queue=queue.name, concurrency_limit=queue.concurrency_limit
+            )
             if not task:
-                # No unprocessed items, clear current task and wait a bit before trying again
-                self.update_current_task(None)
-                if wait_between_tasks:
-                    self._stop_event.wait(0.5)
                 return False
 
             # Notify root process of new task
             self.update_current_task(task.id)
             # Set parent task env var for any sub-tasks
             os.environ[EnvVars.PARENT_TASK_ID] = str(task.id)
-            result = self.process_item(task.name, task.args)
+            result = self.process_item(task)
             del os.environ[EnvVars.PARENT_TASK_ID]
 
             if result is not None:
@@ -157,6 +187,7 @@ class WorkerExecutor(Process):
             return True
 
         except Exception as e:
+            # TODO Add onError handler and improve this logging.
             self.logger.error(f"Executor {self.name}: Error processing item {str(e)}")
             self.logger.error(e)
             self.logger.error("Traceback:\n%s", traceback.format_exc())
@@ -170,6 +201,8 @@ class WorkerExecutor(Process):
 
             self._stop_event.wait(0.5)  # Add delay after error
             return True
+        finally:
+            self.update_current_task(None)
 
     def check_root_process(self):
         # Confirm parent is still alive
@@ -178,9 +211,17 @@ class WorkerExecutor(Process):
             self._stop_event.set()
 
     def run_static_queue_loop(self):
+        queue = HyrexQueue(
+            name=self.queue,
+            concurrency_limit=self.task_registry.get_concurrency_limit(
+                queue_name=self.queue
+            ),
+        )
         while not self._stop_event.is_set():
             # Queue pattern is a static string - fetch from it directly.
-            self.process(self.queue)
+            if not self.process(queue):
+                # No task found, sleep for a bit
+                self._stop_event.wait(0.5)
             self.check_root_process()
 
     def run_round_robin_loop(self):
@@ -190,9 +231,13 @@ class WorkerExecutor(Process):
             no_task_count = 0
 
             while self.queue_list and not self._stop_event.is_set():
+                self.check_root_process()
                 queue = self.queue_list.pop()
+                if queue.concurrency_limit > 0:
+                    # TODO: handle
+                    pass
                 # Don't wait if queue doesn't have task, move directly to next one.
-                if not self.process(queue=queue, wait_between_tasks=False):
+                if not self.process(queue=queue):
                     no_task_count += 1
                 else:
                     no_task_count = 0
@@ -208,6 +253,15 @@ class WorkerExecutor(Process):
 
         # Retrieve task registry, error callback, and queue.
         self.load_worker_module_variables()
+
+        # Convert queue pattern to Postgres regex syntax if needed.
+        if is_glob_pattern(self.queue):
+            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
+            self.logger.debug(
+                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
+            )
+        else:
+            self.postgres_queue_pattern = None
 
         self.dispatcher = get_dispatcher(worker=True)
         self.dispatcher.register_executor(
