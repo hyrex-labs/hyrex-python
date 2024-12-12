@@ -103,20 +103,20 @@ class WorkerExecutor(Process):
             self.queue = worker_instance.queue
 
     def process_item(self, task: DequeuedTask):
-        task_func = self.task_registry.get_task(task.name)
+        task_func = self.task_registry.get_task(task.task_name)
 
         try:
-            # TODO: Update dispatcher to collect all these fields.
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
-                    root_id=0,
-                    task_name=task.name,
-                    queue="",
-                    priority=1,
-                    scheduled_start=None,
-                    queued=datetime.now(),
-                    started=datetime.now,
+                    root_id=task.root_id,
+                    parent_id=task.parent_id,
+                    task_name=task.task_name,
+                    queue=task.queue,
+                    priority=task.priority,
+                    scheduled_start=task.scheduled_start,
+                    queued=task.queued,
+                    started=task.started,
                     executor_id=self.executor_id,
                 )
             )
@@ -160,8 +160,6 @@ class WorkerExecutor(Process):
                 queue=queue.name, concurrency_limit=queue.concurrency_limit
             )
             if not task:
-                # No unprocessed items, clear current task
-                self.update_current_task(None)
                 return False
 
             # Notify root process of new task
@@ -189,7 +187,7 @@ class WorkerExecutor(Process):
             return True
 
         except Exception as e:
-            # TODO Add onError handler.
+            # TODO Add onError handler and improve this logging.
             self.logger.error(f"Executor {self.name}: Error processing item {str(e)}")
             self.logger.error(e)
             self.logger.error("Traceback:\n%s", traceback.format_exc())
@@ -203,6 +201,8 @@ class WorkerExecutor(Process):
 
             self._stop_event.wait(0.5)  # Add delay after error
             return True
+        finally:
+            self.update_current_task(None)
 
     def check_root_process(self):
         # Confirm parent is still alive

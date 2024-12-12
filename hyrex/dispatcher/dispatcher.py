@@ -13,8 +13,15 @@ from hyrex.models import HyrexTask, StatusEnum
 
 class DequeuedTask(BaseModel):
     id: UUID
-    name: str
+    root_id: UUID
+    parent_id: UUID | None
+    task_name: str
     args: dict
+    queue: str
+    priority: int
+    scheduled_start: datetime | None
+    queued: datetime
+    started: datetime
 
 
 class Dispatcher(ABC):

@@ -1,19 +1,21 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 
 
 # TODO: Finalize context fields.
 class HyrexContext(BaseModel):
-    task_id: str
-    root_id: str
+    task_id: UUID
+    root_id: UUID
+    parent_id: UUID | None
     task_name: str
     queue: str
     priority: int
     scheduled_start: str | None
     queued: datetime
     started: datetime
-    executor_id: str
+    executor_id: UUID
 
 
 # Simple global context

@@ -77,11 +77,11 @@ WITH next_task AS (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrextask
+UPDATE hyrextask as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
-WHERE hyrextask.id = next_task.id
-RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+WHERE ht.id = next_task.id
+RETURNING ht.id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.scheduled_start, ht.queued, ht.started;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
@@ -100,28 +100,28 @@ next_task AS (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrextask
+UPDATE hyrextask as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
-WHERE hyrextask.id = next_task.id
-RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+WHERE ht.id = next_task.id
+RETURNING ht.id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.scheduled_start, ht.queued, ht.started;
 """
 
-FETCH_TASK_FROM_ANY_QUEUE = """
-WITH next_task AS (
-    SELECT id
-    FROM hyrextask
-    WHERE status = 'queued'
-    ORDER BY priority DESC, id
-    FOR UPDATE SKIP LOCKED
-    LIMIT 1
-)
-UPDATE hyrextask
-SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $1
-FROM next_task
-WHERE hyrextask.id = next_task.id
-RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
-"""
+# FETCH_TASK_FROM_ANY_QUEUE = """
+# WITH next_task AS (
+#     SELECT id
+#     FROM hyrextask
+#     WHERE status = 'queued'
+#     ORDER BY priority DESC, id
+#     FOR UPDATE SKIP LOCKED
+#     LIMIT 1
+# )
+# UPDATE hyrextask
+# SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $1
+# FROM next_task
+# WHERE hyrextask.id = next_task.id
+# RETURNING hyrextask.id, hyrextask.task_name, hyrextask.args;
+# """
 
 CONDITIONALLY_RETRY_TASK = """
 WITH existing_task AS (
