@@ -79,17 +79,13 @@ class PostgresDispatcher(Dispatcher):
     ) -> DequeuedTask:
         dequeued_task = None
         with self.transaction() as cur:
-            # TODO: Remove this option?
-            if queue == constants.ANY_QUEUE:
-                cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
+            if concurrency_limit > 0:
+                cur.execute(
+                    sql.FETCH_TASK_WITH_CONCURRENCY,
+                    [queue, concurrency_limit, executor_id],
+                )
             else:
-                if concurrency_limit > 0:
-                    cur.execute(
-                        sql.FETCH_TASK_WITH_CONCURRENCY,
-                        [queue, concurrency_limit, executor_id],
-                    )
-                else:
-                    cur.execute(sql.FETCH_TASK, [queue, executor_id])
+                cur.execute(sql.FETCH_TASK, [queue, executor_id])
             row = cur.fetchone()
             if row:
                 (

@@ -9,13 +9,11 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
-from fnmatch import fnmatch
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from uuid import UUID
 
 from pydantic import BaseModel
-from uuid_extensions import uuid7
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
