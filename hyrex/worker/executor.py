@@ -19,12 +19,12 @@ from uuid_extensions import uuid7
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -102,11 +102,30 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def process_item(self, task_name: str, args: dict):
-        task_func = self.task_registry.get_task(task_name)
-        context = task_func.context_klass(**args)
-        result = asyncio.run(task_func.async_call(context))
-        return result
+    def process_item(self, task: DequeuedTask):
+        task_func = self.task_registry.get_task(task.name)
+
+        try:
+            # TODO: Update dispatcher to collect all these fields.
+            set_hyrex_context(
+                HyrexContext(
+                    task_id=task.id,
+                    root_id=0,
+                    task_name=task.name,
+                    queue="",
+                    priority=1,
+                    scheduled_start=None,
+                    queued=datetime.now(),
+                    started=datetime.now,
+                    executor_id=self.executor_id,
+                )
+            )
+
+            context = task_func.context_klass(**task.args)
+            result = asyncio.run(task_func.async_call(context))
+            return result
+        finally:
+            clear_hyrex_context()
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
         return self.dispatcher.dequeue(
@@ -149,7 +168,7 @@ class WorkerExecutor(Process):
             self.update_current_task(task.id)
             # Set parent task env var for any sub-tasks
             os.environ[EnvVars.PARENT_TASK_ID] = str(task.id)
-            result = self.process_item(task.name, task.args)
+            result = self.process_item(task)
             del os.environ[EnvVars.PARENT_TASK_ID]
 
             if result is not None:

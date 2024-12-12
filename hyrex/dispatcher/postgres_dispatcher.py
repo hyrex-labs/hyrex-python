@@ -79,6 +79,7 @@ class PostgresDispatcher(Dispatcher):
     ) -> DequeuedTask:
         dequeued_task = None
         with self.transaction() as cur:
+            # TODO: Remove this option?
             if queue == constants.ANY_QUEUE:
                 cur.execute(sql.FETCH_TASK_FROM_ANY_QUEUE, [executor_id])
             else:
