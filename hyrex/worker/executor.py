@@ -9,13 +9,11 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
-from fnmatch import fnmatch
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from uuid import UUID
 
 from pydantic import BaseModel
-from uuid_extensions import uuid7
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
@@ -233,10 +231,6 @@ class WorkerExecutor(Process):
             while self.queue_list and not self._stop_event.is_set():
                 self.check_root_process()
                 queue = self.queue_list.pop()
-                if queue.concurrency_limit > 0:
-                    # TODO: handle
-                    pass
-                # Don't wait if queue doesn't have task, move directly to next one.
                 if not self.process(queue=queue):
                     no_task_count += 1
                 else:
