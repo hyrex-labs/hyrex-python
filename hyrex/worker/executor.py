@@ -11,6 +11,7 @@ import traceback
 from datetime import datetime, timezone
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
+from typing import Callable
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -95,35 +96,18 @@ class WorkerExecutor(Process):
         worker_instance: HyrexWorker = getattr(worker_module, instance_name)
 
         self.task_registry = worker_instance.task_registry
-        self.error_callback = worker_instance.error_callback
 
         if not self.queue:
             self.queue = worker_instance.queue
 
+    def retrieve_on_error_handler(self, task: DequeuedTask) -> Callable | None:
+        return self.task_registry.retrieve_on_error_handler(task.task_name)
+
     def process_item(self, task: DequeuedTask):
         task_func = self.task_registry.get_task(task.task_name)
-
-        try:
-            set_hyrex_context(
-                HyrexContext(
-                    task_id=task.id,
-                    root_id=task.root_id,
-                    parent_id=task.parent_id,
-                    task_name=task.task_name,
-                    queue=task.queue,
-                    priority=task.priority,
-                    scheduled_start=task.scheduled_start,
-                    queued=task.queued,
-                    started=task.started,
-                    executor_id=self.executor_id,
-                )
-            )
-
-            context = task_func.context_klass(**task.args)
-            result = asyncio.run(task_func.async_call(context))
-            return result
-        finally:
-            clear_hyrex_context()
+        context = task_func.context_klass(**task.args)
+        result = asyncio.run(task_func.async_call(context))
+        return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
         return self.dispatcher.dequeue(
@@ -160,12 +144,24 @@ class WorkerExecutor(Process):
             if not task:
                 return False
 
+            set_hyrex_context(
+                HyrexContext(
+                    task_id=task.id,
+                    root_id=task.root_id,
+                    parent_id=task.parent_id,
+                    task_name=task.task_name,
+                    queue=task.queue,
+                    priority=task.priority,
+                    scheduled_start=task.scheduled_start,
+                    queued=task.queued,
+                    started=task.started,
+                    executor_id=self.executor_id,
+                )
+            )
+
             # Notify root process of new task
             self.update_current_task(task.id)
-            # Set parent task env var for any sub-tasks
-            os.environ[EnvVars.PARENT_TASK_ID] = str(task.id)
             result = self.process_item(task)
-            del os.environ[EnvVars.PARENT_TASK_ID]
 
             if result is not None:
                 if isinstance(result, BaseModel):
@@ -185,22 +181,33 @@ class WorkerExecutor(Process):
             return True
 
         except Exception as e:
-            # TODO Add onError handler and improve this logging.
-            self.logger.error(f"Executor {self.name}: Error processing item {str(e)}")
+            self.logger.error(f"Executor {self.name}: Exception hit during processing.")
             self.logger.error(e)
             self.logger.error("Traceback:\n%s", traceback.format_exc())
-            if self.error_callback:
-                task_name = locals().get("task.name", "Unknown task name")
-                self.error_callback(task_name, e)
 
             if "task" in locals():
+                self.logger.error(
+                    f"Marking task {task.id} as failed and retrying if applicable."
+                )
                 self.mark_task_failed(task.id)
                 self.attempt_retry(task.id)
+
+                on_error = self.retrieve_on_error_handler(task.task_name)
+                if on_error:
+                    try:
+                        on_error()
+                    except Exception as on_error_exception:
+                        self.logger.error(
+                            "Exception hit when running on_error handler."
+                        )
+                        self.logger.error(on_error_exception)
+                        self.logger.error("Traceback:\n%s", traceback.format_exc())
 
             self._stop_event.wait(0.5)  # Add delay after error
             return True
         finally:
             self.update_current_task(None)
+            clear_hyrex_context()
 
     def check_root_process(self):
         # Confirm parent is still alive

@@ -96,7 +96,7 @@ next_task AS (
         AND queue = $1
         AND status = 'queued'
         AND (SELECT COUNT(*) FROM hyrextask WHERE queue = $1 AND status = 'running') < $2
-
+    ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
@@ -251,3 +251,12 @@ SAVE_RESULT = """
 GET_UNIQUE_QUEUES_FOR_PATTERN = """
     SELECT DISTINCT queue FROM hyrextask WHERE status = 'queued' AND queue ~ $1
 """
+
+MARK_LOST_TASKS = """
+    SELECT id, task_name, queue, last_heartbeat
+    FROM hyrextask
+    WHERE status = 'running'::statusenum
+    AND last_heartbeat < NOW() - INTERVAL '5 minutes';
+"""
+
+MARK_LOST_EXECUTORS = """TODO"""

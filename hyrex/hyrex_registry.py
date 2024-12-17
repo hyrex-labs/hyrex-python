@@ -56,6 +56,10 @@ class HyrexRegistry:
         for task_wrapper in self.internal_task_registry.values():
             task_wrapper.dispatcher = dispatcher
 
+    def get_on_error_handler(self, task_name: str) -> Callable | None:
+        task_wrapper = self.internal_task_registry[task_name]
+        return task_wrapper.on_error
+
     def get_registered_tasks(self):
         return self.internal_task_registry.values()
 
