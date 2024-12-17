@@ -100,9 +100,6 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def retrieve_on_error_handler(self, task: DequeuedTask) -> Callable | None:
-        return self.task_registry.retrieve_on_error_handler(task.task_name)
-
     def process_item(self, task: DequeuedTask):
         task_func = self.task_registry.get_task(task.task_name)
         context = task_func.context_klass(**task.args)
@@ -192,10 +189,10 @@ class WorkerExecutor(Process):
                 self.mark_task_failed(task.id)
                 self.attempt_retry(task.id)
 
-                on_error = self.retrieve_on_error_handler(task.task_name)
+                on_error = self.task_registry.get_on_error_handler(task.task_name)
                 if on_error:
                     try:
-                        on_error()
+                        on_error(e)
                     except Exception as on_error_exception:
                         self.logger.error(
                             "Exception hit when running on_error handler."

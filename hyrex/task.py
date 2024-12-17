@@ -165,6 +165,7 @@ class TaskWrapper(Generic[T]):
         queue: str | HyrexQueue = None,
         priority: int = None,
         max_retries: int = None,
+        on_error: HyrexErrorHandler = None,
     ) -> "TaskWrapper[T]":
         new_wrapper = TaskWrapper(
             task_identifier=self.task_identifier,
@@ -174,6 +175,7 @@ class TaskWrapper(Generic[T]):
             queue=queue if queue is not None else self.queue,
             priority=priority if priority is not None else self.priority,
             max_retries=max_retries if max_retries is not None else self.max_retries,
+            on_error=on_error if on_error is not None else self.on_error,
         )
         return new_wrapper
 

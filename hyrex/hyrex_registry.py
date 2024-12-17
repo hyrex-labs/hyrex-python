@@ -7,7 +7,7 @@ from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.task import T, TaskWrapper
+from hyrex.task import T, TaskWrapper, HyrexErrorHandler
 
 
 class HyrexRegistry:
@@ -78,6 +78,7 @@ class HyrexRegistry:
         cron: str = None,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
+        on_error: HyrexErrorHandler = None,
     ) -> TaskWrapper:
         """
         Create task decorator
@@ -93,6 +94,7 @@ class HyrexRegistry:
                 max_retries=max_retries,
                 priority=priority,
                 dispatcher=self.dispatcher,
+                on_error=on_error,
             )
             self.register_task(task_wrapper=task_wrapper)
 
