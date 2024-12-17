@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+from inspect import signature
 import json
 import logging
 import os
@@ -192,7 +193,12 @@ class WorkerExecutor(Process):
                 on_error = self.task_registry.get_on_error_handler(task.task_name)
                 if on_error:
                     try:
-                        on_error(e)
+                        sig = signature(on_error)
+                        if len(sig.parameters) == 0:
+                            on_error()
+                        else:
+                            on_error(e)
+
                     except Exception as on_error_exception:
                         self.logger.error(
                             "Exception hit when running on_error handler."

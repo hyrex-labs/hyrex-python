@@ -66,8 +66,24 @@ class TaskRun:
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
 
 
-class HyrexErrorHandler(Protocol):
-    def __call__(self, *, e: Exception) -> None: ...
+def validate_error_handler(handler: Callable) -> None:
+    sig = signature(handler)
+    params = sig.parameters
+
+    if len(params) > 1:
+        raise ValueError("Hyrex on_error handler must accept either 0 or 1 arguments")
+
+    if len(params) == 1:
+        # Get the first (and only) parameter
+        param = next(iter(params.values()))
+        print(param.annotation)
+        # Check its type annotation
+        if param.annotation == param.empty:
+            raise ValueError("Hyrex on_error handler must have type annotated args")
+        if not issubclass(param.annotation, Exception):
+            raise ValueError(
+                "Hyrex on_error handler argument must be of type Exception"
+            )
 
 
 class TaskWrapper(Generic[T]):
@@ -80,7 +96,7 @@ class TaskWrapper(Generic[T]):
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
-        on_error: HyrexErrorHandler = None,
+        on_error: Callable = None,
     ):
         self.logger = logging.getLogger(__name__)
 
@@ -94,6 +110,9 @@ class TaskWrapper(Generic[T]):
         self.priority = priority
         self.dispatcher = dispatcher
         self.on_error = on_error
+
+        if self.on_error:
+            validate_error_handler(self.on_error)
 
         try:
             context_klass = next(iter(self.type_hints.values()))
@@ -165,7 +184,7 @@ class TaskWrapper(Generic[T]):
         queue: str | HyrexQueue = None,
         priority: int = None,
         max_retries: int = None,
-        on_error: HyrexErrorHandler = None,
+        on_error: Callable = None,
     ) -> "TaskWrapper[T]":
         new_wrapper = TaskWrapper(
             task_identifier=self.task_identifier,

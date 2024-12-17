@@ -1,4 +1,5 @@
 import functools
+from inspect import signature
 import logging
 import os
 from typing import Any, Callable
@@ -7,7 +8,7 @@ from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.task import T, TaskWrapper, HyrexErrorHandler
+from hyrex.task import T, TaskWrapper
 
 
 class HyrexRegistry:
@@ -78,7 +79,7 @@ class HyrexRegistry:
         cron: str = None,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
-        on_error: HyrexErrorHandler = None,
+        on_error: Callable = None,
     ) -> TaskWrapper:
         """
         Create task decorator
