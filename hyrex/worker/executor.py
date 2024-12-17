@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-from inspect import signature
 import json
 import logging
 import os
@@ -10,6 +9,7 @@ import socket
 import sys
 import traceback
 from datetime import datetime, timezone
+from inspect import signature
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from typing import Callable
@@ -19,12 +19,14 @@ from pydantic import BaseModel
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
-from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
+from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
+                                 set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
-from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
+from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
+                                is_process_alive)
 from hyrex.worker.worker import HyrexWorker
 
 

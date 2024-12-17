@@ -1,7 +1,7 @@
 import functools
-from inspect import signature
 import logging
 import os
+from inspect import signature
 from typing import Any, Callable
 
 from hyrex import constants
