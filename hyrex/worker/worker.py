@@ -13,7 +13,6 @@ class HyrexWorker:
         self, queue: str = constants.ANY_QUEUE, error_callback: Callable = None
     ):
         self.queue = queue
-        self.error_callback = error_callback
         self.task_registry: HyrexRegistry = HyrexRegistry()
 
     def add_registry(self, registry: HyrexRegistry):

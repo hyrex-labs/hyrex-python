@@ -4,7 +4,7 @@ import os
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from typing import Any, Callable, Generic, Protocol, TypeVar, get_type_hints
 
 import psycopg2
 from pydantic import BaseModel, ValidationError
@@ -13,6 +13,7 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher
+from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.models import HyrexTask, StatusEnum
 
@@ -28,8 +29,6 @@ class UnboundTaskException(Exception):
 
 
 class TaskRun:
-    TASK_STATUS_PATH = "/connect/get-task-status"
-
     def __init__(
         self,
         task_name: str,
@@ -67,6 +66,26 @@ class TaskRun:
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
 
 
+def validate_error_handler(handler: Callable) -> None:
+    sig = signature(handler)
+    params = sig.parameters
+
+    if len(params) > 1:
+        raise ValueError("Hyrex on_error handler must accept either 0 or 1 arguments")
+
+    if len(params) == 1:
+        # Get the first (and only) parameter
+        param = next(iter(params.values()))
+        print(param.annotation)
+        # Check its type annotation
+        if param.annotation == param.empty:
+            raise ValueError("Hyrex on_error handler must have type annotated args")
+        if not issubclass(param.annotation, Exception):
+            raise ValueError(
+                "Hyrex on_error handler argument must be of type Exception"
+            )
+
+
 class TaskWrapper(Generic[T]):
     def __init__(
         self,
@@ -77,6 +96,7 @@ class TaskWrapper(Generic[T]):
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
+        on_error: Callable = None,
     ):
         self.logger = logging.getLogger(__name__)
 
@@ -89,6 +109,10 @@ class TaskWrapper(Generic[T]):
         self.max_retries = max_retries
         self.priority = priority
         self.dispatcher = dispatcher
+        self.on_error = on_error
+
+        if self.on_error:
+            validate_error_handler(self.on_error)
 
         try:
             context_klass = next(iter(self.type_hints.values()))
@@ -179,11 +203,13 @@ class TaskWrapper(Generic[T]):
         self.logger.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
         self._check_type(context)
 
+        current_context = get_hyrex_context()
+
         task_id = uuid7()
         task = HyrexTask(
             id=task_id,
-            root_id=task_id,
-            parent_id=os.environ.get(EnvVars.PARENT_TASK_ID),
+            root_id=current_context.root_id if current_context else task_id,
+            parent_id=current_context.task_id if current_context else None,
             task_name=self.task_identifier,
             queue=self.queue if isinstance(self.queue, str) else self.queue.name,
             args=context.model_dump(),

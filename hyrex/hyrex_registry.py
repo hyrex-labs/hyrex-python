@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+from inspect import signature
 from typing import Any, Callable
 
 from hyrex import constants
@@ -56,6 +57,10 @@ class HyrexRegistry:
         for task_wrapper in self.internal_task_registry.values():
             task_wrapper.dispatcher = dispatcher
 
+    def get_on_error_handler(self, task_name: str) -> Callable | None:
+        task_wrapper = self.internal_task_registry[task_name]
+        return task_wrapper.on_error
+
     def get_registered_tasks(self):
         return self.internal_task_registry.values()
 
@@ -74,6 +79,7 @@ class HyrexRegistry:
         cron: str = None,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
+        on_error: Callable = None,
     ) -> TaskWrapper:
         """
         Create task decorator
@@ -89,6 +95,7 @@ class HyrexRegistry:
                 max_retries=max_retries,
                 priority=priority,
                 dispatcher=self.dispatcher,
+                on_error=on_error,
             )
             self.register_task(task_wrapper=task_wrapper)
 
