@@ -45,6 +45,15 @@ create index if not exists index_queue_status
 on hyrextask (status, queue, scheduled_start, task_name);
 """
 
+CREATE_SYSTEM_LOG_TABLE = """
+CREATE TABLE IF NOT EXISTS hyrex_system_logs (
+    id UUID NOT NULL PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE,
+    event_name VARCHAR NOT NULL,
+    event_body JSON NOT NULL
+);
+"""
+
 CREATE_HYREX_RESULT_TABLE = """
 CREATE TABLE IF NOT EXISTS hyrextaskresult (
     id SERIAL PRIMARY KEY,
