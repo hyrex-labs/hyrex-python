@@ -7,8 +7,8 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
-from hyrex.models import HyrexTask, StatusEnum
+from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -35,7 +35,7 @@ class PlatformDispatcher(Dispatcher):
 
     def enqueue(
         self,
-        task: HyrexTask,
+        task: EnqueueTaskRequest,
     ):
         self.local_queue.put(task)
 
@@ -73,7 +73,7 @@ class PlatformDispatcher(Dispatcher):
             self._enqueue_tasks(tasks)
 
     # TODO: Add in all task fields once platform supports them
-    def _enqueue_tasks(self, tasks: list[HyrexTask]):
+    def _enqueue_tasks(self, tasks: list[EnqueueTaskRequest]):
         enqueue_url = f"{self.HYREX_PLATFORM_URL}{self.ENQUEUE_TASK_PATH}"
         headers = {
             "x-project-api-key": self.api_key,
@@ -147,7 +147,7 @@ class PlatformDispatcher(Dispatcher):
             self.logger.error(f"Exception while fetching task: {str(e)}")
             return None
 
-    def _update_task_status(self, task_id: UUID, new_status: StatusEnum):
+    def _update_task_status(self, task_id: UUID, new_status: TaskStatus):
         update_task_url = f"{self.HYREX_PLATFORM_URL}{self.UPDATE_STATUS_PATH}"
         try:
             headers = {"x-project-api-key": self.api_key}
@@ -165,10 +165,10 @@ class PlatformDispatcher(Dispatcher):
             self.logger.error(f"Exception while updating task status: {str(e)}")
 
     def mark_success(self, task_id: UUID):
-        self._update_task_status(task_id, StatusEnum.success)
+        self._update_task_status(task_id, TaskStatus.success)
 
     def mark_failed(self, task_id: UUID):
-        self._update_task_status(task_id, StatusEnum.failed)
+        self._update_task_status(task_id, TaskStatus.failed)
 
     def attempt_retry(self, task_id: UUID):
         raise NotImplementedError("Retries not yet implemented on Hyrex platform")
@@ -180,7 +180,7 @@ class PlatformDispatcher(Dispatcher):
     def task_canceled(self, task_id: UUID):
         raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
 
-    def get_task_status(self, task_id: UUID) -> StatusEnum:
+    def get_task_status(self, task_id: UUID) -> TaskStatus:
         get_status_url = f"{self.HYREX_PLATFORM_URL}{self.GET_STATUS_PATH}"
         try:
             headers = {"x-project-api-key": self.api_key}

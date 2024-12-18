@@ -18,7 +18,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex.config import EnvVars
-from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
 from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
                                  set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue

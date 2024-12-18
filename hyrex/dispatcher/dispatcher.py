@@ -3,16 +3,41 @@ import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from hyrex import constants
-from hyrex.models import HyrexTask, StatusEnum
+
+
+class TaskStatus(StrEnum):
+    success = "success"
+    failed = "failed"
+    up_for_cancel = "up_for_cancel"
+    canceled = "canceled"
+    running = "running"
+    queued = "queued"
+    waiting = "waiting"
+    lost = "lost"
+
+
+class EnqueueTaskRequest(BaseModel):
+    id: UUID
+    durable_id: UUID
+    root_id: UUID
+    parent_id: UUID | None
+    task_name: str
+    args: dict
+    queue: str
+    max_retries: int
+    priority: int
+    idempotency_key: str | None
 
 
 class DequeuedTask(BaseModel):
     id: UUID
+    durable_id: UUID
     root_id: UUID
     parent_id: UUID | None
     task_name: str
@@ -61,7 +86,7 @@ class Dispatcher(ABC):
     @abstractmethod
     def enqueue(
         self,
-        task: HyrexTask,
+        task: EnqueueTaskRequest,
     ):
         pass
 
@@ -99,12 +124,8 @@ class Dispatcher(ABC):
     def save_result(self, task_id: UUID, result: str):
         pass
 
-    # @abstractmethod
-    # def get_workers_to_cancel(self, worker_ids: list[UUID]) -> list[UUID]:
-    #     pass
-
     @abstractmethod
-    def get_task_status(self, task_id: UUID) -> StatusEnum:
+    def get_task_status(self, task_id: UUID) -> TaskStatus:
         pass
 
     @abstractmethod

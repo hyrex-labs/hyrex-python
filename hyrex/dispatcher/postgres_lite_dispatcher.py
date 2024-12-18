@@ -9,8 +9,12 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
-from hyrex.models import HyrexTask, StatusEnum
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
@@ -78,6 +82,7 @@ class PostgresLiteDispatcher(Dispatcher):
             if row:
                 (
                     task_id,
+                    durable_id,
                     root_id,
                     parent_id,
                     task_name,
@@ -90,6 +95,7 @@ class PostgresLiteDispatcher(Dispatcher):
                 ) = row
                 dequeued_task = DequeuedTask(
                     id=task_id,
+                    durable_id=durable_id,
                     root_id=root_id,
                     parent_id=parent_id,
                     task_name=task_name,
@@ -105,10 +111,11 @@ class PostgresLiteDispatcher(Dispatcher):
 
     def enqueue(
         self,
-        task: HyrexTask,
+        task: EnqueueTaskRequest,
     ):
         task_data = (
             task.id,
+            task.durable_id,
             task.root_id,
             task.parent_id,
             task.task_name,
@@ -116,6 +123,7 @@ class PostgresLiteDispatcher(Dispatcher):
             task.queue,
             task.max_retries,
             task.priority,
+            task.idempotency_key,
         )
         with self.transaction() as cur:
             cur.execute(
@@ -131,7 +139,7 @@ class PostgresLiteDispatcher(Dispatcher):
         self.pool.close()
         self.logger.debug("Dispatcher stopped successfully!")
 
-    def get_task_status(self, task_id: UUID) -> StatusEnum:
+    def get_task_status(self, task_id: UUID) -> TaskStatus:
         with self.transaction() as cur:
             cur.execute(sql.GET_TASK_STATUS, [task_id])
             result = cur.fetchone()
