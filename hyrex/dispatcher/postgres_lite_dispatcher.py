@@ -9,12 +9,8 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-)
+from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)

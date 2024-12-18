@@ -1,17 +1,15 @@
 import asyncio
 import logging
-import os
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, Protocol, TypeVar, get_type_hints
+from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, EnqueueTaskRequest, TaskStatus
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
