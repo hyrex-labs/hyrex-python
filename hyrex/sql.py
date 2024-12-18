@@ -150,7 +150,7 @@ WITH existing_task AS (
         queue,
         attempt_number,
         max_retries,
-        priority,
+        priority
     FROM hyrex_task_execution
     WHERE id = $1
       AND attempt_number < max_retries

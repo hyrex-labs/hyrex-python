@@ -105,6 +105,7 @@ class HyrexTaskResult(SQLModel, table=True):
 def create_tables(conn_string):
     with psycopg.connect(conn_string) as conn:
         with conn.cursor() as cur:
+            cur.execute(sql.CREATE_HYREX_TASK_EXECUTION_TABLE)
             cur.execute(sql.CREATE_HYREX_TASK_TABLE)
             cur.execute(sql.CREATE_SYSTEM_LOG_TABLE)
             cur.execute(sql.CREATE_HYREX_RESULT_TABLE)

@@ -32,14 +32,12 @@ class TaskRun:
         self,
         task_name: str,
         task_run_id: str,
-        status: TaskStatus,
         dispatcher: Dispatcher,
     ):
         self.logger = logging.getLogger(__name__)
 
         self.task_name = task_name
         self.task_run_id = task_run_id
-        self.status = status
         self.dispatcher = dispatcher
 
     def wait(self, timeout: float = 30.0, interval: float = 1.0):
@@ -232,7 +230,6 @@ class TaskWrapper(Generic[T]):
         return TaskRun(
             task_name=self.task_identifier,
             task_run_id=task.id,
-            status=task.status,
             dispatcher=self.dispatcher,
         )
 
