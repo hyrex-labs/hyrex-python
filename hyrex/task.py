@@ -183,7 +183,7 @@ class TaskWrapper(Generic[T]):
 
     def withConfig(
         self,
-        queue: str | HyrexQueue = None,
+        queue: str = None,
         priority: int = None,
         max_retries: int = None,
         idempotency_key: str = None,
