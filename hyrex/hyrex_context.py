@@ -7,12 +7,13 @@ from pydantic import BaseModel
 # TODO: Finalize context fields.
 class HyrexContext(BaseModel):
     task_id: UUID
+    durable_id: UUID
     root_id: UUID
     parent_id: UUID | None
     task_name: str
     queue: str
     priority: int
-    scheduled_start: str | None
+    scheduled_start: datetime | None
     queued: datetime
     started: datetime
     executor_id: UUID

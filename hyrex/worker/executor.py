@@ -18,7 +18,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex.config import EnvVars
-from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
 from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
                                  set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue
@@ -147,6 +147,7 @@ class WorkerExecutor(Process):
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
+                    durable_id=task.durable_id,
                     root_id=task.root_id,
                     parent_id=task.parent_id,
                     task_name=task.task_name,

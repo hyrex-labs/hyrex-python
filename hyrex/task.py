@@ -1,21 +1,18 @@
 import asyncio
 import logging
-import os
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, Protocol, TypeVar, get_type_hints
+from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
 import psycopg2
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.config import EnvVars
-from hyrex.dispatcher import Dispatcher
+from hyrex.dispatcher import Dispatcher, EnqueueTaskRequest, TaskStatus
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.models import HyrexTask, StatusEnum
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -33,14 +30,12 @@ class TaskRun:
         self,
         task_name: str,
         task_run_id: str,
-        status: StatusEnum,
         dispatcher: Dispatcher,
     ):
         self.logger = logging.getLogger(__name__)
 
         self.task_name = task_name
         self.task_run_id = task_run_id
-        self.status = status
         self.dispatcher = dispatcher
 
     def wait(self, timeout: float = 30.0, interval: float = 1.0):
@@ -50,9 +45,9 @@ class TaskRun:
             task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
         except ValueError:
             # Task hasn't yet moved from self.local_queue to DB
-            task_status = StatusEnum.queued
+            task_status = TaskStatus.queued
 
-        while task_status in [StatusEnum.queued, StatusEnum.running]:
+        while task_status in [TaskStatus.queued, TaskStatus.running]:
             if elapsed > timeout:
                 raise TimeoutError("Waiting for task timed out.")
             time.sleep(interval)
@@ -96,6 +91,7 @@ class TaskWrapper(Generic[T]):
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
+        idempotency_key: str = None,
         on_error: Callable = None,
     ):
         self.logger = logging.getLogger(__name__)
@@ -108,6 +104,8 @@ class TaskWrapper(Generic[T]):
         self.cron = cron
         self.max_retries = max_retries
         self.priority = priority
+        self.idempotency_key = idempotency_key
+
         self.dispatcher = dispatcher
         self.on_error = on_error
 
@@ -135,6 +133,7 @@ class TaskWrapper(Generic[T]):
         self._check_type(context)
         return self.func(context)
 
+    # TODO: Re-implement
     def schedule(self):
         if self.api_key:
             raise NotImplementedError(
@@ -168,6 +167,7 @@ class TaskWrapper(Generic[T]):
                 conn.commit()
                 self.logger.info(f"{self.task_identifier} successfully scheduled.")
 
+    # TODO: Re-implement
     def _unschedule(self):
         postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
         sql = f"select cron.unschedule('{self.task_identifier}-cron');"
@@ -181,9 +181,10 @@ class TaskWrapper(Generic[T]):
 
     def withConfig(
         self,
-        queue: str | HyrexQueue = None,
+        queue: str = None,
         priority: int = None,
         max_retries: int = None,
+        idempotency_key: str = None,
     ) -> "TaskWrapper[T]":
         new_wrapper = TaskWrapper(
             task_identifier=self.task_identifier,
@@ -193,6 +194,9 @@ class TaskWrapper(Generic[T]):
             queue=queue if queue is not None else self.queue,
             priority=priority if priority is not None else self.priority,
             max_retries=max_retries if max_retries is not None else self.max_retries,
+            idempotency_key=(
+                idempotency_key if idempotency_key is not None else self.idempotency_key
+            ),
         )
         return new_wrapper
 
@@ -206,8 +210,9 @@ class TaskWrapper(Generic[T]):
         current_context = get_hyrex_context()
 
         task_id = uuid7()
-        task = HyrexTask(
+        task = EnqueueTaskRequest(
             id=task_id,
+            durable_id=task_id,
             root_id=current_context.root_id if current_context else task_id,
             parent_id=current_context.task_id if current_context else None,
             task_name=self.task_identifier,
@@ -215,6 +220,7 @@ class TaskWrapper(Generic[T]):
             args=context.model_dump(),
             max_retries=self.max_retries,
             priority=self.priority,
+            idempotency_key=self.idempotency_key,
         )
 
         self.dispatcher.enqueue(task)
@@ -222,7 +228,6 @@ class TaskWrapper(Generic[T]):
         return TaskRun(
             task_name=self.task_identifier,
             task_run_id=task.id,
-            status=task.status,
             dispatcher=self.dispatcher,
         )
 
