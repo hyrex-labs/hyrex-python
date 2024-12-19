@@ -40,7 +40,7 @@ def wait_for_uploads():
         threads_to_wait = _upload_threads[:]
 
     if threads_to_wait:
-        logging.info(f"Waiting for {len(_upload_threads)} log uploads to complete...")
+        print(f"Waiting for {len(_upload_threads)} log uploads to complete...")
         for thread in _upload_threads[:]:
             thread.join(timeout=3.0)  # Wait up to 3 seconds per thread
 
