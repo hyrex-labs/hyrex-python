@@ -17,7 +17,9 @@ def _upload_to_s3_sync(task_id: str, bucket_name: str, output: str):
 
 
 @contextlib.contextmanager
-def write_task_logs_to_s3(task_id: str, bucket_name: str):
+def write_task_logs_to_s3(
+    task_id: str, bucket_name: str, write_to_console: bool = False
+):
     """
     Context manager to capture stdout/stderr and upload to S3.
 
@@ -30,8 +32,12 @@ def write_task_logs_to_s3(task_id: str, bucket_name: str):
     original_stderr = sys.stderr
 
     try:
-        sys.stdout = TeeIO(original_stdout, buffer)
-        sys.stderr = TeeIO(original_stderr, buffer)
+        if write_to_console:
+            sys.stdout = TeeIO(original_stdout, buffer)
+            sys.stderr = TeeIO(original_stderr, buffer)
+        else:
+            sys.stdout = buffer
+            sys.stderr = buffer
         yield
     finally:
         output = buffer.getvalue()
@@ -43,7 +49,7 @@ def write_task_logs_to_s3(task_id: str, bucket_name: str):
             thread = threading.Thread(
                 target=_upload_to_s3_sync, args=(task_id, bucket_name, output)
             )
-            thread.daemon = True  # Thread will exit when main program exits
+            thread.daemon = True
             thread.start()
 
 
