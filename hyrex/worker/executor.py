@@ -19,13 +19,15 @@ from pydantic import BaseModel
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
-from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
+from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
+                                 set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.logs import write_task_logs_to_s3
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
-from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
+from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
+                                is_process_alive)
 from hyrex.worker.worker import HyrexWorker
 
 

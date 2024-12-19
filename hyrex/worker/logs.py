@@ -1,8 +1,19 @@
 import contextlib
 import io
 import sys
+import threading
+
 import boto3
-import asyncio
+
+
+def _upload_to_s3_sync(task_id: str, bucket_name: str, output: str):
+    try:
+        key = f"{task_id}.log"
+
+        s3_client = boto3.client("s3")
+        s3_client.put_object(Bucket=bucket_name, Key=key, Body=output.encode("utf-8"))
+    except Exception as e:
+        print(f"Failed to upload task output to S3: {e}", file=sys.stderr)
 
 
 @contextlib.contextmanager
@@ -28,8 +39,12 @@ def write_task_logs_to_s3(task_id: str, bucket_name: str):
         sys.stderr = original_stderr
 
         if output:
-            # Create async task for upload
-            asyncio.create_task(_upload_to_s3(task_id, bucket_name, output))
+            # Run in a separate thread to avoid blocking
+            thread = threading.Thread(
+                target=_upload_to_s3_sync, args=(task_id, bucket_name, output)
+            )
+            thread.daemon = True  # Thread will exit when main program exits
+            thread.start()
 
 
 class TeeIO:
@@ -44,13 +59,3 @@ class TeeIO:
     def flush(self):
         self.original_stream.flush()
         self.buffer.flush()
-
-
-async def _upload_to_s3(task_id: str, bucket_name: str, output: str):
-    try:
-        key = f"{task_id}.log"
-
-        s3_client = boto3.client("s3")
-        s3_client.put_object(Bucket=bucket_name, Key=key, Body=output.encode("utf-8"))
-    except Exception as e:
-        print(f"Failed to upload task output to S3: {e}", file=sys.stderr)
