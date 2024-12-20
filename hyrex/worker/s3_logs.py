@@ -1,9 +1,9 @@
+import atexit
 import contextlib
 import io
+import logging
 import sys
 import threading
-import atexit
-import logging
 
 import boto3
 
