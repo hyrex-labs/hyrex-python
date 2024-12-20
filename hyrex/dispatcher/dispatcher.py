@@ -129,6 +129,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+        pass
+
+    @abstractmethod
     def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
         pass
 

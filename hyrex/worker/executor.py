@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import inspect
 import json
 import logging
 import os
@@ -22,9 +23,10 @@ from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
 from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.task import TaskWrapper
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.s3_logs import write_task_logs_to_s3
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
+from hyrex.worker.s3_logs import write_task_logs_to_s3
 from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
 
@@ -45,6 +47,7 @@ class WorkerExecutor(Process):
         worker_module_path: str,
         executor_id: UUID,
         queue: str,
+        register_tasks: bool = False,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -62,6 +65,7 @@ class WorkerExecutor(Process):
 
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
+        self.register_tasks = register_tasks
 
         # To check if root process is running
         self.parent_pid = os.getpid()
@@ -258,6 +262,15 @@ class WorkerExecutor(Process):
                 if no_task_count >= 3:
                     break
 
+    def register_tasks_with_dispatcher(self):
+        """Register all current tasks with dispatcher."""
+        for task_wrapper in self.task_registry.get_task_wrappers():
+            self.dispatcher.register_task(
+                task_name=task_wrapper.task_identifier,
+                cron=task_wrapper.cron,
+                source_code=inspect.getsource(task_wrapper.func),
+            )
+
     def run(self):
         init_logging(self.log_level)
 
@@ -282,6 +295,8 @@ class WorkerExecutor(Process):
             queue=self.queue,
         )
         self.task_registry.set_dispatcher(self.dispatcher)
+        if self.register_tasks:
+            self.register_tasks_with_dispatcher()
 
         # Ignore signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)

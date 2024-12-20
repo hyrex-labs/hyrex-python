@@ -61,14 +61,14 @@ class HyrexRegistry:
         task_wrapper = self.internal_task_registry[task_name]
         return task_wrapper.on_error
 
-    def get_registered_tasks(self):
+    def get_task_wrappers(self):
         return self.internal_task_registry.values()
 
     def get_task(self, task_name: str):
         return self.internal_task_registry[task_name]
 
     def add_registry(self, registry: "HyrexRegistry"):
-        for task_wrapper in registry.get_registered_tasks():
+        for task_wrapper in registry.get_task_wrappers():
             self.register_task(task_wrapper=task_wrapper)
 
     def task(

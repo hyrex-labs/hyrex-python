@@ -150,7 +150,8 @@ WITH existing_task AS (
         queue,
         attempt_number,
         max_retries,
-        priority
+        priority,
+        idempotency_key
     FROM hyrex_task_execution
     WHERE id = $1
       AND attempt_number < max_retries
@@ -167,7 +168,8 @@ INSERT INTO hyrex_task_execution (
     queue,
     attempt_number,
     max_retries,
-    priority
+    priority,
+    idempotency_key
 )
 SELECT
     $2 AS id,
@@ -181,8 +183,19 @@ SELECT
     queue,
     attempt_number + 1 AS attempt_number,
     max_retries,
-    priority
+    priority,
+    idempotency_key
 FROM existing_task;
+"""
+
+UPSERT_TASK = """
+INSERT INTO hyrex_task (task_name, cron_expr, source_code, last_updated)
+VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+ON CONFLICT (task_name)
+DO UPDATE SET 
+    cron_expr = EXCLUDED.cron_expr,
+    source_code = EXCLUDED.source_code,
+    last_updated = CURRENT_TIMESTAMP;
 """
 
 ENQUEUE_TASK = """
