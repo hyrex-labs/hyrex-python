@@ -1,3 +1,4 @@
+import anyio
 import asyncio
 import logging
 import re
@@ -90,6 +91,7 @@ class TaskWrapper(Generic[T]):
         cron: str | None,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
+        timeout: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
         idempotency_key: str = None,
         on_error: Callable = None,
@@ -106,6 +108,9 @@ class TaskWrapper(Generic[T]):
         self.priority = priority
         self.idempotency_key = idempotency_key
 
+        self.timeout = timeout
+        self.validate_timeout()
+
         self.dispatcher = dispatcher
         self.on_error = on_error
 
@@ -121,17 +126,31 @@ class TaskWrapper(Generic[T]):
 
         self.context_klass = context_klass
 
+    def validate_timeout(self):
+        if self.timeout > 0 and not asyncio.iscoroutinefunction(self.func):
+            raise ValidationError("Timeouts only supported for async functions.")
+
     async def async_call(self, context: T):
         self.logger.info(f"Executing task {self.func.__name__} on queue: {self.queue}")
         self._check_type(context)
-        if asyncio.iscoroutinefunction(self.func):
-            return await self.func(context)
-        else:
+
+        # Fast path for sync functions with no timeout
+        if not asyncio.iscoroutinefunction(self.func) and self.timeout == 0:
             return self.func(context)
 
-    def __call__(self, context: T):
-        self._check_type(context)
-        return self.func(context)
+        # Wrap sync functions that need timeout
+        func = self.func
+        if not asyncio.iscoroutinefunction(func):
+            func = lambda ctx: anyio.to_thread.run_sync(self.func, ctx)
+
+        try:
+            if self.timeout > 0:
+                return await anyio.fail_after(self.timeout, func, context)
+            return await func(context)
+        except TimeoutError:
+            raise TimeoutError(
+                f"Function execution timed out after {self.timeout} seconds"
+            )
 
     # TODO: Re-implement
     def schedule(self):
@@ -184,6 +203,7 @@ class TaskWrapper(Generic[T]):
         queue: str = None,
         priority: int = None,
         max_retries: int = None,
+        timeout: int = None,
         idempotency_key: str = None,
     ) -> "TaskWrapper[T]":
         new_wrapper = TaskWrapper(
@@ -194,6 +214,7 @@ class TaskWrapper(Generic[T]):
             queue=queue if queue is not None else self.queue,
             priority=priority if priority is not None else self.priority,
             max_retries=max_retries if max_retries is not None else self.max_retries,
+            timeout=timeout if timeout is not None else self.timeout,
             idempotency_key=(
                 idempotency_key if idempotency_key is not None else self.idempotency_key
             ),
