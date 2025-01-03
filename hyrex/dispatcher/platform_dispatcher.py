@@ -7,12 +7,8 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-)
+from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
 
 
 class PlatformDispatcher(Dispatcher):

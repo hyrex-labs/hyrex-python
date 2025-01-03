@@ -24,3 +24,8 @@ class ExecutorHeartbeatMessage(BaseModel):
 class TaskHeartbeatMessage(BaseModel):
     timestamp: datetime
     task_ids: list[UUID]
+
+
+class SetTaskTimeoutMessage(BaseModel):
+    timestamp: datetime
+    task_id: UUID
