@@ -3,6 +3,7 @@ import asyncio
 import logging
 import re
 import time
+from anyio import CancelScope
 from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
@@ -107,9 +108,7 @@ class TaskWrapper(Generic[T]):
         self.max_retries = max_retries
         self.priority = priority
         self.idempotency_key = idempotency_key
-
         self.timeout = timeout
-        self.validate_timeout()
 
         self.dispatcher = dispatcher
         self.on_error = on_error
@@ -126,31 +125,13 @@ class TaskWrapper(Generic[T]):
 
         self.context_klass = context_klass
 
-    def validate_timeout(self):
-        if self.timeout > 0 and not asyncio.iscoroutinefunction(self.func):
-            raise ValidationError("Timeouts only supported for async functions.")
-
     async def async_call(self, context: T):
         self.logger.info(f"Executing task {self.func.__name__} on queue: {self.queue}")
         self._check_type(context)
-
-        # Fast path for sync functions with no timeout
-        if not asyncio.iscoroutinefunction(self.func) and self.timeout == 0:
+        if asyncio.iscoroutinefunction(self.func):
+            return await self.func(context)
+        else:
             return self.func(context)
-
-        # Wrap sync functions that need timeout
-        func = self.func
-        if not asyncio.iscoroutinefunction(func):
-            func = lambda ctx: anyio.to_thread.run_sync(self.func, ctx)
-
-        try:
-            if self.timeout > 0:
-                return await anyio.fail_after(self.timeout, func, context)
-            return await func(context)
-        except TimeoutError:
-            raise TimeoutError(
-                f"Function execution timed out after {self.timeout} seconds"
-            )
 
     # TODO: Re-implement
     def schedule(self):
@@ -240,6 +221,7 @@ class TaskWrapper(Generic[T]):
             queue=self.queue if isinstance(self.queue, str) else self.queue.name,
             args=context.model_dump(),
             max_retries=self.max_retries,
+            timeout=self.timeout,
             priority=self.priority,
             idempotency_key=self.idempotency_key,
         )

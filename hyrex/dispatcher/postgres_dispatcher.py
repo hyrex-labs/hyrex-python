@@ -101,6 +101,7 @@ class PostgresDispatcher(Dispatcher):
                     args,
                     queue,
                     priority,
+                    timeout,
                     scheduled_start,
                     queued,
                     started,
@@ -114,6 +115,7 @@ class PostgresDispatcher(Dispatcher):
                     args=args,
                     queue=queue,
                     priority=priority,
+                    timeout=timeout,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -179,6 +181,7 @@ class PostgresDispatcher(Dispatcher):
                 task.queue,
                 task.max_retries,
                 task.priority,
+                task.timeout,
                 task.idempotency_key,
             )
             for task in tasks

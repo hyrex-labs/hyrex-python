@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS hyrex_task_execution (
     priority        SMALLINT                    NOT NULL,
     status          statusenum                  NOT NULL DEFAULT 'queued'::statusenum,
     attempt_number  SMALLINT                    NOT NULL DEFAULT 0,
+    timeout         INT                         NOT NULL DEFAULT 0,
     scheduled_start TIMESTAMP WITH TIME ZONE,
     executor_id     UUID,
     queued          TIMESTAMP WITH TIME ZONE             DEFAULT CURRENT_TIMESTAMP,
@@ -113,7 +114,7 @@ UPDATE hyrex_task_execution as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout, ht.scheduled_start, ht.queued, ht.started;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
@@ -136,7 +137,7 @@ UPDATE hyrex_task_execution as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout, ht.scheduled_start, ht.queued, ht.started;
 """
 
 CONDITIONALLY_RETRY_TASK = """
@@ -151,6 +152,7 @@ WITH existing_task AS (
         attempt_number,
         max_retries,
         priority,
+        timeout,
         idempotency_key
     FROM hyrex_task_execution
     WHERE id = $1
@@ -169,6 +171,7 @@ INSERT INTO hyrex_task_execution (
     attempt_number,
     max_retries,
     priority,
+    timeout,
     idempotency_key
 )
 SELECT
@@ -184,6 +187,7 @@ SELECT
     attempt_number + 1 AS attempt_number,
     max_retries,
     priority,
+    timeout,
     idempotency_key
 FROM existing_task;
 """
@@ -210,10 +214,11 @@ WITH task_insertion AS (
                                           queue,
                                           max_retries,
                                           priority,
+                                          timeout,
                                           idempotency_key
             )
             VALUES (
-                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                    )
             ON CONFLICT (task_name, idempotency_key)
                 WHERE idempotency_key IS NOT NULL

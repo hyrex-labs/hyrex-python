@@ -7,8 +7,12 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -220,4 +224,7 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
+        pass
+
+    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
         pass

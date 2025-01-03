@@ -109,13 +109,18 @@ class WorkerExecutor(Process):
             self.queue = worker_instance.queue
 
     def process_item(self, task: DequeuedTask):
-        task_func = self.task_registry.get_task(task.task_name)
-        context = task_func.context_klass(**task.args)
+        task_wrapper = self.task_registry.get_task(task.task_name)
+
+        if task.timeout > 0:
+            # Message admin
+            pass
+
+        context = task_wrapper.context_klass(**task.args)
         if self.logs_s3_bucket:
             with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
-                result = asyncio.run(task_func.async_call(context))
+                result = asyncio.run(task_wrapper.async_call(context))
         else:
-            result = asyncio.run(task_func.async_call(context))
+            result = asyncio.run(task_wrapper.async_call(context))
         return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
@@ -162,6 +167,7 @@ class WorkerExecutor(Process):
                     task_name=task.task_name,
                     queue=task.queue,
                     priority=task.priority,
+                    timeout=task.timeout,
                     scheduled_start=task.scheduled_start,
                     queued=task.queued,
                     started=task.started,
