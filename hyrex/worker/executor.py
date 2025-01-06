@@ -42,10 +42,6 @@ class HyrexTaskTimeout(Exception):
     pass
 
 
-def timeout_handler(signum, frame):
-    raise HyrexTaskTimeout()
-
-
 class WorkerExecutor(Process):
 
     def __init__(
@@ -317,7 +313,11 @@ class WorkerExecutor(Process):
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        # Set up to throw HyrexTaskTimeout on task timeouts.
+        # Set up to throw HyrexTaskTimeout and then end process on task timeout.
+        def timeout_handler(signum, frame):
+            self._stop_event.set()
+            raise HyrexTaskTimeout()
+
         signal.signal(signal.SIGALRM, timeout_handler)
 
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
