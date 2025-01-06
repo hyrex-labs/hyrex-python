@@ -5,9 +5,7 @@ import time
 from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
-import anyio
 import psycopg2
-from anyio import CancelScope
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
