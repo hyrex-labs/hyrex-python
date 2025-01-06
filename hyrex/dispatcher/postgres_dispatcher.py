@@ -97,6 +97,7 @@ class PostgresDispatcher(Dispatcher):
                     args,
                     queue,
                     priority,
+                    timeout,
                     scheduled_start,
                     queued,
                     started,
@@ -110,6 +111,7 @@ class PostgresDispatcher(Dispatcher):
                     args=args,
                     queue=queue,
                     priority=priority,
+                    timeout=timeout,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -175,6 +177,7 @@ class PostgresDispatcher(Dispatcher):
                 task.queue,
                 task.max_retries,
                 task.priority,
+                task.timeout,
                 task.idempotency_key,
             )
             for task in tasks
@@ -252,3 +255,7 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
+
+    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+        with self.transaction() as cur:
+            cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])

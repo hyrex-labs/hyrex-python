@@ -9,12 +9,8 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-)
+from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
@@ -89,6 +85,7 @@ class PostgresLiteDispatcher(Dispatcher):
                     args,
                     queue,
                     priority,
+                    timeout,
                     scheduled_start,
                     queued,
                     started,
@@ -102,6 +99,7 @@ class PostgresLiteDispatcher(Dispatcher):
                     args=args,
                     queue=queue,
                     priority=priority,
+                    timeout=timeout,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -123,6 +121,7 @@ class PostgresLiteDispatcher(Dispatcher):
             task.queue,
             task.max_retries,
             task.priority,
+            task.timeout,
             task.idempotency_key,
         )
         with self.transaction() as cur:

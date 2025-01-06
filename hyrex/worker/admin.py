@@ -7,11 +7,13 @@ from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
 from hyrex.worker.messages.root_messages import CancelTaskMessage
 from hyrex.worker.utils import is_process_alive
 
@@ -88,6 +90,7 @@ class WorkerAdmin(Process):
                 for task_id in tasks_to_cancel:
                     self.root_message_queue.put(CancelTaskMessage(task_id=task_id))
 
+                # TODO: Switch to notifications to avoid this sleep.
                 self._stop_event.wait(0.5)
 
                 # Confirm parent is still alive
