@@ -20,16 +20,14 @@ from pydantic import BaseModel
 
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -38,6 +36,14 @@ def generate_executor_name():
     pid = os.getpid()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     return f"hyrex-executor-{hostname}-{pid}-{timestamp}"
+
+
+class HyrexTaskTimeout(Exception):
+    pass
+
+
+def timeout_handler(signum, frame):
+    raise HyrexTaskTimeout()
 
 
 class WorkerExecutor(Process):
@@ -113,10 +119,6 @@ class WorkerExecutor(Process):
     def process_item(self, task: DequeuedTask):
         task_wrapper = self.task_registry.get_task(task.task_name)
 
-        if task.timeout > 0:
-            # Message admin
-            pass
-
         context = task_wrapper.context_klass(**task.args)
         if self.logs_s3_bucket:
             with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
@@ -179,6 +181,10 @@ class WorkerExecutor(Process):
 
             # Notify root process of new task
             self.update_current_task(task.id)
+            # Set up timeout
+            if task.timeout > 0:
+                signal.alarm(task.timeout)
+            # Run task
             result = self.process_item(task)
 
             if result is not None:
@@ -230,6 +236,7 @@ class WorkerExecutor(Process):
             return True
         finally:
             self.update_current_task(None)
+            signal.alarm(0)  # Clear alarm
             clear_hyrex_context()
 
     def check_root_process(self):
@@ -306,9 +313,12 @@ class WorkerExecutor(Process):
         if self.register_tasks:
             self.register_tasks_with_dispatcher()
 
-        # Ignore signals, let main process manage shutdown.
+        # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        # Set up to throw HyrexTaskTimeout on task timeouts.
+        signal.signal(signal.SIGALRM, timeout_handler)
 
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 
