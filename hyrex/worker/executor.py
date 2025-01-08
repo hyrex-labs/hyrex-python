@@ -114,15 +114,15 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def process_item(self, task: DequeuedTask):
+    async def process_item(self, task: DequeuedTask):
         task_wrapper = self.task_registry.get_task(task.task_name)
-
         context = task_wrapper.context_klass(**task.args)
+
         if self.logs_s3_bucket:
-            with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
-                result = asyncio.run(task_wrapper.async_call(context))
+            async with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
+                result = await task_wrapper.async_call(context)
         else:
-            result = asyncio.run(task_wrapper.async_call(context))
+            result = await task_wrapper.async_call(context)
         return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
@@ -183,7 +183,7 @@ class WorkerExecutor(Process):
             if task.timeout > 0:
                 signal.alarm(task.timeout)
             # Run task
-            result = self.process_item(task)
+            result = asyncio.run(self.process_item(task))
 
             if result is not None:
                 if isinstance(result, BaseModel):
@@ -259,6 +259,7 @@ class WorkerExecutor(Process):
 
     def run_round_robin_loop(self):
         last_queue_refresh = time.monotonic()
+        no_task_count = 0
 
         while not self._stop_event.is_set():
             seconds_since_queue_refresh = time.monotonic() - last_queue_refresh
@@ -266,6 +267,7 @@ class WorkerExecutor(Process):
                 seconds_since_queue_refresh
                 > constants.WORKER_EXECUTOR_QUEUE_REFRESH_SECONDS
                 or len(self.queue_list) == 0
+                or no_task_count >= 5
             ):
                 self.update_queue_list()
                 last_queue_refresh = time.monotonic()
@@ -283,7 +285,7 @@ class WorkerExecutor(Process):
                     no_task_count = 0
 
                 # We're not hitting populated queues - pause and refresh queue list.
-                if no_task_count >= 3:
+                if no_task_count >= 5:
                     break
 
     def register_tasks_with_dispatcher(self):
