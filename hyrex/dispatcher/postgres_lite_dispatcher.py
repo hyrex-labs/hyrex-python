@@ -9,8 +9,12 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
@@ -177,7 +181,7 @@ class PostgresLiteDispatcher(Dispatcher):
 
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         with self.transaction() as cur:
-            cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
+            cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
 
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):

@@ -13,8 +13,12 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
 
 
 class PostgresDispatcher(Dispatcher):
@@ -128,8 +132,8 @@ class PostgresDispatcher(Dispatcher):
         tasks = []
         last_flush_time = time.monotonic()
         while True:
-            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
-            if timeout <= 0:
+            time_left = self.flush_interval - (time.monotonic() - last_flush_time)
+            if time_left <= 0:
                 # Flush if the flush interval has passed
                 if tasks:
                     self._enqueue_tasks(tasks)
@@ -139,7 +143,7 @@ class PostgresDispatcher(Dispatcher):
 
             try:
                 # Wait for a task or until the timeout expires
-                task = self.local_queue.get(timeout=timeout)
+                task = self.local_queue.get(timeout=time_left)
                 if task is None:
                     # Stop sequence initiated
                     break
@@ -253,7 +257,7 @@ class PostgresDispatcher(Dispatcher):
 
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         with self.transaction() as cur:
-            cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
+            cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
 
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
