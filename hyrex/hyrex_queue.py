@@ -10,9 +10,3 @@ class HyrexQueue(BaseModel):
             self.name == other_queue.name
             and self.concurrency_limit == other_queue.concurrency_limit
         )
-
-
-class HyrexQueuePattern(BaseModel):
-    pattern: str
-    # TODO: Decide on usefulness here
-    # concurrency_limit: int = 0

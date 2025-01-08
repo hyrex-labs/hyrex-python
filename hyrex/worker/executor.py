@@ -8,6 +8,7 @@ import random
 import signal
 import socket
 import sys
+import time
 import traceback
 from datetime import datetime, timezone
 from inspect import signature
@@ -18,6 +19,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
 from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
@@ -256,14 +258,25 @@ class WorkerExecutor(Process):
             self.check_root_process()
 
     def run_round_robin_loop(self):
+        last_queue_refresh = time.monotonic()
+
         while not self._stop_event.is_set():
-            self.update_queue_list()
+            seconds_since_queue_refresh = time.monotonic() - last_queue_refresh
+            if (
+                seconds_since_queue_refresh
+                > constants.WORKER_EXECUTOR_QUEUE_REFRESH_SECONDS
+                or len(self.queue_list) == 0
+            ):
+                self.update_queue_list()
+                last_queue_refresh = time.monotonic()
 
             no_task_count = 0
 
-            while self.queue_list and not self._stop_event.is_set():
+            for queue in self.queue_list:
                 self.check_root_process()
-                queue = self.queue_list.pop()
+                if self._stop_event.is_set():
+                    break
+
                 if not self.process(queue=queue):
                     no_task_count += 1
                 else:
