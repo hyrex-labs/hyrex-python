@@ -5,7 +5,7 @@ import time
 from inspect import signature
 from typing import Any, Callable, Generic, TypeVar, get_type_hints
 
-import psycopg2
+import psycopg
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
@@ -149,7 +149,7 @@ class TaskWrapper(Generic[T]):
 
         target_db_name = self._get_conn().split("/")[-1]
         postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
-        with psycopg2.connect(postgres_db) as conn:
+        with psycopg.connect(postgres_db) as conn:
             with conn.cursor() as cur:
                 sql = f"""
                 select
@@ -169,7 +169,7 @@ class TaskWrapper(Generic[T]):
     def _unschedule(self):
         postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
         sql = f"select cron.unschedule('{self.task_identifier}-cron');"
-        with psycopg2.connect(postgres_db) as conn:
+        with psycopg.connect(postgres_db) as conn:
             with conn.cursor() as cur:
                 try:
                     cur.execute(sql)

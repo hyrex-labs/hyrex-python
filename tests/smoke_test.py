@@ -2,7 +2,7 @@ import asyncio
 import logging
 import multiprocessing
 
-import psycopg2  # Added import for database connections
+import psycopg  # Added import for database connections
 import pytest
 from pydantic import BaseModel
 
@@ -56,7 +56,7 @@ def db_connection_string(postgresql):
 
 
 def clear_db(db_connection_string: str):
-    conn = psycopg2.connect(db_connection_string)
+    conn = psycopg.connect(db_connection_string)
     try:
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM hyrextask;")
@@ -65,7 +65,7 @@ def clear_db(db_connection_string: str):
 
 
 def get_completed_tasks(db_connection_string: str):
-    conn = psycopg2.connect(db_connection_string)
+    conn = psycopg.connect(db_connection_string)
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM hyrextask WHERE status='success';")
@@ -76,7 +76,7 @@ def get_completed_tasks(db_connection_string: str):
 
 
 def get_failed_tasks(db_connection_string: str):
-    conn = psycopg2.connect(db_connection_string)
+    conn = psycopg.connect(db_connection_string)
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM hyrextask WHERE status='failed';")

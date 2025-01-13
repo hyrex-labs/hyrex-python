@@ -23,7 +23,6 @@ nh3==0.2.18
 packaging==24.1
 pkginfo==1.10.0
 psycopg==3.2.1
-psycopg2-binary==2.9.9
 pydantic==2.8.2
 pydantic_core==2.20.1
 Pygments==2.18.0
