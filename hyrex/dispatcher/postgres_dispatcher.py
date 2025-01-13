@@ -13,8 +13,12 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants, sql
-from hyrex.dispatcher.dispatcher import DequeuedTask, Dispatcher
-from hyrex.models import HyrexTask, StatusEnum
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
 
 
 class PostgresDispatcher(Dispatcher):
@@ -90,24 +94,28 @@ class PostgresDispatcher(Dispatcher):
             if row:
                 (
                     task_id,
+                    durable_id,
                     root_id,
                     parent_id,
                     task_name,
                     args,
                     queue,
                     priority,
+                    timeout,
                     scheduled_start,
                     queued,
                     started,
                 ) = row
                 dequeued_task = DequeuedTask(
                     id=task_id,
+                    durable_id=durable_id,
                     root_id=root_id,
                     parent_id=parent_id,
                     task_name=task_name,
                     args=args,
                     queue=queue,
                     priority=priority,
+                    timeout=timeout,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -115,7 +123,7 @@ class PostgresDispatcher(Dispatcher):
 
         return dequeued_task
 
-    def enqueue(self, task: HyrexTask):
+    def enqueue(self, task: EnqueueTaskRequest):
         if self.stopping:
             self.logger.warning("Task enqueued during shutdown. May not be processed.")
         self.local_queue.put(task)
@@ -124,8 +132,8 @@ class PostgresDispatcher(Dispatcher):
         tasks = []
         last_flush_time = time.monotonic()
         while True:
-            timeout = self.flush_interval - (time.monotonic() - last_flush_time)
-            if timeout <= 0:
+            time_left = self.flush_interval - (time.monotonic() - last_flush_time)
+            if time_left <= 0:
                 # Flush if the flush interval has passed
                 if tasks:
                     self._enqueue_tasks(tasks)
@@ -135,7 +143,7 @@ class PostgresDispatcher(Dispatcher):
 
             try:
                 # Wait for a task or until the timeout expires
-                task = self.local_queue.get(timeout=timeout)
+                task = self.local_queue.get(timeout=time_left)
                 if task is None:
                     # Stop sequence initiated
                     break
@@ -156,7 +164,7 @@ class PostgresDispatcher(Dispatcher):
         if tasks:
             self._enqueue_tasks(tasks)
 
-    def _enqueue_tasks(self, tasks: List[HyrexTask]):
+    def _enqueue_tasks(self, tasks: List[EnqueueTaskRequest]):
         """
         Inserts a batch of tasks into the database.
 
@@ -165,6 +173,7 @@ class PostgresDispatcher(Dispatcher):
         task_data = (
             (
                 task.id,
+                task.durable_id,
                 task.root_id,
                 task.parent_id,
                 task.task_name,
@@ -172,6 +181,8 @@ class PostgresDispatcher(Dispatcher):
                 task.queue,
                 task.max_retries,
                 task.priority,
+                task.timeout,
+                task.idempotency_key,
             )
             for task in tasks
         )
@@ -207,7 +218,7 @@ class PostgresDispatcher(Dispatcher):
         )
         return clean_shutdown
 
-    def get_task_status(self, task_id: UUID) -> StatusEnum:
+    def get_task_status(self, task_id: UUID) -> TaskStatus:
         with self.transaction() as cur:
             cur.execute(sql.GET_TASK_STATUS, [task_id])
             result = cur.fetchone()
@@ -246,5 +257,9 @@ class PostgresDispatcher(Dispatcher):
 
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         with self.transaction() as cur:
-            cur.execute(sql.GET_UNIQUE_QUEUES_FOR_PATTERN, [pattern])
+            cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
+
+    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+        with self.transaction() as cur:
+            cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])

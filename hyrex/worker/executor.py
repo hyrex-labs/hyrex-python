@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import inspect
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ import random
 import signal
 import socket
 import sys
+import time
 import traceback
 from datetime import datetime, timezone
 from inspect import signature
@@ -17,16 +19,17 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from hyrex import constants
 from hyrex.config import EnvVars
-from hyrex.dispatcher import DequeuedTask, get_dispatcher
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.task import TaskWrapper
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.s3_logs import write_task_logs_to_s3
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -35,6 +38,10 @@ def generate_executor_name():
     pid = os.getpid()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     return f"hyrex-executor-{hostname}-{pid}-{timestamp}"
+
+
+class HyrexTaskTimeout(Exception):
+    pass
 
 
 class WorkerExecutor(Process):
@@ -46,6 +53,7 @@ class WorkerExecutor(Process):
         worker_module_path: str,
         executor_id: UUID,
         queue: str,
+        register_tasks: bool = False,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -59,8 +67,11 @@ class WorkerExecutor(Process):
         self.queue_list: list[HyrexQueue] = []
         self.executor_id = executor_id
 
+        self.logs_s3_bucket = os.environ.get(EnvVars.LOGS_BUCKET)
+
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
+        self.register_tasks = register_tasks
 
         # To check if root process is running
         self.parent_pid = os.getpid()
@@ -103,10 +114,15 @@ class WorkerExecutor(Process):
         if not self.queue:
             self.queue = worker_instance.queue
 
-    def process_item(self, task: DequeuedTask):
-        task_func = self.task_registry.get_task(task.task_name)
-        context = task_func.context_klass(**task.args)
-        result = asyncio.run(task_func.async_call(context))
+    async def process_item(self, task: DequeuedTask):
+        task_wrapper = self.task_registry.get_task(task.task_name)
+        context = task_wrapper.context_klass(**task.args)
+
+        if self.logs_s3_bucket:
+            async with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
+                result = await task_wrapper.async_call(context)
+        else:
+            result = await task_wrapper.async_call(context)
         return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
@@ -147,11 +163,13 @@ class WorkerExecutor(Process):
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
+                    durable_id=task.durable_id,
                     root_id=task.root_id,
                     parent_id=task.parent_id,
                     task_name=task.task_name,
                     queue=task.queue,
                     priority=task.priority,
+                    timeout=task.timeout,
                     scheduled_start=task.scheduled_start,
                     queued=task.queued,
                     started=task.started,
@@ -161,7 +179,11 @@ class WorkerExecutor(Process):
 
             # Notify root process of new task
             self.update_current_task(task.id)
-            result = self.process_item(task)
+            # Set up timeout
+            if task.timeout > 0:
+                signal.alarm(task.timeout)
+            # Run task
+            result = asyncio.run(self.process_item(task))
 
             if result is not None:
                 if isinstance(result, BaseModel):
@@ -212,6 +234,7 @@ class WorkerExecutor(Process):
             return True
         finally:
             self.update_current_task(None)
+            signal.alarm(0)  # Clear alarm
             clear_hyrex_context()
 
     def check_root_process(self):
@@ -235,22 +258,44 @@ class WorkerExecutor(Process):
             self.check_root_process()
 
     def run_round_robin_loop(self):
+        last_queue_refresh = time.monotonic()
+        no_task_count = 0
+
         while not self._stop_event.is_set():
-            self.update_queue_list()
+            seconds_since_queue_refresh = time.monotonic() - last_queue_refresh
+            if (
+                seconds_since_queue_refresh
+                > constants.WORKER_EXECUTOR_QUEUE_REFRESH_SECONDS
+                or len(self.queue_list) == 0
+                or no_task_count >= 5
+            ):
+                self.update_queue_list()
+                last_queue_refresh = time.monotonic()
 
             no_task_count = 0
 
-            while self.queue_list and not self._stop_event.is_set():
+            for queue in self.queue_list:
                 self.check_root_process()
-                queue = self.queue_list.pop()
+                if self._stop_event.is_set():
+                    break
+
                 if not self.process(queue=queue):
                     no_task_count += 1
                 else:
                     no_task_count = 0
 
                 # We're not hitting populated queues - pause and refresh queue list.
-                if no_task_count >= 3:
+                if no_task_count >= 5:
                     break
+
+    def register_tasks_with_dispatcher(self):
+        """Register all current tasks with dispatcher."""
+        for task_wrapper in self.task_registry.get_task_wrappers():
+            self.dispatcher.register_task(
+                task_name=task_wrapper.task_identifier,
+                cron=task_wrapper.cron,
+                source_code=inspect.getsource(task_wrapper.func),
+            )
 
     def run(self):
         init_logging(self.log_level)
@@ -276,10 +321,19 @@ class WorkerExecutor(Process):
             queue=self.queue,
         )
         self.task_registry.set_dispatcher(self.dispatcher)
+        if self.register_tasks:
+            self.register_tasks_with_dispatcher()
 
-        # Ignore signals, let main process manage shutdown.
+        # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        # Set up to throw HyrexTaskTimeout and then end process on task timeout.
+        def timeout_handler(signum, frame):
+            self._stop_event.set()
+            raise HyrexTaskTimeout()
+
+        signal.signal(signal.SIGALRM, timeout_handler)
 
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 

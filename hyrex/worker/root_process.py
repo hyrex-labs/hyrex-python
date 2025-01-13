@@ -38,6 +38,8 @@ class WorkerRootProcess:
         self.queue = queue
         self.num_processes = num_processes
 
+        self._register_tasks = True
+
         self.heartbeat_requested = False
 
         self._stop_event = threading.Event()
@@ -67,7 +69,11 @@ class WorkerRootProcess:
             worker_module_path=self.worker_module_path,
             queue=self.queue,
             executor_id=executor_id,
+            register_tasks=self._register_tasks,
         )
+        # Only register tasks once per worker.
+        if self._register_tasks:
+            self._register_tasks = False
         executor_process.start()
         self.executor_id_to_process[executor_id] = executor_process
         # Notify admin of new executor
