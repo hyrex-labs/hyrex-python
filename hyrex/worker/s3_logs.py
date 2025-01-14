@@ -1,7 +1,8 @@
 import contextlib
 import sys
-import boto3
 from functools import lru_cache
+
+import boto3
 
 
 @lru_cache(maxsize=1)
