@@ -1,40 +1,42 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Hashable, TypeVar
 
+class HyrexCacheManager(dict[Hashable, "HyrexCache"]):
+    def __setitem__(self, key, value):
+        # Override [] assignment
+        if not isinstance(key, Hashable):
+            raise TypeError(f"Key must be hashable, got {type(key)}")
+        if not isinstance(value, HyrexCache):
+            raise TypeError(f"Value must be HyrexCache, got {type(key)}")
+        super().__setitem__(key, value)
 
-class ConnectionHook(ABC):
-    """Base class for connection hooks"""
-
-    def __init__(self):
-        self._connection = None
-
-    @property
-    def name(self) -> str:
-        """Unique identifier for this connection type"""
-        return self.__class__.__name__
-
-    @abstractmethod
-    def create_connection(self) -> Any:
-        """Create a new connection"""
+    def cleanup():
         pass
 
+
+# Define a TypeVar
+T = TypeVar("T")
+
+
+class HyrexCache(ABC):
+    """Base class for cached resources in Hyrex"""
+    cached_object = None
+
+    def get(self, hashableKey: Hashable) -> T:
+        cached = HyrexCacheManager.get(hashableKey)
+        if cached:
+            return cached.cached_object
+        else:
+            self.cached_object = self.initialize(hashableKey)
+        HyrexCacheManager[hashableKey] = self
+        return self.cached_object
+
+    @staticmethod
     @abstractmethod
-    def close_connection(self, connection: Any) -> None:
-        """Close the given connection"""
+    def initialize(hashableKey: Hashable):
         pass
 
-    def get_connection(self) -> Any:
-        """Get the cached connection, creating it if necessary"""
-        if self._connection is None:
-            self._connection = self.create_connection()
-        return self._connection
-
-    def cleanup(self) -> None:
-        """Internal method to clean up the current connection"""
-        if self._connection is not None:
-            self.close_connection(self._connection)
-            self._connection = None
-
-    def health_check(self) -> bool:
-        """Verify the connection is still viable"""
-        return True
+    @staticmethod
+    @abstractmethod
+    def cleanup(cached_object: T) -> None:
+        pass
