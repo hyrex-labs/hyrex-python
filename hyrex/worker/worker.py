@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 
 from hyrex import constants
 from hyrex.hyrex_registry import HyrexRegistry
@@ -17,3 +17,4 @@ class HyrexWorker:
 
     def add_registry(self, registry: HyrexRegistry):
         self.task_registry.add_registry(registry)
+

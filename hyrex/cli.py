@@ -79,6 +79,9 @@ def run_worker(
     Run multiple worker processes using the specified worker module path
     """
 
+    if not os.environ.get(EnvVars.DATABASE_URL):
+        raise EnvironmentError(f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker.")
+
     # Prevents HyrexRegistry instances from creating their own dispatchers
     os.environ[EnvVars.WORKER_PROCESS] = "true"
 
