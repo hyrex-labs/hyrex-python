@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
+from hyrex.hyrex_cache import HyrexCacheManager
 from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
                                  set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue
@@ -127,7 +128,7 @@ class WorkerExecutor(Process):
             result = await task_wrapper.async_call(context)
         return result
 
-    def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask:
+    def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask | None:
         return self.dispatcher.dequeue(
             executor_id=self.executor_id,
             queue=queue,
@@ -156,7 +157,7 @@ class WorkerExecutor(Process):
         """Returns True if a task is found and attempted, False otherwise"""
         try:
 
-            task: DequeuedTask = self.fetch_task(
+            task: DequeuedTask | None = self.fetch_task(
                 queue=queue.name, concurrency_limit=queue.concurrency_limit
             )
             if not task:
@@ -190,10 +191,11 @@ class WorkerExecutor(Process):
             if result is not None:
                 if isinstance(result, BaseModel):
                     result = result.model_dump_json()
-                elif isinstance(result, dict):
-                    result = json.dumps(result)
                 else:
-                    raise TypeError("Return value must be JSON-serializable.")
+                    try:
+                        result = json.dumps(result)
+                    except (TypeError, ValueError):
+                        raise TypeError("Return value must be JSON-serializable")
 
                 self.dispatcher.save_result(task.id, result)
 
@@ -352,3 +354,5 @@ class WorkerExecutor(Process):
         if self.dispatcher:
             self.dispatcher.disconnect_executor(self.executor_id)
             self.dispatcher.stop()
+        # Clean up any cached resources
+        HyrexCacheManager.cleanup()
