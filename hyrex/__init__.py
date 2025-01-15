@@ -2,7 +2,7 @@
 # from .task_registry import TaskRegistry
 import logging
 
-from .connection_hook import ConnectionHook
+from .hyrex_cache import HyrexCache
 from .hyrex_context import HyrexContext, get_hyrex_context
 from .hyrex_queue import HyrexQueue
 from .hyrex_registry import HyrexRegistry
