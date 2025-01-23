@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Hashable, TypeVar
 
-
 _cache_manager: dict[Hashable, "HyrexCache"] = {}
 
 

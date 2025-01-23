@@ -12,9 +12,10 @@ from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
-from hyrex import constants, sql
+from hyrex import constants
 from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
                                          EnqueueTaskRequest, TaskStatus)
+from hyrex.sql import sql
 
 
 class PostgresDispatcher(Dispatcher):

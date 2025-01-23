@@ -8,7 +8,8 @@ from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from uuid_extensions import uuid7
 
-from hyrex import constants, sql
+from hyrex import constants
+from hyrex.sql import sql
 
 
 def utcnow():
