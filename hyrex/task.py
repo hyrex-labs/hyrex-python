@@ -90,7 +90,7 @@ class TaskWrapper(Generic[T]):
         cron: str | None,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
-        timeout: int = 0,
+        timeout_seconds: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
         idempotency_key: str = None,
         on_error: Callable = None,
@@ -106,7 +106,7 @@ class TaskWrapper(Generic[T]):
         self.max_retries = max_retries
         self.priority = priority
         self.idempotency_key = idempotency_key
-        self.timeout = timeout
+        self.timeout_seconds = timeout_seconds
 
         self.dispatcher = dispatcher
         self.on_error = on_error
@@ -182,7 +182,7 @@ class TaskWrapper(Generic[T]):
         queue: str = None,
         priority: int = None,
         max_retries: int = None,
-        timeout: int = None,
+        timeout_seconds: int = None,
         idempotency_key: str = None,
     ) -> "TaskWrapper[T]":
         new_wrapper = TaskWrapper(
@@ -193,7 +193,7 @@ class TaskWrapper(Generic[T]):
             queue=queue if queue is not None else self.queue,
             priority=priority if priority is not None else self.priority,
             max_retries=max_retries if max_retries is not None else self.max_retries,
-            timeout=timeout if timeout is not None else self.timeout,
+            timeout_seconds=timeout_seconds if timeout_seconds is not None else self.timeout_seconds,
             idempotency_key=(
                 idempotency_key if idempotency_key is not None else self.idempotency_key
             ),
@@ -219,7 +219,7 @@ class TaskWrapper(Generic[T]):
             queue=self.queue if isinstance(self.queue, str) else self.queue.name,
             args=context.model_dump(),
             max_retries=self.max_retries,
-            timeout=self.timeout,
+            timeout_seconds=self.timeout_seconds,
             priority=self.priority,
             idempotency_key=self.idempotency_key,
         )

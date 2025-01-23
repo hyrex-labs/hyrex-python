@@ -85,7 +85,7 @@ class PostgresLiteDispatcher(Dispatcher):
                     args,
                     queue,
                     priority,
-                    timeout,
+                    timeout_seconds,
                     scheduled_start,
                     queued,
                     started,
@@ -99,7 +99,7 @@ class PostgresLiteDispatcher(Dispatcher):
                     args=args,
                     queue=queue,
                     priority=priority,
-                    timeout=timeout,
+                    timeout_seconds=timeout_seconds,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -121,7 +121,7 @@ class PostgresLiteDispatcher(Dispatcher):
             task.queue,
             task.max_retries,
             task.priority,
-            task.timeout,
+            task.timeout_seconds,
             task.idempotency_key,
         )
         with self.transaction() as cur:

@@ -32,7 +32,7 @@ class EnqueueTaskRequest(BaseModel):
     queue: str
     max_retries: int
     priority: int
-    timeout: int
+    timeout_seconds: int | None
     idempotency_key: str | None
 
 
@@ -45,7 +45,7 @@ class DequeuedTask(BaseModel):
     args: dict
     queue: str
     priority: int
-    timeout: int
+    timeout_seconds: int | None
     scheduled_start: datetime | None
     queued: datetime
     started: datetime
