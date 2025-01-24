@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import random
+import cProfile
 import signal
 import socket
 import sys
@@ -334,6 +335,25 @@ class WorkerExecutor(Process):
             raise HyrexTaskTimeout()
 
         signal.signal(signal.SIGALRM, timeout_handler)
+
+        # Add profiler signal handler here
+        self._profiler = None
+
+        def toggle_profiler(signum, frame):
+            if self._profiler is None:
+                # Start profiling
+                self._profiler = cProfile.Profile()
+                self._profiler.enable()
+                self.logger.info(f"Profiling started for executor {self.name}")
+            else:
+                # Stop profiling
+                self._profiler.disable()
+                stats_file = f"/tmp/profile_{self.name}.stats"
+                self._profiler.dump_stats(stats_file)
+                self.logger.info(f"Profile saved to {stats_file}")
+                self._profiler = None
+
+        signal.signal(signal.SIGUSR1, toggle_profiler)
 
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 
