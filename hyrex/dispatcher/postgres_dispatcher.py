@@ -13,14 +13,9 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-    CronJob,
-)
-from hyrex.sql import sql, cron_sql
+from hyrex.dispatcher.dispatcher import (CronJob, DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.sql import cron_sql, sql
 
 
 class PostgresDispatcher(Dispatcher):
@@ -294,4 +289,3 @@ class PostgresDispatcher(Dispatcher):
     def update_cron_job_confirmation_timestamp(self, jobid: int):
         with self.transaction() as cur:
             cur.execute(cron_sql.UPDATE_CRON_JOB_CONFIRMATION_TS, [jobid])
-        pass

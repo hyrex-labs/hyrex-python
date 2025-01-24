@@ -1,9 +1,3 @@
-from .dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-    CronJob,
-    CronJobRun,
-)
+from .dispatcher import (CronJob, CronJobRun, DequeuedTask, Dispatcher,
+                         EnqueueTaskRequest, TaskStatus)
 from .dispatcher_provider import get_dispatcher

@@ -3,15 +3,15 @@ import os
 import signal
 import threading
 import time
+from datetime import datetime
 from multiprocessing import Event, Process, Queue
 
-from hyrex.dispatcher import get_dispatcher, CronJob
+from pydantic import BaseModel
+
+from hyrex.dispatcher import CronJob, get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import CancelTaskMessage
 from hyrex.worker.utils import is_process_alive
-from pydantic import BaseModel
-from datetime import datetime
-
 
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 10
 LOOP_RATE_SECONDS = 30
@@ -69,7 +69,7 @@ class WorkerCronScheduler(Process):
             cron_expressions = self.dispatcher.pull_cron_job_expressions()
             for cron_job in cron_expressions:
                 if not cron_job.should_backfill:
-                    self.update_cron_confirmation_timestamp_to_now(cron_job.job_id)
+                    self.update_cron_confirmation_timestamp_to_now(cron_job.jobid)
 
             # HERE SO FAR
 

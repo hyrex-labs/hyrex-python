@@ -9,7 +9,7 @@ from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.sql import sql, cron_sql, stats_sql
+from hyrex.sql import cron_sql, sql, stats_sql
 
 
 def utcnow():

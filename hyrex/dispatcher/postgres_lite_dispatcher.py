@@ -5,18 +5,13 @@ from uuid import UUID
 
 from psycopg import RawCursor
 from psycopg.types.json import Json
-from hyrex.sql import sql, cron_sql
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-    CronJob,
-)
+from hyrex.dispatcher.dispatcher import (CronJob, DequeuedTask, Dispatcher,
+                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.sql import cron_sql, sql
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
