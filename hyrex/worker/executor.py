@@ -172,7 +172,7 @@ class WorkerExecutor(Process):
                     task_name=task.task_name,
                     queue=task.queue,
                     priority=task.priority,
-                    timeout=task.timeout,
+                    timeout_seconds=task.timeout_seconds,
                     scheduled_start=task.scheduled_start,
                     queued=task.queued,
                     started=task.started,
@@ -183,8 +183,8 @@ class WorkerExecutor(Process):
             # Notify root process of new task
             self.update_current_task(task.id)
             # Set up timeout
-            if task.timeout > 0:
-                signal.alarm(task.timeout)
+            if task.timeout_seconds:
+                signal.alarm(task.timeout_seconds)
             # Run task
             result = asyncio.run(self.process_item(task))
 

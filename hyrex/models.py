@@ -8,7 +8,8 @@ from sqlalchemy import JSON, CheckConstraint, Index, Integer, desc
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from uuid_extensions import uuid7
 
-from hyrex import constants, sql
+from hyrex import constants
+from hyrex.sql import sql, cron_sql, stats_sql
 
 
 def utcnow():
@@ -110,4 +111,9 @@ def create_tables(conn_string):
             cur.execute(sql.CREATE_SYSTEM_LOG_TABLE)
             cur.execute(sql.CREATE_HYREX_RESULT_TABLE)
             cur.execute(sql.CREATE_HYREX_EXECUTOR_TABLE)
+            cur.execute(cron_sql.CREATE_HYREX_CRON_JOB_TABLE)
+            cur.execute(cron_sql.CREATE_HYREX_CRON_JOB_RUN_DETAILS_TABLE)
+            cur.execute(cron_sql.CREATE_HYREX_SCHEDULER_LOCK_TABLE)
+            cur.execute(cron_sql.CREATE_EXECUTE_QUEUED_COMMAND_FUNCTION)
+            cur.execute(stats_sql.CREATE_HISTORICAL_TASK_STATUS_COUNTS)
         conn.commit()

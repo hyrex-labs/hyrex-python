@@ -12,9 +12,10 @@ from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
-from hyrex import constants, sql
+from hyrex import constants
 from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
                                          EnqueueTaskRequest, TaskStatus)
+from hyrex.sql import sql
 
 
 class PostgresDispatcher(Dispatcher):
@@ -97,7 +98,7 @@ class PostgresDispatcher(Dispatcher):
                     args,
                     queue,
                     priority,
-                    timeout,
+                    timeout_seconds,
                     scheduled_start,
                     queued,
                     started,
@@ -111,7 +112,7 @@ class PostgresDispatcher(Dispatcher):
                     args=args,
                     queue=queue,
                     priority=priority,
-                    timeout=timeout,
+                    timeout_seconds=timeout_seconds,
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
@@ -177,7 +178,7 @@ class PostgresDispatcher(Dispatcher):
                 task.queue,
                 task.max_retries,
                 task.priority,
-                task.timeout,
+                task.timeout_seconds,
                 task.idempotency_key,
             )
             for task in tasks

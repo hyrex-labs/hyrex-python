@@ -13,7 +13,7 @@ class HyrexContext(BaseModel):
     task_name: str
     queue: str
     priority: int
-    timeout: int
+    timeout_seconds: int | None
     scheduled_start: datetime | None
     queued: datetime
     started: datetime
