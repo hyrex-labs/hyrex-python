@@ -5,13 +5,18 @@ from uuid import UUID
 
 from psycopg import RawCursor
 from psycopg.types.json import Json
-from hyrex.sql import sql
+from hyrex.sql import sql, cron_sql
 from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+    CronJob,
+)
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
@@ -184,3 +189,32 @@ class PostgresLiteDispatcher(Dispatcher):
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
         with self.transaction() as cur:
             cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])
+
+    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+        lock_duration = "1 minute"
+        with self.transaction() as cur:
+            cur.execute(cron_sql.ACQUIRE_SCHEDULER_LOCK, [worker_name, lock_duration])
+            result = cur.fetchone()
+            return result[0] if result else None
+
+    def pull_cron_job_expressions(self) -> list[CronJob]:
+        with self.transaction() as cur:
+            cur.execute(cron_sql.PULL_ACTIVE_CRON_EXPRESSIONS)
+            rows = cur.fetchall()
+            return [
+                CronJob(
+                    jobid=row[0],
+                    schedule=row[1],
+                    command=row[2],
+                    active=row[3],
+                    jobname=row[4],
+                    activated_at=row[5],
+                    scheduled_jobs_confirmed_until=row[6],
+                    should_backfill=row[7],
+                )
+                for row in rows
+            ]
+
+    def update_cron_job_confirmation_timestamp(self, jobid: int):
+        with self.transaction() as cur:
+            cur.execute(cron_sql.UPDATE_CRON_JOB_CONFIRMATION_TS, [jobid])

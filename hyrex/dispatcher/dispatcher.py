@@ -51,6 +51,23 @@ class DequeuedTask(BaseModel):
     started: datetime
 
 
+class CronJob(BaseModel):
+    jobid: int
+    schedule: str
+    command: str
+    active: bool
+    jobname: str
+    activated_at: datetime
+    scheduled_jobs_confirmed_until: datetime
+    should_backfill: bool
+
+
+class CronJobRun(BaseModel):
+    jobid: int
+    command: str
+    schedule_time: datetime
+
+
 class Dispatcher(ABC):
     logger = logging.getLogger(__name__)
 
@@ -156,6 +173,18 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
+        pass
+
+    @abstractmethod
+    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+        pass
+
+    @abstractmethod
+    def pull_cron_job_expressions(self) -> list[CronJob]:
+        pass
+
+    @abstractmethod
+    def update_cron_job_confirmation_timestamp(self, jobid: UUID):
         pass
 
     @abstractmethod

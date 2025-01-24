@@ -7,8 +7,13 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+    CronJob,
+)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -223,4 +228,13 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+        pass
+
+    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+        pass
+
+    def pull_cron_job_expressions(self) -> list[CronJob]:
+        pass
+
+    def update_cron_job_confirmation_timestamp(self, jobid: int):
         pass
