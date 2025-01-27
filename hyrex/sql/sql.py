@@ -94,17 +94,6 @@ CREATE TABLE IF NOT EXISTS hyrex_task_result
 );
 """
 
-# CREATE_HYREX_EXECUTOR_TABLE = """
-# CREATE TABLE IF NOT EXISTS hyrex_executor (
-#     id             UUID                        NOT NULL PRIMARY KEY,
-#     name           VARCHAR                     NOT NULL,
-#     queue          VARCHAR                     NOT NULL,
-#     started        TIMESTAMP WITH TIME ZONE             DEFAULT CURRENT_TIMESTAMP,
-#     last_heartbeat TIMESTAMP WITH TIME ZONE,
-#     stopped        TIMESTAMP WITH TIME ZONE
-# );
-# """
-
 CREATE_HYREX_EXECUTOR_TABLE = """
     CREATE TABLE IF NOT EXISTS hyrex_executor
     (
