@@ -111,7 +111,7 @@ CREATE_HYREX_EXECUTOR_TABLE = """
         id             UUID    NOT NULL PRIMARY KEY,
         name           VARCHAR NOT NULL,
         worker_name    VARCHAR NOT NULL,
-        queue_pattern  JSON    NOT NULL,
+        queue_pattern  VARCHAR NOT NULL,
         queues         JSON    NOT NULL,
         started        TIMESTAMP WITH TIME ZONE,
         stopped        TIMESTAMP WITH TIME ZONE,
@@ -329,8 +329,15 @@ EXECUTOR_HEARTBEAT = """
 """
 
 REGISTER_EXECUTOR = """
-    INSERT INTO hyrex_executor (id, name, queue, started, last_heartbeat)
-    VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    INSERT INTO hyrex_executor (id,
+                                name,
+                                queue_pattern,
+                                queues,
+                                worker_name,
+                                started,
+                                stopped,
+                                last_heartbeat)
+    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, null, CURRENT_TIMESTAMP);
 """
 
 DISCONNECT_EXECUTOR = """

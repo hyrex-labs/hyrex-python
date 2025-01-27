@@ -7,8 +7,13 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
+from hyrex.dispatcher.dispatcher import (
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
+from hyrex.hyrex_queue import HyrexQueue
 
 
 class PlatformDispatcher(Dispatcher):
@@ -201,7 +206,14 @@ class PlatformDispatcher(Dispatcher):
                 raise
             self.logger.error(f"Exception while getting task status: {str(e)}")
 
-    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
+    def register_executor(
+        self,
+        executor_id: UUID,
+        executor_name: str,
+        queue_pattern: str,
+        queues: list[HyrexQueue],
+        worker_name: str,
+    ):
         pass
 
     def disconnect_executor(self, executor_id: UUID):
