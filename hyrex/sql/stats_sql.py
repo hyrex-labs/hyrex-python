@@ -6,7 +6,7 @@ WITH time_buckets AS (
     task_name,
     status,
     COUNT(*) as task_count
-  FROM hyrex_task_execution
+  FROM hyrex_task_run
   WHERE 
     finished IS NOT NULL
   GROUP BY 
@@ -95,7 +95,7 @@ WITH time_buckets AS (
     task_name,
     status,
     COUNT(*)::numeric / 5 as tasks_per_second
-  FROM hyrex_task_execution
+  FROM hyrex_task_run
   WHERE 
     queued IS NOT NULL
   GROUP BY 
@@ -251,7 +251,7 @@ WITH RECURSIVE timepoints AS (
                        AND he.finished <= t.timepoint
                        THEN 1 END) AS success
      FROM timepoints t
-              LEFT JOIN hyrex_task_execution he
+              LEFT JOIN hyrex_task_run he
                         ON (
                             -- Include tasks that existed during this timepoint
                             he.queued <= t.timepoint

@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex import constants
+from hyrex.hyrex_queue import HyrexQueue
 
 
 class TaskStatus(StrEnum):
@@ -152,7 +153,14 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
+    def register_executor(
+        self,
+        executor_id: UUID,
+        executor_name: str,
+        queue_pattern: str,
+        queues: list[HyrexQueue],
+        worker_name: str,
+    ):
         pass
 
     @abstractmethod

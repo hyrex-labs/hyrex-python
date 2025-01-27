@@ -13,9 +13,15 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (CronJob, DequeuedTask, Dispatcher,
-                                         EnqueueTaskRequest, TaskStatus)
-from hyrex.sql import cron_sql, sql
+from hyrex.dispatcher.dispatcher import (
+    CronJob,
+    DequeuedTask,
+    Dispatcher,
+    EnqueueTaskRequest,
+    TaskStatus,
+)
+from hyrex.hyrex_queue import HyrexQueue
+from hyrex.sql import sql
 
 
 class PostgresDispatcher(Dispatcher):
@@ -223,9 +229,19 @@ class PostgresDispatcher(Dispatcher):
                 raise ValueError(f"Task id {task_id} not found in DB.")
             return result[0]
 
-    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
+    def register_executor(
+        self,
+        executor_id: UUID,
+        executor_name: str,
+        queue_pattern: str,
+        queues: list[HyrexQueue],
+        worker_name: str,
+    ):
         with self.transaction() as cur:
-            cur.execute(sql.REGISTER_EXECUTOR, [executor_id, executor_name, queue])
+            cur.execute(
+                sql.REGISTER_EXECUTOR,
+                [executor_id, executor_name, queue_pattern, queues, worker_name],
+            )
 
     def disconnect_executor(self, executor_id: UUID):
         with self.transaction() as cur:

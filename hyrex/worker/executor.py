@@ -23,16 +23,14 @@ from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
 from hyrex.hyrex_cache import HyrexCacheManager
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.task import TaskWrapper
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 from hyrex.worker.worker import HyrexWorker
 
 
@@ -55,7 +53,7 @@ class WorkerExecutor(Process):
         log_level: LogLevel,
         worker_module_path: str,
         executor_id: UUID,
-        queue: str,
+        queue_pattern: str,
         register_tasks: bool = False,
     ):
         super().__init__()
@@ -66,8 +64,8 @@ class WorkerExecutor(Process):
         self._stop_event = Event()
 
         self.worker_module_path = worker_module_path
-        self.queue = queue
-        self.queue_list: list[HyrexQueue] = []
+        self.queue_pattern = queue_pattern
+        self.queues: list[HyrexQueue] = []
         self.executor_id = executor_id
 
         self.logs_s3_bucket = os.environ.get(EnvVars.LOGS_BUCKET)
@@ -78,12 +76,14 @@ class WorkerExecutor(Process):
 
         # To check if root process is running
         self.parent_pid = os.getpid()
+        # TODO: Improve worker naming
+        self.worker_name = "worker_" + str(self.parent_pid)
 
     def get_concurrency_for_queue(self, queue_name: str):
         return self.task_registry.get_concurrency_limit(queue_name=queue_name)
 
     def update_queue_list(self):
-        self.queue_list = []
+        self.queues = []
         self.logger.debug("Updating internal queue list from pattern...")
         queue_names = self.dispatcher.get_queues_for_pattern(
             self.postgres_queue_pattern
@@ -96,7 +96,7 @@ class WorkerExecutor(Process):
             return
 
         for queue_name in queue_names:
-            self.queue_list.append(
+            self.queues.append(
                 HyrexQueue(
                     name=queue_name,
                     concurrency_limit=self.get_concurrency_for_queue(
@@ -114,8 +114,8 @@ class WorkerExecutor(Process):
 
         self.task_registry = worker_instance.task_registry
 
-        if not self.queue:
-            self.queue = worker_instance.queue
+        if not self.queue_pattern:
+            self.queue_pattern = worker_instance.queue_pattern
 
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.task_registry.get_task(task.task_name)
@@ -249,9 +249,9 @@ class WorkerExecutor(Process):
 
     def run_static_queue_loop(self):
         queue = HyrexQueue(
-            name=self.queue,
+            name=self.queue_pattern,
             concurrency_limit=self.task_registry.get_concurrency_limit(
-                queue_name=self.queue
+                queue_name=self.queue_pattern
             ),
         )
         while not self._stop_event.is_set():
@@ -270,7 +270,7 @@ class WorkerExecutor(Process):
             if (
                 seconds_since_queue_refresh
                 > constants.WORKER_EXECUTOR_QUEUE_REFRESH_SECONDS
-                or len(self.queue_list) == 0
+                or len(self.queues) == 0
                 or no_task_count >= 5
             ):
                 self.update_queue_list()
@@ -278,7 +278,7 @@ class WorkerExecutor(Process):
 
             no_task_count = 0
 
-            for queue in self.queue_list:
+            for queue in self.queues:
                 self.check_root_process()
                 if self._stop_event.is_set():
                     break
@@ -310,10 +310,10 @@ class WorkerExecutor(Process):
         self.load_worker_module_variables()
 
         # Convert queue pattern to Postgres regex syntax if needed.
-        if is_glob_pattern(self.queue):
-            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue)
+        if is_glob_pattern(self.queue_pattern):
+            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue_pattern)
             self.logger.debug(
-                f"Converted queue glob to Postgres regex syntax: {self.queue} -> {self.postgres_queue_pattern}"
+                f"Converted queue glob to Postgres regex syntax: {self.queue_pattern} -> {self.postgres_queue_pattern}"
             )
         else:
             self.postgres_queue_pattern = None
@@ -322,7 +322,9 @@ class WorkerExecutor(Process):
         self.dispatcher.register_executor(
             executor_id=self.executor_id,
             executor_name=self.name,
-            queue=self.queue,
+            queue_pattern=self.queue_pattern,
+            queues=self.queues,
+            worker_name=self.worker_name,
         )
         self.task_registry.set_dispatcher(self.dispatcher)
         if self.register_tasks:
