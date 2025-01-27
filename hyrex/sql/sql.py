@@ -235,10 +235,12 @@ WITH task_insertion AS (
                                           max_retries,
                                           priority,
                                           timeout_seconds,
-                                          idempotency_key
+                                          idempotency_key,
+                                          status,
+                                          queued
             )
             VALUES (
-                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'queued'::task_run_status, CURRENT_TIMESTAMP
                    )
             ON CONFLICT (task_name, idempotency_key)
                 WHERE idempotency_key IS NOT NULL

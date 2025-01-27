@@ -31,7 +31,7 @@ from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
 from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
-from hyrex.worker.worker import HyrexWorker
+from hyrex.hyrex_app import HyrexApp
 
 
 def generate_executor_name():
@@ -51,7 +51,7 @@ class WorkerExecutor(Process):
         self,
         root_message_queue: Queue,
         log_level: LogLevel,
-        worker_module_path: str,
+        app_module_path: str,
         executor_id: UUID,
         queue_pattern: str,
         register_tasks: bool = False,
@@ -63,7 +63,7 @@ class WorkerExecutor(Process):
         self.root_message_queue = root_message_queue
         self._stop_event = Event()
 
-        self.worker_module_path = worker_module_path
+        self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
         self.queues: list[HyrexQueue] = []
         self.executor_id = executor_id
@@ -105,17 +105,14 @@ class WorkerExecutor(Process):
                 )
             )
 
-    def load_worker_module_variables(self):
+    def load_app_module_registry(self):
         sys.path.append(str(Path.cwd()))
-        module_path, instance_name = self.worker_module_path.split(":")
+        module_path, instance_name = self.app_module_path.split(":")
         # Import the worker module
-        worker_module = importlib.import_module(module_path)
-        worker_instance: HyrexWorker = getattr(worker_module, instance_name)
+        app_module = importlib.import_module(module_path)
+        app_instance: HyrexApp = getattr(app_module, instance_name)
 
-        self.task_registry = worker_instance.task_registry
-
-        if not self.queue_pattern:
-            self.queue_pattern = worker_instance.queue_pattern
+        self.task_registry = app_instance.task_registry
 
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.task_registry.get_task(task.task_name)
@@ -306,8 +303,8 @@ class WorkerExecutor(Process):
 
         self.name = generate_executor_name()
 
-        # Retrieve task registry, error callback, and queue.
-        self.load_worker_module_variables()
+        # Retrieve task registry from the provided app module path.
+        self.load_app_module_registry()
 
         # Convert queue pattern to Postgres regex syntax if needed.
         if is_glob_pattern(self.queue_pattern):

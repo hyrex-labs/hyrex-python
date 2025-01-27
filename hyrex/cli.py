@@ -39,13 +39,13 @@ def init_db(
     )
 
 
-def validate_worker_module_path(worker_module_path):
+def validate_app_module_path(app_module_path):
     try:
         sys.path.append(str(Path.cwd()))
-        module_path, instance_name = worker_module_path.split(":")
+        module_path, instance_name = app_module_path.split(":")
         # Import the worker module
-        worker_module = importlib.import_module(module_path)
-        worker_instance = getattr(worker_module, instance_name)
+        app_module = importlib.import_module(module_path)
+        app_instance = getattr(app_module, instance_name)
     except ModuleNotFoundError as e:
         typer.echo(f"Error: {e}")
         sys.exit(1)
@@ -53,11 +53,9 @@ def validate_worker_module_path(worker_module_path):
 
 @cli.command()
 def run_worker(
-    worker_module_path: str = typer.Argument(
-        ..., help="Module path to the Hyrex worker"
-    ),
+    app_module_path: str = typer.Argument(..., help="Module path to the Hyrex app"),
     queue_pattern: str = typer.Option(
-        None,
+        constants.ANY_QUEUE,
         "--queue-pattern",
         "-q",
         help="Which queue(s) to pull tasks from. Glob patterns supported. Defaults to `*`",
@@ -76,7 +74,7 @@ def run_worker(
     ),
 ):
     """
-    Run multiple worker processes using the specified worker module path
+    Run a Hyrex worker for the specified app module path
     """
 
     if not os.environ.get(EnvVars.DATABASE_URL):
@@ -87,13 +85,13 @@ def run_worker(
     # Prevents HyrexRegistry instances from creating their own dispatchers
     os.environ[EnvVars.WORKER_PROCESS] = "true"
 
-    validate_worker_module_path(worker_module_path)
+    validate_app_module_path(app_module_path)
     # TODO: Validate queue pattern?
 
     try:
         worker_root = WorkerRootProcess(
             log_level=log_level.upper(),
-            worker_module_path=worker_module_path,
+            app_module_path=app_module_path,
             queue_pattern=queue_pattern,
             num_processes=num_processes,
         )

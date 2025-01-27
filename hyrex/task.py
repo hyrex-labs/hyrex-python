@@ -193,7 +193,9 @@ class TaskWrapper(Generic[T]):
             queue=queue if queue is not None else self.queue,
             priority=priority if priority is not None else self.priority,
             max_retries=max_retries if max_retries is not None else self.max_retries,
-            timeout_seconds=timeout_seconds if timeout_seconds is not None else self.timeout_seconds,
+            timeout_seconds=(
+                timeout_seconds if timeout_seconds is not None else self.timeout_seconds
+            ),
             idempotency_key=(
                 idempotency_key if idempotency_key is not None else self.idempotency_key
             ),
