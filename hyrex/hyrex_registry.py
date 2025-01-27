@@ -78,7 +78,7 @@ class HyrexRegistry:
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         cron: str = None,
         max_retries: int = 0,
-        timeout_seconds: int = 0,
+        timeout_seconds: int | None = None,
         priority: int = constants.DEFAULT_PRIORITY,
         on_error: Callable = None,
     ) -> TaskWrapper:
