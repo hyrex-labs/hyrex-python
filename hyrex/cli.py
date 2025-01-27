@@ -56,9 +56,9 @@ def run_worker(
     worker_module_path: str = typer.Argument(
         ..., help="Module path to the Hyrex worker"
     ),
-    queue: str = typer.Option(
+    queue_pattern: str = typer.Option(
         None,
-        "--queue",
+        "--queue-pattern",
         "-q",
         help="Which queue(s) to pull tasks from. Glob patterns supported. Defaults to `*`",
     ),
@@ -80,7 +80,9 @@ def run_worker(
     """
 
     if not os.environ.get(EnvVars.DATABASE_URL):
-        raise EnvironmentError(f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker.")
+        raise EnvironmentError(
+            f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker."
+        )
 
     # Prevents HyrexRegistry instances from creating their own dispatchers
     os.environ[EnvVars.WORKER_PROCESS] = "true"
@@ -92,7 +94,7 @@ def run_worker(
         worker_root = WorkerRootProcess(
             log_level=log_level.upper(),
             worker_module_path=worker_module_path,
-            queue=queue,
+            queue_pattern=queue_pattern,
             num_processes=num_processes,
         )
         worker_root.run()

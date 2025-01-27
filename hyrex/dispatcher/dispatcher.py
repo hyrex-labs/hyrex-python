@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex import constants
+from hyrex.hyrex_queue import HyrexQueue
 
 
 class TaskStatus(StrEnum):
@@ -49,6 +50,23 @@ class DequeuedTask(BaseModel):
     scheduled_start: datetime | None
     queued: datetime
     started: datetime
+
+
+class CronJob(BaseModel):
+    jobid: int
+    schedule: str
+    command: str
+    active: bool
+    jobname: str
+    activated_at: datetime
+    scheduled_jobs_confirmed_until: datetime
+    should_backfill: bool
+
+
+class CronJobRun(BaseModel):
+    jobid: int
+    command: str
+    schedule_time: datetime
 
 
 class Dispatcher(ABC):
@@ -135,7 +153,14 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_executor(self, executor_id: UUID, executor_name: str, queue: str):
+    def register_executor(
+        self,
+        executor_id: UUID,
+        executor_name: str,
+        queue_pattern: str,
+        queues: list[HyrexQueue],
+        worker_name: str,
+    ):
         pass
 
     @abstractmethod

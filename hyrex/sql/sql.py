@@ -1,13 +1,13 @@
-CREATE_HYREX_TASK_EXECUTION_TABLE = """
+CREATE_HYREX_TASK_RUN_TABLE = """
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_type
-        WHERE typname = 'statusenum'
+        WHERE typname = 'task_run_status'
             AND typnamespace = 'public'::regnamespace
     ) THEN
-        CREATE TYPE statusenum AS ENUM (
+        CREATE TYPE task_run_status AS ENUM (
             'success',
             'failed',
             'running',
@@ -20,7 +20,7 @@ BEGIN
     END IF;
 END $$;
 
-CREATE TABLE IF NOT EXISTS hyrex_task_execution (
+CREATE TABLE IF NOT EXISTS hyrex_task_run (
     id              UUID                        NOT NULL PRIMARY KEY,
     durable_id      UUID                        NOT NULL,
     root_id         UUID                        NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS hyrex_task_execution (
     max_retries     SMALLINT                    NOT NULL,
     priority        SMALLINT                    NOT NULL,
     timeout_seconds INT                         DEFAULT NULL CHECK (timeout_seconds IS NULL OR timeout_seconds > 0),
-    status          statusenum                  NOT NULL,
+    status          task_run_status             NOT NULL,
     attempt_number  SMALLINT                    NOT NULL DEFAULT 0,
     scheduled_start TIMESTAMP WITH TIME ZONE,
     executor_id     UUID,
@@ -44,27 +44,27 @@ CREATE TABLE IF NOT EXISTS hyrex_task_execution (
 );
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS ix_hyrex_task_execution_task_name
-    ON public.hyrex_task_execution (task_name);
+CREATE INDEX IF NOT EXISTS ix_hyrex_task_run_task_name
+    ON public.hyrex_task_run (task_name);
 
-CREATE INDEX IF NOT EXISTS ix_hyrex_task_execution_status
-    ON public.hyrex_task_execution (status);
+CREATE INDEX IF NOT EXISTS ix_hyrex_task_run_status
+    ON public.hyrex_task_run (status);
 
-CREATE INDEX IF NOT EXISTS ix_hyrex_task_execution_queue
-    ON public.hyrex_task_execution (queue);
+CREATE INDEX IF NOT EXISTS ix_hyrex_task_run_queue
+    ON public.hyrex_task_run (queue);
 
-CREATE INDEX IF NOT EXISTS ix_hyrex_task_execution_scheduled_start
-    ON public.hyrex_task_execution (scheduled_start);
+CREATE INDEX IF NOT EXISTS ix_hyrex_task_run_scheduled_start
+    ON public.hyrex_task_run (scheduled_start);
 
 CREATE INDEX IF NOT EXISTS index_queue_status
-    ON public.hyrex_task_execution (status, queue, scheduled_start, task_name);
+    ON public.hyrex_task_run (status, queue, scheduled_start, task_name);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ix_hyrex_task_execution_idempotency_key 
-    ON public.hyrex_task_execution (task_name, idempotency_key)
+CREATE UNIQUE INDEX IF NOT EXISTS ix_hyrex_task_run_idempotency_key 
+    ON public.hyrex_task_run (task_name, idempotency_key)
     WHERE idempotency_key IS NOT NULL;
     
-CREATE INDEX IF NOT EXISTS idx_hyrex_task_execution_queue_status_priority_queued
-    ON hyrex_task_execution (queue, status, priority DESC, queued);
+CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queue_status_priority_queued
+    ON hyrex_task_run (queue, status, priority DESC, queued);
 """
 
 CREATE_HYREX_TASK_TABLE = """
@@ -88,55 +88,43 @@ CREATE TABLE IF NOT EXISTS hyrex_system_logs (
 CREATE_HYREX_RESULT_TABLE = """
 CREATE TABLE IF NOT EXISTS hyrex_task_result
 (
-    task_id    UUID PRIMARY KEY REFERENCES public.hyrex_task_execution (id) ON DELETE CASCADE,
+    task_id    UUID PRIMARY KEY REFERENCES public.hyrex_task_run (id) ON DELETE CASCADE,
     result     JSON,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 """
 
 CREATE_HYREX_EXECUTOR_TABLE = """
-CREATE TABLE IF NOT EXISTS hyrex_executor (
-    id             UUID                        NOT NULL PRIMARY KEY,
-    name           VARCHAR                     NOT NULL,
-    queue          VARCHAR                     NOT NULL,
-    started        TIMESTAMP WITH TIME ZONE             DEFAULT CURRENT_TIMESTAMP,
-    last_heartbeat TIMESTAMP WITH TIME ZONE,
-    stopped        TIMESTAMP WITH TIME ZONE
-);
+    CREATE TABLE IF NOT EXISTS hyrex_executor
+    (
+        id             UUID    NOT NULL PRIMARY KEY,
+        name           VARCHAR NOT NULL,
+        worker_name    VARCHAR NOT NULL,
+        queue_pattern  VARCHAR NOT NULL,
+        queues         JSON    NOT NULL,
+        started        TIMESTAMP WITH TIME ZONE,
+        stopped        TIMESTAMP WITH TIME ZONE,
+        last_heartbeat TIMESTAMP WITH TIME ZONE,
+        stats          JSON
+    );
+
+    DROP VIEW IF EXISTS hyrex_executor_with_status;
+
+    CREATE VIEW hyrex_executor_with_status AS
+    SELECT *,
+           CASE
+               WHEN stopped IS NOT NULL AND started IS NOT NULL THEN 'SHUTDOWN'
+               WHEN last_heartbeat < NOW() - INTERVAL '5 minutes' THEN 'LOST'
+               WHEN started IS NOT NULL THEN 'RUNNING'
+               ELSE 'UNKNOWN'
+               END AS status
+    FROM hyrex_executor;
 """
-
-# TODO: Discuss and update from above
-# CREATE_HYREX_EXECUTOR_TABLE = """
-#     CREATE TABLE IF NOT EXISTS hyrex_executor
-#     (
-#         id             UUID    NOT NULL PRIMARY KEY,
-#         name           VARCHAR NOT NULL,
-#         worker_name    VARCHAR NOT NULL,
-#         queue_pattern  JSON    NOT NULL,
-#         queues         JSON    NOT NULL,
-#         started        TIMESTAMP WITH TIME ZONE,
-#         stopped        TIMESTAMP WITH TIME ZONE,
-#         last_heartbeat TIMESTAMP WITH TIME ZONE,
-#         stats          JSON
-#     );
-
-#     DROP VIEW IF EXISTS hyrex_executor_with_status;
-
-#     CREATE VIEW hyrex_executor_with_status AS
-#     SELECT *,
-#            CASE
-#                WHEN stopped IS NOT NULL AND started IS NOT NULL THEN 'SHUTDOWN'
-#                WHEN last_heartbeat < NOW() - INTERVAL '5 minutes' THEN 'LOST'
-#                WHEN started IS NOT NULL THEN 'RUNNING'
-#                ELSE 'UNKNOWN'
-#                END AS status
-#     FROM hyrex_executor;
-# """
 
 FETCH_TASK = """
 WITH next_task AS (
     SELECT id 
-    FROM hyrex_task_execution
+    FROM hyrex_task_run
     WHERE
         queue = $1 AND
         status = 'queued'
@@ -144,7 +132,7 @@ WITH next_task AS (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrex_task_execution as ht
+UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE ht.id = next_task.id
@@ -157,17 +145,17 @@ WITH lock_result AS (
 ),
 next_task AS (
     SELECT id
-    FROM hyrex_task_execution, lock_result
+    FROM hyrex_task_run, lock_result
     WHERE
         lock_acquired = TRUE
         AND queue = $1
         AND status = 'queued'
-        AND (SELECT COUNT(*) FROM hyrex_task_execution WHERE queue = $1 AND status = 'running') < $2
+        AND (SELECT COUNT(*) FROM hyrex_task_run WHERE queue = $1 AND status = 'running') < $2
     ORDER BY priority DESC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-UPDATE hyrex_task_execution as ht
+UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
 WHERE ht.id = next_task.id
@@ -188,11 +176,11 @@ WITH existing_task AS (
         priority,
         timeout_seconds,
         idempotency_key
-    FROM hyrex_task_execution
+    FROM hyrex_task_run
     WHERE id = $1
       AND attempt_number < max_retries
 )
-INSERT INTO hyrex_task_execution (
+INSERT INTO hyrex_task_run (
     id,
     durable_id,
     root_id,
@@ -238,7 +226,7 @@ DO UPDATE SET
 
 ENQUEUE_TASK = """
 WITH task_insertion AS (
-        INSERT INTO hyrex_task_execution (
+        INSERT INTO hyrex_task_run (
                                           id,
                                           durable_id,
                                           root_id,
@@ -283,42 +271,42 @@ WITH task_insertion AS (
 """
 
 MARK_TASK_SUCCESS = """
-    UPDATE hyrex_task_execution 
+    UPDATE hyrex_task_run 
     SET status = 'success', finished = CURRENT_TIMESTAMP
     WHERE id = $1 AND status = 'running'
 """
 
 MARK_TASK_FAILED = """
-    UPDATE hyrex_task_execution 
+    UPDATE hyrex_task_run 
     SET status = 'failed', finished = CURRENT_TIMESTAMP
     WHERE id = $1 AND status = 'running'
 """
 
 TRY_TO_CANCEL_TASK = """
-    UPDATE hyrex_task_execution
+    UPDATE hyrex_task_run
     SET status = CASE 
-                WHEN status = 'running' THEN 'up_for_cancel'::statusenum 
-                WHEN status = 'queued' THEN 'canceled'::statusenum
+                WHEN status = 'running' THEN 'up_for_cancel'::task_run_status
+                WHEN status = 'queued' THEN 'canceled'::task_run_status
                 END
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
 TASK_CANCELED = """
-    UPDATE hyrex_task_execution
+    UPDATE hyrex_task_run
     SET status = 'canceled'
     WHERE id = $1 AND status = 'up_for_cancel';
 """
 
 GET_TASKS_UP_FOR_CANCEL = """
-    SELECT id FROM hyrex_task_execution WHERE status = 'up_for_cancel'
+    SELECT id FROM hyrex_task_run WHERE status = 'up_for_cancel'
 """
 
 GET_TASK_STATUS = """
-    SELECT status FROM hyrex_task_execution WHERE id = $1
+    SELECT status FROM hyrex_task_run WHERE id = $1
 """
 
 TASK_HEARTBEAT = """
-    UPDATE hyrex_task_execution 
+    UPDATE hyrex_task_run 
     SET last_heartbeat = $1 
     WHERE id = ANY($2)
 """
@@ -330,8 +318,15 @@ EXECUTOR_HEARTBEAT = """
 """
 
 REGISTER_EXECUTOR = """
-    INSERT INTO hyrex_executor (id, name, queue, started, last_heartbeat)
-    VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    INSERT INTO hyrex_executor (id,
+                                name,
+                                queue_pattern,
+                                queues,
+                                worker_name,
+                                started,
+                                stopped,
+                                last_heartbeat)
+    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, null, CURRENT_TIMESTAMP);
 """
 
 DISCONNECT_EXECUTOR = """
@@ -341,7 +336,7 @@ DISCONNECT_EXECUTOR = """
 """
 
 MARK_RUNNING_TASKS_LOST = """
-    UPDATE hyrex_task_execution
+    UPDATE hyrex_task_run
     SET status = 'lost'
     WHERE status = 'running' AND executor_id = $1
 """
@@ -357,12 +352,12 @@ SELECT result FROM hyrex_task_result WHERE task_id = $1;
 """
 
 GET_UNIQUE_QUEUES_FOR_PATTERN = """
-    SELECT DISTINCT queue FROM hyrex_task_execution WHERE status = 'queued' AND queue ~ $1
+    SELECT DISTINCT queue FROM hyrex_task_run WHERE status = 'queued' AND queue ~ $1
 """
 
 GET_QUEUES_FOR_PATTERN = """
     WITH distinct_queues AS (SELECT DISTINCT queue
-                             FROM hyrex_task_execution
+                             FROM hyrex_task_run
                              WHERE status = 'queued'
                                AND queue ~ $1),
          queue_count AS (SELECT COUNT(*) AS cnt
@@ -388,8 +383,8 @@ GET_QUEUES_FOR_PATTERN = """
 
 MARK_LOST_TASKS = """
     SELECT id, task_name, queue, last_heartbeat
-    FROM hyrex_task_execution
-    WHERE status = 'running'::statusenum
+    FROM hyrex_task_run
+    WHERE status = 'running'::task_run_status
     AND last_heartbeat < NOW() - INTERVAL '5 minutes';
 """
 

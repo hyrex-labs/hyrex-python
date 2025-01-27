@@ -7,11 +7,13 @@ from multiprocessing import Event, Process, Queue
 
 from hyrex.dispatcher import get_dispatcher
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
 from hyrex.worker.messages.root_messages import CancelTaskMessage
 from hyrex.worker.utils import is_process_alive
 
@@ -22,14 +24,10 @@ class WorkerAdmin(Process):
         root_message_queue: Queue,
         admin_message_queue: Queue,
         log_level: LogLevel,
-        queue: str,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.log_level = log_level
-
-        # Hyrex queue for tasks
-        self.queue = queue
 
         self.current_executors = []
 
