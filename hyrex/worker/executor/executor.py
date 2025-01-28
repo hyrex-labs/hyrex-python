@@ -14,24 +14,24 @@ from datetime import datetime, timezone
 from inspect import signature
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
-from typing import Callable
 from uuid import UUID
 
+from psycopg.types.json import Json
 from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.config import EnvVars
-from hyrex.dispatcher import DequeuedTask, EnqueueTaskRequest, get_dispatcher
+from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
 from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.task import TaskWrapper
+from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
 from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
-from hyrex.worker.worker import HyrexWorker
 
 
 def generate_executor_name():
@@ -51,10 +51,10 @@ class WorkerExecutor(Process):
         self,
         root_message_queue: Queue,
         log_level: LogLevel,
-        worker_module_path: str,
+        app_module_path: str,
         executor_id: UUID,
         queue_pattern: str,
-        register_tasks: bool = False,
+        register_app: bool = False,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -63,16 +63,21 @@ class WorkerExecutor(Process):
         self.root_message_queue = root_message_queue
         self._stop_event = Event()
 
-        self.worker_module_path = worker_module_path
+        self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
         self.queues: list[HyrexQueue] = []
         self.executor_id = executor_id
 
         self.logs_s3_bucket = os.environ.get(EnvVars.LOGS_BUCKET)
 
+        # Perf metrics
+        self.num_distinct_queues_averager = TimeSeriesAverager()
+        self.refresh_queue_duration_averager = TimeSeriesAverager()
+        self.dequeue_duration_averager = TimeSeriesAverager()
+
         self.dispatcher = None
         self.task_registry: HyrexRegistry = None
-        self.register_tasks = register_tasks
+        self.register_app = register_app
 
         # To check if root process is running
         self.parent_pid = os.getpid()
@@ -85,9 +90,15 @@ class WorkerExecutor(Process):
     def update_queue_list(self):
         self.queues = []
         self.logger.debug("Updating internal queue list from pattern...")
+
+        start = time.perf_counter()
         queue_names = self.dispatcher.get_queues_for_pattern(
             self.postgres_queue_pattern
         )
+        end = time.perf_counter()
+        self.refresh_queue_duration_averager.submit(end - start)
+        self.num_distinct_queues_averager.submit(len(queue_names))
+
         self.logger.debug(f"Queues found: {queue_names}")
         if queue_names:
             random.shuffle(queue_names)
@@ -105,17 +116,17 @@ class WorkerExecutor(Process):
                 )
             )
 
-    def load_worker_module_variables(self):
+        # TODO: Update queues on dispatcher
+
+    def load_app_module(self):
         sys.path.append(str(Path.cwd()))
-        module_path, instance_name = self.worker_module_path.split(":")
+        module_path, instance_name = self.app_module_path.split(":")
         # Import the worker module
-        worker_module = importlib.import_module(module_path)
-        worker_instance: HyrexWorker = getattr(worker_module, instance_name)
+        app_module = importlib.import_module(module_path)
+        app_instance: HyrexApp = getattr(app_module, instance_name)
 
-        self.task_registry = worker_instance.task_registry
-
-        if not self.queue_pattern:
-            self.queue_pattern = worker_instance.queue_pattern
+        self.task_registry = app_instance.task_registry
+        self.app_info = app_instance.app_info
 
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.task_registry.get_task(task.task_name)
@@ -129,11 +140,15 @@ class WorkerExecutor(Process):
         return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask | None:
-        return self.dispatcher.dequeue(
+        start = time.perf_counter()
+        dequeued_task = self.dispatcher.dequeue(
             executor_id=self.executor_id,
             queue=queue,
             concurrency_limit=concurrency_limit,
         )
+        end = time.perf_counter()
+        self.dequeue_duration_averager.submit(end - start)
+        return dequeued_task
 
     def mark_task_success(self, task_id: UUID):
         self.dispatcher.mark_success(task_id=task_id)
@@ -204,7 +219,6 @@ class WorkerExecutor(Process):
             self.logger.info(
                 f"Executor {self.name}: Completed processing item {task.id}"
             )
-            return True
 
         except Exception as e:
             self.logger.error(f"Executor {self.name}: Exception hit during processing.")
@@ -240,6 +254,26 @@ class WorkerExecutor(Process):
             self.update_current_task(None)
             signal.alarm(0)  # Clear alarm
             clear_hyrex_context()
+
+            # 1/25 chance to publish stats
+            if random.random() < 0.04:
+                stats = {
+                    "dequeueLatencyMs": [
+                        avg.model_dump()
+                        for avg in self.dequeue_duration_averager.get_time_series()
+                    ],
+                    "refreshQueueLatencyMs": [
+                        avg.model_dump()
+                        for avg in self.refresh_queue_duration_averager.get_time_series()
+                    ],
+                    "numDistinctQueues": [
+                        avg.model_dump()
+                        for avg in self.num_distinct_queues_averager.get_time_series()
+                    ],
+                }
+                self.dispatcher.update_executor_stats(self.executor_id, Json(stats))
+
+            return True
 
     def check_root_process(self):
         # Confirm parent is still alive
@@ -301,13 +335,16 @@ class WorkerExecutor(Process):
                 source_code=inspect.getsource(task_wrapper.func),
             )
 
+    def register_hyrex_app(self):
+        self.dispatcher.register_app(self.app_info.model_dump_json())
+
     def run(self):
         init_logging(self.log_level)
 
         self.name = generate_executor_name()
 
-        # Retrieve task registry, error callback, and queue.
-        self.load_worker_module_variables()
+        # Retrieve name and task registry from the provided app module path.
+        self.load_app_module()
 
         # Convert queue pattern to Postgres regex syntax if needed.
         if is_glob_pattern(self.queue_pattern):
@@ -327,8 +364,9 @@ class WorkerExecutor(Process):
             worker_name=self.worker_name,
         )
         self.task_registry.set_dispatcher(self.dispatcher)
-        if self.register_tasks:
+        if self.register_app:
             self.register_tasks_with_dispatcher()
+            self.register_hyrex_app()
 
         # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)

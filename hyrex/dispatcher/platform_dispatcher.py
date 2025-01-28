@@ -40,6 +40,9 @@ class PlatformDispatcher(Dispatcher):
 
         self.register_shutdown_handlers()
 
+    def register_app(self, app_info: dict):
+        pass
+
     def enqueue(
         self,
         task: EnqueueTaskRequest,
@@ -225,6 +228,9 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        pass
+
+    def update_executor_stats(self, executor_id: UUID, stats: dict):
         pass
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):

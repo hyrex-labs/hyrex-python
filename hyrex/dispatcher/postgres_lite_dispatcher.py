@@ -18,6 +18,8 @@ from hyrex.dispatcher.dispatcher import (
     EnqueueTaskRequest,
     TaskStatus,
 )
+from hyrex.hyrex_queue import HyrexQueue
+from hyrex.sql import sql
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)
@@ -42,6 +44,10 @@ class PostgresLiteDispatcher(Dispatcher):
                     conn.rollback()
                     raise
             conn.commit()
+
+    def register_app(self, app_info: dict):
+        with self.transaction() as cur:
+            cur.execute(sql.REGISTER_APP_INFO_SQL, [1, app_info])
 
     def mark_success(self, task_id: UUID):
         with self.transaction() as cur:
@@ -174,6 +180,10 @@ class PostgresLiteDispatcher(Dispatcher):
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
         with self.transaction() as cur:
             cur.execute(sql.EXECUTOR_HEARTBEAT, [timestamp, executor_ids])
+
+    def update_executor_stats(self, executor_id: UUID, stats: dict):
+        with self.transaction() as cur:
+            cur.execute(sql.UPDATE_EXECUTOR_STATS, [executor_id, stats])
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         with self.transaction() as cur:

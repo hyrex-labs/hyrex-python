@@ -10,7 +10,7 @@ from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
-from hyrex.worker.executor import WorkerExecutor
+from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.admin_messages import (
     ExecutorHeartbeatMessage,
@@ -30,7 +30,7 @@ class WorkerRootProcess:
     def __init__(
         self,
         log_level: LogLevel,
-        worker_module_path: str,
+        app_module_path: str,
         queue_pattern: str = None,
         num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
@@ -38,11 +38,11 @@ class WorkerRootProcess:
         self.log_level = log_level
         init_logging(log_level=log_level)
 
-        self.worker_module_path = worker_module_path
+        self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
         self.num_processes = num_processes
 
-        self._register_tasks = True
+        self._register_app = True
 
         self.heartbeat_requested = False
 
@@ -70,14 +70,14 @@ class WorkerRootProcess:
         executor_process = WorkerExecutor(
             log_level=self.log_level,
             root_message_queue=self.root_message_queue,
-            worker_module_path=self.worker_module_path,
+            app_module_path=self.app_module_path,
             queue_pattern=self.queue_pattern,
             executor_id=executor_id,
-            register_tasks=self._register_tasks,
+            register_app=self._register_app,
         )
-        # Only register tasks once per worker.
-        if self._register_tasks:
-            self._register_tasks = False
+        # Only register app/tasks once per worker.
+        if self._register_app:
+            self._register_app = False
         executor_process.start()
         self.executor_id_to_process[executor_id] = executor_process
         # Notify admin of new executor
