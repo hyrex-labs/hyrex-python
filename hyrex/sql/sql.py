@@ -65,6 +65,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_hyrex_task_run_idempotency_key
     
 CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queue_status_priority_queued
     ON hyrex_task_run (queue, status, priority DESC, queued);
+
+CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued_priority
+    ON hyrex_task_run (queue, priority DESC, id)
+    WHERE status = 'queued';
 """
 
 CREATE_HYREX_TASK_TABLE = """
@@ -92,6 +96,25 @@ CREATE TABLE IF NOT EXISTS hyrex_task_result
     result     JSON,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+"""
+
+CREATE_HYREX_APP_TABLE = """
+    CREATE TABLE IF NOT EXISTS hyrex_app (
+          id    BIGSERIAL NOT NULL PRIMARY KEY,
+          app_info JSON
+    );
+"""
+
+REGISTER_APP_INFO_SQL = """
+    INSERT INTO hyrex_app (
+        id,
+        app_info
+    ) VALUES (
+        $1,
+        $2
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        app_info = $2;
 """
 
 CREATE_HYREX_EXECUTOR_TABLE = """
@@ -315,6 +338,13 @@ EXECUTOR_HEARTBEAT = """
     UPDATE hyrex_executor 
     SET last_heartbeat = $1 
     WHERE id = ANY($2)
+"""
+
+UPDATE_EXECUTOR_STATS = """
+    UPDATE hyrex_executor
+    SET last_heartbeat = CURRENT_TIMESTAMP,
+        stats          = $2
+    WHERE id = $1;
 """
 
 REGISTER_EXECUTOR = """

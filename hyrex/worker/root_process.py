@@ -10,7 +10,7 @@ from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
-from hyrex.worker.executor import WorkerExecutor
+from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.admin_messages import (
     ExecutorHeartbeatMessage,
@@ -42,7 +42,7 @@ class WorkerRootProcess:
         self.queue_pattern = queue_pattern
         self.num_processes = num_processes
 
-        self._register_tasks = True
+        self._register_app = True
 
         self.heartbeat_requested = False
 
@@ -73,11 +73,11 @@ class WorkerRootProcess:
             app_module_path=self.app_module_path,
             queue_pattern=self.queue_pattern,
             executor_id=executor_id,
-            register_tasks=self._register_tasks,
+            register_app=self._register_app,
         )
-        # Only register tasks once per worker.
-        if self._register_tasks:
-            self._register_tasks = False
+        # Only register app/tasks once per worker.
+        if self._register_app:
+            self._register_app = False
         executor_process.start()
         self.executor_id_to_process[executor_id] = executor_process
         # Notify admin of new executor

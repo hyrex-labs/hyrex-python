@@ -24,7 +24,7 @@ from hyrex.sql import sql
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=200, flush_interval=0.05):
+    def __init__(self, conn_string: str, batch_size=1000, flush_interval=0.05):
         super().__init__()
         self.conn_string = conn_string
         self.pool = ConnectionPool(
@@ -53,6 +53,10 @@ class PostgresDispatcher(Dispatcher):
                     conn.rollback()
                     raise
             conn.commit()
+
+    def register_app(self, app_info: dict):
+        with self.transaction() as cur:
+            cur.execute(sql.REGISTER_APP_INFO_SQL, [1, app_info])
 
     def mark_success(self, task_id: UUID):
         with self.transaction() as cur:
@@ -249,6 +253,10 @@ class PostgresDispatcher(Dispatcher):
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
         with self.transaction() as cur:
             cur.execute(sql.EXECUTOR_HEARTBEAT, [timestamp, executor_ids])
+
+    def update_executor_stats(self, executor_id: UUID, stats: dict):
+        with self.transaction() as cur:
+            cur.execute(sql.UPDATE_EXECUTOR_STATS, [executor_id, stats])
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         with self.transaction() as cur:
