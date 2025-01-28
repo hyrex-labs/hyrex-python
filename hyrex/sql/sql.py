@@ -94,6 +94,23 @@ CREATE TABLE IF NOT EXISTS hyrex_task_result
 );
 """
 
+CREATE_HYREX_APP_TABLE = """
+    CREATE TABLE IF NOT EXISTS hyrex_app (
+          id    BIGSERIAL NOT NULL PRIMARY KEY,
+          app_info JSON
+    );
+"""
+
+REGISTER_APP_INFO_SQL = """
+    INSERT INTO hyrex_app (
+        id,
+        app_info
+    ) VALUES (
+        $1,
+        $2
+    );
+"""
+
 CREATE_HYREX_EXECUTOR_TABLE = """
 DO $$
     BEGIN
@@ -315,6 +332,13 @@ EXECUTOR_HEARTBEAT = """
     UPDATE hyrex_executor 
     SET last_heartbeat = $1 
     WHERE id = ANY($2)
+"""
+
+UPDATE_EXECUTOR_STATS = """
+    UPDATE hyrex_executor
+    SET last_heartbeat = CURRENT_TIMESTAMP,
+        stats          = $2
+    WHERE id = $1;
 """
 
 REGISTER_EXECUTOR = """

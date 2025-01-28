@@ -9,8 +9,7 @@ from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.sql import sql, cron_sql, stats_sql
-
+from hyrex.sql import cron_sql, sql, stats_sql
 
 # def utcnow():
 #     return datetime.now(timezone.utc)
@@ -106,6 +105,7 @@ from hyrex.sql import sql, cron_sql, stats_sql
 def create_tables(conn_string):
     with psycopg.connect(conn_string) as conn:
         with conn.cursor() as cur:
+            cur.execute(sql.CREATE_HYREX_APP_TABLE)
             cur.execute(sql.CREATE_HYREX_TASK_RUN_TABLE)
             cur.execute(sql.CREATE_HYREX_TASK_TABLE)
             cur.execute(sql.CREATE_SYSTEM_LOG_TABLE)

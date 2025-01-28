@@ -104,6 +104,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def register_app(self, app_info: dict):
+        pass
+
+    @abstractmethod
     def enqueue(
         self,
         task: EnqueueTaskRequest,
@@ -169,6 +173,10 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
+        pass
+
+    @abstractmethod
+    def update_executor_stats(self, executor_id: UUID, stats: dict):
         pass
 
     @abstractmethod
