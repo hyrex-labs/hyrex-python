@@ -65,6 +65,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_hyrex_task_run_idempotency_key
     
 CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queue_status_priority_queued
     ON hyrex_task_run (queue, status, priority DESC, queued);
+
+CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued_priority
+    ON hyrex_task_run (queue, priority DESC, id)
+    WHERE status = 'queued';
 """
 
 CREATE_HYREX_TASK_TABLE = """
@@ -108,7 +112,9 @@ REGISTER_APP_INFO_SQL = """
     ) VALUES (
         $1,
         $2
-    );
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        app_info = $2;
 """
 
 CREATE_HYREX_EXECUTOR_TABLE = """

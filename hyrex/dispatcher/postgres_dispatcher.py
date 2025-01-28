@@ -24,7 +24,7 @@ from hyrex.sql import sql
 
 
 class PostgresDispatcher(Dispatcher):
-    def __init__(self, conn_string: str, batch_size=200, flush_interval=0.05):
+    def __init__(self, conn_string: str, batch_size=1000, flush_interval=0.05):
         super().__init__()
         self.conn_string = conn_string
         self.pool = ConnectionPool(

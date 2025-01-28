@@ -90,9 +90,15 @@ class WorkerExecutor(Process):
     def update_queue_list(self):
         self.queues = []
         self.logger.debug("Updating internal queue list from pattern...")
+
+        start = time.perf_counter()
         queue_names = self.dispatcher.get_queues_for_pattern(
             self.postgres_queue_pattern
         )
+        end = time.perf_counter()
+        self.refresh_queue_duration_averager.submit(end - start)
+        self.num_distinct_queues_averager.submit(len(queue_names))
+
         self.logger.debug(f"Queues found: {queue_names}")
         if queue_names:
             random.shuffle(queue_names)
