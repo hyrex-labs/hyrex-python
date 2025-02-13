@@ -29,7 +29,7 @@ class PostgresLiteDispatcher(Dispatcher):
         self.pool = ConnectionPool(
             conn_string + "?keepalives=1&keepalives_idle=60&keepalives_interval=10",
             open=True,
-            max_idle=300,
+            max_idle=5,
         )
 
         self.register_shutdown_handlers()

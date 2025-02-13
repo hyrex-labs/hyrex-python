@@ -15,13 +15,14 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import (
     CronJob,
+    CronJobRun,
     DequeuedTask,
     Dispatcher,
     EnqueueTaskRequest,
     TaskStatus,
 )
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.sql import sql
+from hyrex.sql import cron_sql, sql
 
 
 class PostgresDispatcher(Dispatcher):
@@ -313,3 +314,19 @@ class PostgresDispatcher(Dispatcher):
     def update_cron_job_confirmation_timestamp(self, jobid: int):
         with self.transaction() as cur:
             cur.execute(cron_sql.UPDATE_CRON_JOB_CONFIRMATION_TS, [jobid])
+
+    # In progress...
+    def schedule_cron_job_runs(self, cron_job_runs: list[CronJobRun]):
+        if not cron_job_runs:
+            return
+
+        # Verify all jobs have the same ID
+        all_same_id = all(
+            job["jobid"] == cron_job_runs[0]["jobid"] for job in cron_job_runs
+        )
+        if not all_same_id:
+            job_ids = [job["jobid"] for job in cron_job_runs]
+            self.logger.error(f"Got jobIds: {job_ids}, {cron_job_runs}")
+            raise ValueError(
+                "All cronJobsRuns submitted here need to have the same job id."
+            )

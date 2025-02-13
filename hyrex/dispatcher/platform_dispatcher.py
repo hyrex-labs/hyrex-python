@@ -253,3 +253,6 @@ class PlatformDispatcher(Dispatcher):
 
     def update_cron_job_confirmation_timestamp(self, jobid: int):
         pass
+
+    def schedule_cron_job_runs(self, cron_job_runs: list[CronJobRun]):
+        pass

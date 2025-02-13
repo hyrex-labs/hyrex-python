@@ -204,5 +204,9 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def schedule_cron_job_runs(self, cron_job_runs: list[CronJobRun]):
+        pass
+
+    @abstractmethod
     def stop(self):
         pass
