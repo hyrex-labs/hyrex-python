@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from hyrex.hyrex_registry import HyrexRegistry
+from .hyrex_registry import HyrexRegistry
 
 hy = HyrexRegistry()
 
