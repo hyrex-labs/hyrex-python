@@ -9,61 +9,36 @@ from typing import Sequence, Self, Callable
 import collections
 
 
-class HyrexWorkflow:
-    def __init__(self, workflow_identifier, func, workflow_args_schema=None):
-        self.root_nodes = []
-        self.workflow_identifier = workflow_identifier
-        self.workflow_args_schema = None
-
-    def __rshift__(self, other: Self | Sequence[Self]) -> Self:
-        if isinstance(other, DagNode):
-            self.root_nodes.append(other)
-        elif isinstance(other, collections.abc.Sequence):
-            for child in other:
-                self.root_nodes.append(child)
-        else:
-            raise TypeError(f"Unknown type of {other}, {type(other)}")
-
-        return other  # Allows chaining like task1 >> task2 >> task3
-
-    def send(self, *args, **kwargs):
-        print(f"Sending... {self.workflow_identifier}")
-
-    def to_json(self):
-        pass
-
-    def from_json(self):
-        pass
-
 class DagNode:
-    def __init__(self):
-        pass
+    def __init__(self, task_wrapper: TaskWrapper):
+        self.task_wrapper = task_wrapper
+        self.children = []
 
-    def add_child(self):
-        pass
+    def has_path_to(self, target: "DagNode", visited=None) -> bool:
+        if visited is None:
+            visited = set()
+        if self is target:
+            return True
+        visited.add(self)
+        for child in self.children:
+            if child not in visited and child.has_path_to(target, visited):
+                return True
+        return False
 
-
-class TaskWrapper(Generic[T], DagNode):
-    def __init__(
-            self,
-            task_identifier: str,
-            func: Callable[[T], Any],
-            dispatcher: Dispatcher,
-            cron: str | None,
-            queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-            max_retries: int = 0,
-            timeout_seconds: int = 0,
-            priority: int = constants.DEFAULT_PRIORITY,
-            idempotency_key: str = None,
-            on_error: Callable = None,
-    ):
-        self.task_identifier = task_identifier
-        self.func = func
+    def add_child(self, child: "DagNode"):
+        # Check if there's already a path from the new child back to self.
+        # If so, adding child would create a cycle.
+        if child.has_path_to(self):
+            raise ValueError("Adding this child would create a cycle!")
+        self.children.append(child)
 
     def send(self, *args, **kwargs):
+        # TODO
         pass
 
-    def __rshift__(self, other: Self | Sequence[Self]) -> Self:
+    def __rshift__(
+        self, other: "DagNode" | Sequence["DagNode"]
+    ) -> "DagNode" | Sequence["DagNode"]:
         if isinstance(other, DagNode):
             self.add_child(other)
         elif isinstance(other, collections.abc.Sequence):
@@ -74,22 +49,53 @@ class TaskWrapper(Generic[T], DagNode):
 
         return other  # Allows chaining like task1 >> task2 >> task3
 
-    def __rrshift__(self, other: Sequence[Self]):
+    def __rrshift__(self, other: Sequence["DagNode"]) -> "DagNode":
         if not isinstance(other, collections.abc.Sequence):
             raise TypeError(f"Unknown type of {other}, {type(other)}")
         for parent in other:
             if not isinstance(parent, DagNode):
-                raise TypeError(f"Cannot use object {parent} of type {type(parent)} as node in DAG.")
+                raise TypeError(
+                    f"Cannot use object {parent} of type {type(parent)} as node in DAG."
+                )
             parent.add_child(self)
 
         return other  # Allows chaining like task1 >> task2 >> task3
 
 
+class HyrexWorkflow:
+    def __init__(self, workflow_identifier, func, workflow_args_schema=None):
+        self.root_nodes = []
+        self.workflow_identifier = workflow_identifier
+        self.workflow_args_schema = None
+
+    def __rshift__(
+        self, other: TaskWrapper | Sequence[TaskWrapper]
+    ) -> DagNode | list[DagNode]:
+        if isinstance(other, TaskWrapper):
+            new_node = DagNode(task_wrapper=other)
+            self.root_nodes.append(new_node)
+            return new_node
+
+        elif isinstance(other, collections.abc.Sequence):
+            new_nodes = [DagNode(child) for child in other]
+            self.root_nodes += new_nodes
+            return new_nodes
+
+        else:
+            raise TypeError(f"Unknown type of {other}, {type(other)}")
+
+    def send(self, *args, **kwargs):
+        print(f"Sending... {self.workflow_identifier}")
+
+    def to_json(self):
+        pass
+
+    def from_json(self):
+        pass
+
+
 class HyrexRegistry:
-    def task(
-            self,
-            func: Callable = None
-    ) -> TaskWrapper:
+    def task(self, func: Callable = None) -> TaskWrapper:
         """
         Create task decorator
         """
@@ -138,4 +144,3 @@ class HyrexRegistry:
             return hyrex_workflow
 
         return decorator(func=func)
-

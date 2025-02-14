@@ -189,6 +189,9 @@ class PostgresDispatcher(Dispatcher):
                 task.priority,
                 task.timeout_seconds,
                 task.idempotency_key,
+                task.status,
+                task.workflow_run_id,
+                task.workflow_dependencies,
             )
             for task in tasks
         )

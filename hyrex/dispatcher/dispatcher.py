@@ -21,6 +21,7 @@ class TaskStatus(StrEnum):
     queued = "queued"
     waiting = "waiting"
     lost = "lost"
+    skipped = "skipped"
 
 
 class EnqueueTaskRequest(BaseModel):
@@ -35,6 +36,9 @@ class EnqueueTaskRequest(BaseModel):
     priority: int
     timeout_seconds: int | None
     idempotency_key: str | None
+    status: TaskStatus
+    workflow_run_id: UUID | None
+    workflow_dependencies: list[UUID] | None
 
 
 class DequeuedTask(BaseModel):
@@ -194,3 +198,16 @@ class Dispatcher(ABC):
     @abstractmethod
     def stop(self):
         pass
+
+
+# TODO: For workflows, implement these:
+# // Workflow
+# registerWorkflow({ workflowName, sourceCode, workflowDagJson }: {
+#     workflowName: string,
+#     sourceCode: string,
+#     workflowDagJson: WorkflowDagJson
+# }): Promise<void>
+
+# sendWorkflowRun({ serializedWorkflowRunRequest }: { serializedWorkflowRunRequest: SerializedWorkflowRunRequest }): Promise<string>
+
+# advanceWorkflowRun({ workflowRunId }: { workflowRunId: UUID }): Promise<void>
