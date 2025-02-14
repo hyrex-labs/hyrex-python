@@ -224,6 +224,9 @@ class TaskWrapper(Generic[T]):
             timeout_seconds=self.timeout_seconds,
             priority=self.priority,
             idempotency_key=self.idempotency_key,
+            status=TaskStatus.queued,
+            workflow_run_id=None,
+            workflow_dependencies=None,
         )
 
         self.dispatcher.enqueue(task)

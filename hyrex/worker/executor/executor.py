@@ -330,7 +330,7 @@ class WorkerExecutor(Process):
         """Register all current tasks with dispatcher."""
         for task_wrapper in self.task_registry.get_task_wrappers():
             self.dispatcher.register_task(
-                task_name=task_wrapper.workflow_identifier,
+                task_name=task_wrapper.task_identifier,
                 cron=task_wrapper.cron,
                 source_code=inspect.getsource(task_wrapper.func),
             )

@@ -9,8 +9,8 @@ description = "Hyrex is a modern, open-source, Postgres-based task orchestration
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Trevor Reed", email = "trevor@usekura.com" },
-    { name = "Mark Dawson", email = "mark@usekura.com" }
+    { name = "Trevor Reed", email = "trevor@hyrex.io" },
+    { name = "Mark Dawson", email = "mark@hyrex.io" }
 ]
 keywords = ["hyrex", "task", "queue", "async"]
 classifiers = [
@@ -46,3 +46,6 @@ hyrex = "hyrex.cli:cli"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.setuptools]
+packages = ["hyrex"]
