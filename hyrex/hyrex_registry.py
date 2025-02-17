@@ -9,6 +9,7 @@ from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.task import T, TaskWrapper
+from hyrex.task_config import TaskConfig
 
 
 class HyrexRegistry:
@@ -30,10 +31,13 @@ class HyrexRegistry:
             )
         self.internal_task_registry[task_wrapper.task_identifier] = task_wrapper
         self.logger.debug(f"All tasks: {self.internal_task_registry.keys()}")
-        if isinstance(task_wrapper.queue, str):
-            self.register_queue(HyrexQueue(name=task_wrapper.queue))
+
+        # Register the task wrapper's queue for tracking concurrency.
+        queue = task_wrapper.get_queue()
+        if isinstance(queue, str):
+            self.register_queue(HyrexQueue(name=queue))
         else:
-            self.register_queue(task_wrapper.queue)
+            self.register_queue(queue)
 
     def register_queue(self, queue: HyrexQueue):
         if self.internal_queue_registry.get(queue.name) and not queue.equals(
@@ -86,28 +90,24 @@ class HyrexRegistry:
         Create task decorator
         """
 
-        def decorator(func: Callable[[T], Any]) -> Callable[[T], Any]:
+        def decorator(func: Callable[[T], Any]) -> TaskWrapper:
             task_identifier = func.__name__
-            task_wrapper = TaskWrapper(
-                task_identifier=task_identifier,
-                func=func,
+            task_config = TaskConfig(
                 queue=queue,
-                cron=cron,
                 max_retries=max_retries,
                 timeout_seconds=timeout_seconds,
                 priority=priority,
+            )
+            task_wrapper = TaskWrapper(
+                task_identifier=task_identifier,
+                func=func,
+                cron=cron,
+                task_config=task_config,
                 dispatcher=self.dispatcher,
                 on_error=on_error,
             )
             self.register_task(task_wrapper=task_wrapper)
-
-            @functools.wraps(func)
-            def wrapper(context: T) -> Any:
-                return task_wrapper(context)
-
-            wrapper.send = task_wrapper.send
-            wrapper.withConfig = task_wrapper.withConfig
-            return wrapper
+            return task_wrapper
 
         if func is not None:
             return decorator(func)
