@@ -1,4 +1,5 @@
 import functools
+import inspect
 import logging
 import os
 from inspect import signature
@@ -10,6 +11,10 @@ from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.task import T, TaskWrapper
 from hyrex.task_config import TaskConfig
+from hyrex.workflow.workflow import HyrexWorkflow
+from hyrex.workflow.workflow_builder import HyrexWorkflowBuilder
+
+# TODO: Also register tasks with DB here.
 
 
 class HyrexRegistry:
@@ -116,3 +121,54 @@ class HyrexRegistry:
     def schedule(self):
         for task_wrapper in self.values():
             task_wrapper.schedule()
+
+    def workflow(
+        self,
+        name: str,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        max_retries: int = 0,
+        timeout_seconds: int | None = None,
+        priority: int = constants.DEFAULT_PRIORITY,
+        cron: str = None,
+        workflow_arg_schema=None,
+    ):
+        """
+        A decorator to register a workflow.
+        """
+
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                self.logger.info("Registering workflow!")
+
+                task_config = TaskConfig(
+                    queue=queue,
+                    max_retries=max_retries,
+                    timeout_seconds=timeout_seconds,
+                    priority=priority,
+                )
+
+                # Create a workflow builder and pass it to the decorated function.
+                workflow_builder = HyrexWorkflowBuilder()
+                completed_workflow_builder = func(workflow_builder)
+
+                # Register workflow
+                source_code = inspect.getsource(func)
+                self.dispatcher.register_workflow(
+                    workflow_name=name,
+                    source_code=source_code,
+                    workflow_dag_json=completed_workflow_builder.to_json(),
+                )
+
+                # Create and return a HyrexWorkflow instance.
+                return HyrexWorkflow(
+                    name=name,
+                    config=task_config,
+                    workflow_arg_schema=workflow_arg_schema,
+                    workflow_dag_json=completed_workflow_builder.to_json(),
+                    dispatcher=self.dispatcher,
+                )
+
+            return wrapper
+
+        return decorator

@@ -3,74 +3,11 @@ import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import StrEnum
 from uuid import UUID
-
-from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-
-
-class TaskStatus(StrEnum):
-    success = "success"
-    failed = "failed"
-    up_for_cancel = "up_for_cancel"
-    canceled = "canceled"
-    running = "running"
-    queued = "queued"
-    waiting = "waiting"
-    lost = "lost"
-    skipped = "skipped"
-
-
-class EnqueueTaskRequest(BaseModel):
-    id: UUID
-    durable_id: UUID
-    root_id: UUID
-    parent_id: UUID | None
-    task_name: str
-    args: dict
-    queue: str
-    max_retries: int
-    priority: int
-    timeout_seconds: int | None
-    idempotency_key: str | None
-    status: TaskStatus
-    workflow_run_id: UUID | None
-    workflow_dependencies: list[UUID] | None
-
-
-class DequeuedTask(BaseModel):
-    id: UUID
-    durable_id: UUID
-    root_id: UUID
-    parent_id: UUID | None
-    task_name: str
-    args: dict
-    queue: str
-    priority: int
-    timeout_seconds: int | None
-    scheduled_start: datetime | None
-    queued: datetime
-    started: datetime
-
-
-class CronJob(BaseModel):
-    jobid: int
-    schedule: str
-    command: str
-    active: bool
-    jobname: str
-    activated_at: datetime
-    scheduled_jobs_confirmed_until: datetime
-    should_backfill: bool
-
-
-class CronJobRun(BaseModel):
-    jobid: int
-    command: str
-    schedule_time: datetime
+from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
 
 
 class Dispatcher(ABC):
@@ -197,6 +134,10 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def stop(self):
+        pass
+
+    @abstractmethod
+    def register_workflow(name: str, source_code: str, workflow_dag_json: str):
         pass
 
 

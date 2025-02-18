@@ -10,9 +10,10 @@ from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher import Dispatcher, EnqueueTaskRequest, TaskStatus
+from hyrex.dispatcher import Dispatcher
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.schemas import EnqueueTaskRequest, TaskStatus
 from hyrex.task_config import TaskConfig
 
 T = TypeVar("T", bound=BaseModel)

@@ -1,6 +1,7 @@
+from pydantic import BaseModel
+
 from hyrex import constants
 from hyrex.hyrex_registry import HyrexRegistry
-from pydantic import BaseModel
 
 
 class HyrexAppInfo(BaseModel):

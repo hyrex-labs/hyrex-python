@@ -1,3 +1,4 @@
+import json
 import random
 import threading
 import time
@@ -13,14 +14,10 @@ from psycopg_pool import ConnectionPool
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-)
+from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.sql import sql
+from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
+from hyrex.sql import sql, workflow_sql
 
 
 class PostgresDispatcher(Dispatcher):
@@ -286,3 +283,11 @@ class PostgresDispatcher(Dispatcher):
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
         with self.transaction() as cur:
             cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])
+
+    def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
+        with self.transaction() as cur:
+            cron = None
+            cur.execute(
+                workflow_sql.UPSERT_WORKFLOW,
+                [name, cron, source_code, json.dumps(workflow_dag_json)],
+            )

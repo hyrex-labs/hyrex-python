@@ -7,13 +7,9 @@ from uuid import UUID
 import requests
 
 from hyrex import constants
-from hyrex.dispatcher.dispatcher import (
-    DequeuedTask,
-    Dispatcher,
-    EnqueueTaskRequest,
-    TaskStatus,
-)
+from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
 
 
 class PlatformDispatcher(Dispatcher):
@@ -241,4 +237,7 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+        pass
+
+    def register_workflow(name: str, source_code: str, workflow_dag_json: dict):
         pass
