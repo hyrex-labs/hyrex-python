@@ -9,12 +9,11 @@ import psycopg
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
-from hyrex import constants
 from hyrex.dispatcher import Dispatcher
 from hyrex.hyrex_context import get_hyrex_context
-from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
 from hyrex.task_config import TaskConfig
+from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -230,7 +229,7 @@ class TaskWrapper(Generic[T]):
             workflow_dependencies=None,
         )
 
-        self.dispatcher.enqueue(task)
+        self.dispatcher.enqueue([task])
 
         return TaskRun(
             task_name=self.task_identifier,
@@ -253,3 +252,43 @@ class TaskWrapper(Generic[T]):
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
+
+    # Methods for workflows:
+    def __rshift__(self, other):
+        builder = get_current_workflow_builder()
+        if builder is None:
+            raise RuntimeError(
+                "No current workflow builder found. Please ensure you are within a workflow context."
+            )
+        # The builder is expected to have get_or_create_node.
+        node = builder.get_or_create_node(self)
+        return node >> other
+
+    def __rrshift__(self, other):
+        # This method is invoked when a TaskWrapper is on the right of >> and the left operand
+        # does not implement __rshift__. We check if 'other' is a list.
+        if isinstance(other, list):
+            # Convert each element in the list to a DagNode (if needed)
+            builder = get_current_workflow_builder()
+            if builder is None:
+                raise RuntimeError(
+                    "No current workflow builder found. Please use a workflow context or decorator."
+                )
+            nodes = []
+            for item in other:
+                if isinstance(item, TaskWrapper):
+                    # Note to developers: This path may be impossible?
+                    node = builder.get_or_create_node(item)
+                elif hasattr(item, "workflow_builder"):  # already a DagNode
+                    node = item
+                else:
+                    raise TypeError(
+                        f"Cannot use item of type {type(item)} as a task in the workflow."
+                    )
+                nodes.append(node)
+            # Now, chain all the nodes in the list with self.
+            # For example, we add self as a child to each node.
+            for node in nodes:
+                node >> self
+            return self
+        raise TypeError(f"Unsupported left operand type for >>: {type(other)}")

@@ -1,17 +1,19 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+import logging
 import random
 from datetime import datetime
-import logging
 
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from .workflow import onboard_user
 from .tasks import (
-    sleepy_task,
+    EmptyContext,
     SleepContext,
     empty_task,
-    EmptyContext,
     error_task,
+    print_random_number,
+    sleepy_task,
 )
-
 
 app = FastAPI()
 hyrex_logger = logging.getLogger("hyrex")
@@ -69,3 +71,13 @@ def print_hello():
 @app.get("/error-task/")
 async def run_error_task():
     error_task.withConfig(max_retries=1).send(EmptyContext())
+
+
+@app.get("/random-number/")
+async def random_number_task():
+    print_random_number.send(EmptyContext())
+
+
+@app.get("/onboard-user/")
+async def onboard_user_workflow():
+    onboard_user.send(EmptyContext())

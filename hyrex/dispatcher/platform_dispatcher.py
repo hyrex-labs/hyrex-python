@@ -9,7 +9,12 @@ import requests
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
+from hyrex.schemas import (
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -39,9 +44,10 @@ class PlatformDispatcher(Dispatcher):
 
     def enqueue(
         self,
-        task: EnqueueTaskRequest,
+        tasks: list[EnqueueTaskRequest],
     ):
-        self.local_queue.put(task)
+        for task in tasks:
+            self.local_queue.put(task)
 
     def _batch_enqueue(self):
         tasks = []
@@ -239,5 +245,11 @@ class PlatformDispatcher(Dispatcher):
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
         pass
 
-    def register_workflow(name: str, source_code: str, workflow_dag_json: dict):
+    def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
+        pass
+
+    def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
+        pass
+
+    def advance_workflow_run(self, workflow_run_id: UUID):
         pass

@@ -2,14 +2,19 @@ import collections
 import json
 from typing import Sequence
 
-# from hyrex.schemas import WorkflowDagJson
 from hyrex.task import TaskWrapper
+from hyrex.workflow.workflow_builder_context import (
+    set_current_workflow_builder,
+    clear_current_workflow_builder,
+)
 
 
 class DagNode:
-    def __init__(self, task_wrapper: TaskWrapper):
+    def __init__(self, task_wrapper: TaskWrapper, workflow_builder: "WorkflowBuilder"):
         self.task_wrapper = task_wrapper
+        self.workflow_builder = workflow_builder
         self.children = []
+        self.parents = []
 
     def has_path_to(self, target: "DagNode", visited=None) -> bool:
         if visited is None:
@@ -23,63 +28,78 @@ class DagNode:
         return False
 
     def add_child(self, child: "DagNode"):
-        # Check if there's already a path from the new child back to self.
-        # If so, adding child would create a cycle.
         if child.has_path_to(self):
             raise ValueError("Adding this child would create a cycle!")
+        if child in self.children:
+            raise ValueError("This node is already a child of mine!")
+
         self.children.append(child)
+        child.parents.append(self)
 
-    def send(self, *args, **kwargs):
-        # TODO
-        pass
+    def get_children(self) -> list["DagNode"]:
+        return self.children
 
-    def __rshift__(
-        self, other: "DagNode" | Sequence["DagNode"]
-    ) -> "DagNode" | Sequence["DagNode"]:
-        if isinstance(other, DagNode):
-            self.add_child(other)
+    def __rshift__(self, other: TaskWrapper | Sequence[TaskWrapper] | "DagNode"):
+        if isinstance(other, TaskWrapper):
+            node = self.workflow_builder.get_or_create_node(other)
+            self.add_child(node)
+            return node
         elif isinstance(other, collections.abc.Sequence):
-            for child in other:
-                self.add_child(child)
+            nodes = [
+                (
+                    self.workflow_builder.get_or_create_node(task)
+                    if isinstance(task, TaskWrapper)
+                    else task
+                )
+                for task in other
+            ]
+            for node in nodes:
+                self.add_child(node)
+            return nodes
+        elif isinstance(other, DagNode):
+            self.add_child(other)
+            return other
         else:
             raise TypeError(f"Unknown type of {other}, {type(other)}")
 
-        return other  # Allows chaining like task1 >> task2 >> task3
-
-    def __rrshift__(self, other: Sequence["DagNode"]) -> "DagNode":
+    def __rrshift__(self, other: Sequence["TaskWrapper | DagNode"]) -> "DagNode":
         if not isinstance(other, collections.abc.Sequence):
             raise TypeError(f"Unknown type of {other}, {type(other)}")
-        for parent in other:
-            if not isinstance(parent, DagNode):
+
+        for item in other:
+            if isinstance(item, TaskWrapper):
+                node = self.workflow_builder.get_or_create_node(item)
+                node.add_child(self)
+            elif isinstance(item, DagNode):
+                item.add_child(self)
+            else:
                 raise TypeError(
-                    f"Cannot use object {parent} of type {type(parent)} as node in DAG."
+                    f"Cannot use object {item} of type {type(item)} as node in DAG"
                 )
-            parent.add_child(self)
 
-        return other  # Allows chaining like task1 >> task2 >> task3
+        return self  # Return self to allow chaining like task1 >> task2 >> task3
 
 
-class HyrexWorkflowBuilder:
-    def __init__(
-        self,
-    ):
-        self.root_nodes = []
+class WorkflowBuilder:
+    def __init__(self):
+        self.nodes = {}  # Map from TaskWrapper to DagNode
 
-    def __rshift__(
-        self, other: TaskWrapper | Sequence[TaskWrapper]
-    ) -> DagNode | list[DagNode]:
-        if isinstance(other, TaskWrapper):
-            new_node = DagNode(task_wrapper=other)
-            self.root_nodes.append(new_node)
-            return new_node
+    def __enter__(self) -> "WorkflowBuilder":
+        set_current_workflow_builder(self)
+        return self
 
-        elif isinstance(other, collections.abc.Sequence):
-            new_nodes = [DagNode(child) for child in other]
-            self.root_nodes += new_nodes
-            return new_nodes
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        clear_current_workflow_builder()
 
-        else:
-            raise TypeError(f"Unknown type of {other}, {type(other)}")
+    def get_or_create_node(self, task_wrapper: TaskWrapper) -> DagNode:
+        if task_wrapper not in self.nodes:
+            self.nodes[task_wrapper] = DagNode(
+                task_wrapper=task_wrapper, workflow_builder=self
+            )
+        return self.nodes[task_wrapper]
+
+    def get_root_nodes(self):
+        return [node for node in self.nodes.values() if not node.parents]
 
     def to_json(self) -> dict:
         """
@@ -134,7 +154,7 @@ class HyrexWorkflowBuilder:
                 )
                 dfs(child)
 
-        for root in self.root_nodes:
+        for root in self.get_root_nodes():
             dfs(root)
 
         # TODO: Consider using a more specific schema

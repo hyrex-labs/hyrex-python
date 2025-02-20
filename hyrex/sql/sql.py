@@ -160,7 +160,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
@@ -183,7 +183,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
 """
 
 CONDITIONALLY_RETRY_TASK = """

@@ -1,6 +1,9 @@
-from pydantic import BaseModel
+import random
 import time
-from hyrex import HyrexRegistry, HyrexQueue, get_hyrex_context
+
+from pydantic import BaseModel
+
+from hyrex import HyrexQueue, HyrexRegistry, get_hyrex_context
 
 
 def task_error_callback(task_name: str, e: Exception):
@@ -37,3 +40,8 @@ def error_handler():
 @hy.task(max_retries=3, on_error=error_handler)
 def error_task(context: EmptyContext):
     raise RuntimeError("The task has caused an error!")
+
+
+@hy.task
+def print_random_number(context: EmptyContext):
+    print(random.random())

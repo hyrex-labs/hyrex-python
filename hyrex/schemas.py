@@ -47,6 +47,7 @@ class DequeuedTask(BaseModel):
     scheduled_start: datetime | None
     queued: datetime
     started: datetime
+    workflow_run_id: UUID | None
 
 
 class WorkflowStatus(StrEnum):

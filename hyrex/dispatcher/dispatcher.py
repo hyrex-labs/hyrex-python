@@ -7,7 +7,12 @@ from uuid import UUID
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
+from hyrex.schemas import (
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class Dispatcher(ABC):
@@ -51,7 +56,7 @@ class Dispatcher(ABC):
     @abstractmethod
     def enqueue(
         self,
-        task: EnqueueTaskRequest,
+        tasks: list[EnqueueTaskRequest],
     ):
         pass
 
@@ -137,18 +142,13 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_workflow(name: str, source_code: str, workflow_dag_json: str):
+    def register_workflow(self, name: str, source_code: str, workflow_dag_json: str):
         pass
 
+    @abstractmethod
+    def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
+        pass
 
-# TODO: For workflows, implement these:
-# // Workflow
-# registerWorkflow({ workflowName, sourceCode, workflowDagJson }: {
-#     workflowName: string,
-#     sourceCode: string,
-#     workflowDagJson: WorkflowDagJson
-# }): Promise<void>
-
-# sendWorkflowRun({ serializedWorkflowRunRequest }: { serializedWorkflowRunRequest: SerializedWorkflowRunRequest }): Promise<string>
-
-# advanceWorkflowRun({ workflowRunId }: { workflowRunId: UUID }): Promise<void>
+    @abstractmethod
+    def advance_workflow_run(self, workflow_run_id: UUID):
+        pass

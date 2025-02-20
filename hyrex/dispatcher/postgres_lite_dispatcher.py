@@ -20,23 +20,30 @@ class PostgresLiteDispatcher(PostgresDispatcher):
 
     def enqueue(
         self,
-        task: EnqueueTaskRequest,
+        tasks: list[EnqueueTaskRequest],
     ):
         task_data = (
-            task.id,
-            task.durable_id,
-            task.root_id,
-            task.parent_id,
-            task.task_name,
-            Json(task.args),
-            task.queue,
-            task.max_retries,
-            task.priority,
-            task.timeout_seconds,
-            task.idempotency_key,
+            (
+                task.id,
+                task.durable_id,
+                task.root_id,
+                task.parent_id,
+                task.task_name,
+                Json(task.args),
+                task.queue,
+                task.max_retries,
+                task.priority,
+                task.timeout_seconds,
+                task.idempotency_key,
+                task.status,
+                task.workflow_run_id,
+                task.workflow_dependencies,
+            )
+            for task in tasks
         )
+
         with self.transaction() as cur:
-            cur.execute(
+            cur.executemany(
                 sql.ENQUEUE_TASK,
                 task_data,
             )

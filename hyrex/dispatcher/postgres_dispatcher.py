@@ -16,7 +16,13 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import DequeuedTask, EnqueueTaskRequest, TaskStatus
+from hyrex.schemas import (
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import sql, workflow_sql
 
 
@@ -108,6 +114,7 @@ class PostgresDispatcher(Dispatcher):
                     scheduled_start,
                     queued,
                     started,
+                    workflow_run_id,
                 ) = row
                 dequeued_task = DequeuedTask(
                     id=task_id,
@@ -122,14 +129,19 @@ class PostgresDispatcher(Dispatcher):
                     scheduled_start=scheduled_start,
                     queued=queued,
                     started=started,
+                    workflow_run_id=workflow_run_id,
                 )
 
         return dequeued_task
 
-    def enqueue(self, task: EnqueueTaskRequest):
+    def enqueue(self, tasks: list[EnqueueTaskRequest]):
+        if not tasks:
+            self.logger.error("Task list is empty - cannot enqueue.")
+            return
         if self.stopping:
             self.logger.warning("Task enqueued during shutdown. May not be processed.")
-        self.local_queue.put(task)
+        for task in tasks:
+            self.local_queue.put(task)
 
     def _batch_enqueue(self):
         tasks = []
@@ -291,3 +303,46 @@ class PostgresDispatcher(Dispatcher):
                 workflow_sql.UPSERT_WORKFLOW,
                 [name, cron, source_code, json.dumps(workflow_dag_json)],
             )
+
+    def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
+        with self.transaction() as cur:
+            cur.execute(
+                workflow_sql.INSERT_WORKFLOW_RUN,
+                [
+                    workflow_run_request.id,
+                    workflow_run_request.workflow_name,
+                    Json(workflow_run_request.args),
+                    workflow_run_request.queue,
+                    workflow_run_request.timeout_seconds,
+                    workflow_run_request.idempotency_key,
+                ],
+            )
+            result = cur.fetchall()
+            if len(result) != 1:
+                raise ValueError(f"Insert workflow run failed.")
+            return result[0][0]
+
+    def advance_workflow_run(self, workflow_run_id: UUID):
+        self.logger.info(f"Advancing workflow run {workflow_run_id}")
+
+        with self.transaction() as cur:
+            # First query to check status
+            cur.execute(
+                workflow_sql.SET_WORKFLOW_RUN_STATUS_BASED_ON_TASK_RUNS,
+                [workflow_run_id],
+            )
+            result = cur.fetchall()
+
+            if len(result) != 1:
+                self.logger.warning(
+                    "Result of SET_WORKFLOW_RUN_STATUS_BASED_ON_TASK_RUNS is not one row."
+                )
+                return None
+
+            workflow_status = result[0][1]  # Status is second column
+            if workflow_status in (WorkflowStatus.failed, WorkflowStatus.success):
+                return None
+
+            # Second query to advance the workflow
+            cur.execute(workflow_sql.ADVANCE_WORKFLOW_RUN, [workflow_run_id])
+            return None
