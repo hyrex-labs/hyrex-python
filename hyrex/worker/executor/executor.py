@@ -171,7 +171,6 @@ class WorkerExecutor(Process):
     def process(self, queue: HyrexQueue):
         """Returns True if a task is found and attempted, False otherwise"""
         try:
-
             task: DequeuedTask | None = self.fetch_task(
                 queue=queue.name, concurrency_limit=queue.concurrency_limit
             )
@@ -219,6 +218,13 @@ class WorkerExecutor(Process):
             self.logger.info(
                 f"Executor {self.name}: Completed processing item {task.id}"
             )
+
+            # If this task is part of a workflow, advance it
+            if task.workflow_run_id:
+                self.logger.info(f"Advancing workflow {task.workflow_run_id}...")
+                self.dispatcher.advance_workflow_run(
+                    workflow_run_id=task.workflow_run_id
+                )
 
         except Exception as e:
             self.logger.error(f"Executor {self.name}: Exception hit during processing.")
@@ -365,6 +371,7 @@ class WorkerExecutor(Process):
         )
         self.task_registry.set_dispatcher(self.dispatcher)
         if self.register_app:
+            # TODO: Register workflows
             self.register_tasks_with_dispatcher()
             self.register_hyrex_app()
 
