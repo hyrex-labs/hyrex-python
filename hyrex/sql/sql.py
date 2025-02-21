@@ -1,30 +1,33 @@
 CREATE_HYREX_TASK_RUN_TABLE = """
+-- Create task_run_status enum type if it doesn't exist
 DO $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typname = 'task_run_status'
-            AND typnamespace = 'public'::regnamespace
-    ) THEN
-        CREATE TYPE task_run_status AS ENUM (
+    IF NOT EXISTS (SELECT 1 
+                   FROM pg_type 
+                   WHERE typname = 'task_run_status' 
+                     AND typnamespace = 'public'::regnamespace) THEN
+        CREATE TYPE public.task_run_status AS ENUM (
             'success',
             'failed',
             'running',
             'queued',
             'up_for_cancel',
             'canceled',
+            'waiting',
             'lost',
-            'waiting'
+            'skipped'
         );
     END IF;
 END $$;
 
+-- Create task run table (renamed from hyrex_task_execution)
 CREATE TABLE IF NOT EXISTS hyrex_task_run (
     id              UUID                        NOT NULL PRIMARY KEY,
     durable_id      UUID                        NOT NULL,
     root_id         UUID                        NOT NULL,
     parent_id       UUID,
+    workflow_run_id UUID DEFAULT NULL,
+    workflow_dependencies UUID[] DEFAULT NULL,
     task_name       VARCHAR                     NOT NULL,
     args            JSON                        NOT NULL,
     queue           VARCHAR                     NOT NULL,
@@ -32,13 +35,13 @@ CREATE TABLE IF NOT EXISTS hyrex_task_run (
     priority        SMALLINT                    NOT NULL,
     timeout_seconds INT                         DEFAULT NULL CHECK (timeout_seconds IS NULL OR timeout_seconds > 0),
     status          task_run_status             NOT NULL,
-    attempt_number  SMALLINT                    NOT NULL DEFAULT 0,
+    attempt_number  SMALLINT                    NOT NULL,
     scheduled_start TIMESTAMP WITH TIME ZONE,
     executor_id     UUID,
     queued          TIMESTAMP WITH TIME ZONE,
     started         TIMESTAMP WITH TIME ZONE,
-    last_heartbeat  TIMESTAMP WITH TIME ZONE,
     finished        TIMESTAMP WITH TIME ZONE,
+    last_heartbeat  TIMESTAMP WITH TIME ZONE,
     idempotency_key VARCHAR,
     log_link        VARCHAR
 );
@@ -157,7 +160,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
@@ -180,7 +183,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
 """
 
 CONDITIONALLY_RETRY_TASK = """
@@ -196,7 +199,9 @@ WITH existing_task AS (
         max_retries,
         priority,
         timeout_seconds,
-        idempotency_key
+        idempotency_key,
+        workflow_run_id,
+        workflow_dependencies
     FROM hyrex_task_run
     WHERE id = $1
       AND attempt_number < max_retries
@@ -215,7 +220,9 @@ INSERT INTO hyrex_task_run (
     max_retries,
     priority,
     timeout_seconds,
-    idempotency_key
+    idempotency_key,
+    workflow_run_id,
+    workflow_dependencies
 )
 SELECT
     $2 AS id,
@@ -231,7 +238,9 @@ SELECT
     max_retries,
     priority,
     timeout_seconds,
-    idempotency_key
+    idempotency_key,
+    workflow_run_id,
+    workflow_dependencies
 FROM existing_task;
 """
 
@@ -260,10 +269,13 @@ WITH task_insertion AS (
                                           timeout_seconds,
                                           idempotency_key,
                                           status,
-                                          queued
+                                          queued,
+                                          attempt_number,
+                                          workflow_run_id,
+                                          workflow_dependencies
             )
             VALUES (
-                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'queued'::task_run_status, CURRENT_TIMESTAMP
+                       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, 0, $13, $14
                    )
             ON CONFLICT (task_name, idempotency_key)
                 WHERE idempotency_key IS NOT NULL

@@ -3,70 +3,16 @@ import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import StrEnum
 from uuid import UUID
-
-from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-
-
-class TaskStatus(StrEnum):
-    success = "success"
-    failed = "failed"
-    up_for_cancel = "up_for_cancel"
-    canceled = "canceled"
-    running = "running"
-    queued = "queued"
-    waiting = "waiting"
-    lost = "lost"
-
-
-class EnqueueTaskRequest(BaseModel):
-    id: UUID
-    durable_id: UUID
-    root_id: UUID
-    parent_id: UUID | None
-    task_name: str
-    args: dict
-    queue: str
-    max_retries: int
-    priority: int
-    timeout_seconds: int | None
-    idempotency_key: str | None
-
-
-class DequeuedTask(BaseModel):
-    id: UUID
-    durable_id: UUID
-    root_id: UUID
-    parent_id: UUID | None
-    task_name: str
-    args: dict
-    queue: str
-    priority: int
-    timeout_seconds: int | None
-    scheduled_start: datetime | None
-    queued: datetime
-    started: datetime
-
-
-class CronJob(BaseModel):
-    jobid: int
-    schedule: str
-    command: str
-    active: bool
-    jobname: str
-    activated_at: datetime
-    scheduled_jobs_confirmed_until: datetime
-    should_backfill: bool
-
-
-class CronJobRun(BaseModel):
-    jobid: int
-    command: str
-    schedule_time: datetime
+from hyrex.schemas import (
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class Dispatcher(ABC):
@@ -110,7 +56,7 @@ class Dispatcher(ABC):
     @abstractmethod
     def enqueue(
         self,
-        task: EnqueueTaskRequest,
+        tasks: list[EnqueueTaskRequest],
     ):
         pass
 
@@ -193,4 +139,16 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def stop(self):
+        pass
+
+    @abstractmethod
+    def register_workflow(self, name: str, source_code: str, workflow_dag_json: str):
+        pass
+
+    @abstractmethod
+    def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
+        pass
+
+    @abstractmethod
+    def advance_workflow_run(self, workflow_run_id: UUID):
         pass

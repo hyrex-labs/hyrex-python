@@ -4,7 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-# TODO: Finalize context fields.
 class HyrexContext(BaseModel):
     task_id: UUID
     durable_id: UUID

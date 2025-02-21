@@ -9,10 +9,11 @@ import psycopg
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
-from hyrex import constants
-from hyrex.dispatcher import Dispatcher, EnqueueTaskRequest, TaskStatus
+from hyrex.dispatcher import Dispatcher
 from hyrex.hyrex_context import get_hyrex_context
-from hyrex.hyrex_queue import HyrexQueue
+from hyrex.schemas import EnqueueTaskRequest, TaskStatus
+from hyrex.task_config import TaskConfig
+from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -88,25 +89,18 @@ class TaskWrapper(Generic[T]):
         func: Callable[[T], Any],
         dispatcher: Dispatcher,
         cron: str | None,
-        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-        max_retries: int = 0,
-        timeout_seconds: int = 0,
-        priority: int = constants.DEFAULT_PRIORITY,
-        idempotency_key: str = None,
+        task_config: TaskConfig,
         on_error: Callable = None,
     ):
         self.logger = logging.getLogger(__name__)
 
         self.task_identifier = task_identifier
         self.func = func
-        self.queue = queue
         self.signature = signature(func)
         self.type_hints = get_type_hints(func)
         self.cron = cron
-        self.max_retries = max_retries
-        self.priority = priority
-        self.idempotency_key = idempotency_key
-        self.timeout_seconds = timeout_seconds
+
+        self.task_config = task_config
 
         self.dispatcher = dispatcher
         self.on_error = on_error
@@ -124,7 +118,9 @@ class TaskWrapper(Generic[T]):
         self.context_klass = context_klass
 
     async def async_call(self, context: T):
-        self.logger.info(f"Executing task {self.func.__name__} on queue: {self.queue}")
+        self.logger.info(
+            f"Executing task {self.func.__name__} on queue: {self.task_config.queue}"
+        )
         self._check_type(context)
         if asyncio.iscoroutinefunction(self.func):
             return await self.func(context)
@@ -185,28 +181,32 @@ class TaskWrapper(Generic[T]):
         timeout_seconds: int = None,
         idempotency_key: str = None,
     ) -> "TaskWrapper[T]":
+        new_task_config = TaskConfig(
+            queue=queue,
+            priority=priority,
+            max_retries=max_retries,
+            timeout_seconds=timeout_seconds,
+            idempotency_key=idempotency_key,
+        )
         new_wrapper = TaskWrapper(
             task_identifier=self.task_identifier,
             func=self.func,
             dispatcher=self.dispatcher,
             cron=self.cron,
-            queue=queue if queue is not None else self.queue,
-            priority=priority if priority is not None else self.priority,
-            max_retries=max_retries if max_retries is not None else self.max_retries,
-            timeout_seconds=(
-                timeout_seconds if timeout_seconds is not None else self.timeout_seconds
-            ),
-            idempotency_key=(
-                idempotency_key if idempotency_key is not None else self.idempotency_key
-            ),
+            task_config=self.task_config.merge(new_task_config),
         )
         return new_wrapper
+
+    def get_queue(self):
+        return self.task_config.queue
 
     def send(
         self,
         context: T,
     ) -> TaskRun:
-        self.logger.info(f"Sending task {self.func.__name__} to queue: {self.queue}")
+        self.logger.info(
+            f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
+        )
         self._check_type(context)
 
         current_context = get_hyrex_context()
@@ -218,15 +218,18 @@ class TaskWrapper(Generic[T]):
             root_id=current_context.root_id if current_context else task_id,
             parent_id=current_context.task_id if current_context else None,
             task_name=self.task_identifier,
-            queue=self.queue if isinstance(self.queue, str) else self.queue.name,
+            queue=self.task_config.get_queue_name(),
             args=context.model_dump(),
-            max_retries=self.max_retries,
-            timeout_seconds=self.timeout_seconds,
-            priority=self.priority,
-            idempotency_key=self.idempotency_key,
+            max_retries=self.task_config.max_retries,
+            timeout_seconds=self.task_config.timeout_seconds,
+            priority=self.task_config.priority,
+            idempotency_key=self.task_config.idempotency_key,
+            status=TaskStatus.queued,
+            workflow_run_id=None,
+            workflow_dependencies=None,
         )
 
-        self.dispatcher.enqueue(task)
+        self.dispatcher.enqueue([task])
 
         return TaskRun(
             task_name=self.task_identifier,
@@ -249,3 +252,43 @@ class TaskWrapper(Generic[T]):
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
+
+    # Methods for workflows:
+    def __rshift__(self, other):
+        builder = get_current_workflow_builder()
+        if builder is None:
+            raise RuntimeError(
+                "No current workflow builder found. Please ensure you are within a workflow context."
+            )
+        # The builder is expected to have get_or_create_node.
+        node = builder.get_or_create_node(self)
+        return node >> other
+
+    def __rrshift__(self, other):
+        # This method is invoked when a TaskWrapper is on the right of >> and the left operand
+        # does not implement __rshift__. We check if 'other' is a list.
+        if isinstance(other, list):
+            # Convert each element in the list to a DagNode (if needed)
+            builder = get_current_workflow_builder()
+            if builder is None:
+                raise RuntimeError(
+                    "No current workflow builder found. Please use a workflow context or decorator."
+                )
+            nodes = []
+            for item in other:
+                if isinstance(item, TaskWrapper):
+                    # Note to developers: This path may be impossible?
+                    node = builder.get_or_create_node(item)
+                elif hasattr(item, "workflow_builder"):  # already a DagNode
+                    node = item
+                else:
+                    raise TypeError(
+                        f"Cannot use item of type {type(item)} as a task in the workflow."
+                    )
+                nodes.append(node)
+            # Now, chain all the nodes in the list with self.
+            # For example, we add self as a child to each node.
+            for node in nodes:
+                node >> self
+            return self
+        raise TypeError(f"Unsupported left operand type for >>: {type(other)}")
