@@ -2,8 +2,17 @@ from pydantic import BaseModel, Field
 
 from hyrex.hyrex_queue import HyrexQueue
 
+# TODO: Implement
+# class WorkflowConfig(BaseModel):
+#     queue: str  # Overrides task queue
+#     priority: int  # Overrides task priority
+
+#     timeout_seconds: int  # For workflow
+#     idempotency_key: str  # For workflow
+
 
 class TaskConfig(BaseModel):
+    # PHASE: REGISTRY, TASK DEFAULT, SEND
     queue: str | HyrexQueue | None = None
     priority: int | None = Field(default=None, ge=0, le=10)
     max_retries: int | None = Field(default=None, ge=0)
