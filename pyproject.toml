@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.8.0"
+version = "0.8.1"
 description = "Hyrex is the open-source COLD task orchestration framework built on Postgres."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -49,4 +49,4 @@ hyrex = "hyrex.cli:cli"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.setuptools]
-packages = ["hyrex"]
+packages.find = { where = ["."], include = ["hyrex*"], exclude = ["app*"] }
