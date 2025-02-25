@@ -17,6 +17,8 @@ from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
     TaskStatus,
@@ -292,9 +294,66 @@ class PostgresDispatcher(Dispatcher):
             cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
 
+    # TODO: Update to include config
     def register_task(self, task_name: str, cron: str = None, source_code: str = None):
         with self.transaction() as cur:
             cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])
+
+            cron_job_name = f"ScheduledTask-{task_name}"
+            if cron:
+                current_id = uuid7()
+                task_request = EnqueueTaskRequest(
+                    id=current_id,
+                    durable_id=current_id,
+                    workflow_run_id=None,
+                    workflow_dependencies=None,
+                    root_id=current_id,
+                    parent_id=None,
+                    queue="TODO",
+                    status=TaskStatus.queued,
+                    task_name=task_name,
+                    args={},
+                    max_retries=0,  # TODO
+                    priority=1,  # TODO
+                    timeout_seconds=None,  # TODO
+                    idempotency_key=None,  # TODO
+                )
+                insert_task_command = cron_sql.create_insert_task_cron_expression(
+                    task_request
+                )
+                cur.execute(
+                    cron_sql.CREATE_CRON_JOB_FOR_TASK,
+                    [cron, insert_task_command, cron_job_name],
+                )
+            else:
+                cur.execute(cron_sql.TURN_OFF_CRON_FOR_TASK, [cron_job_name])
+
+            # if (taskConfig?.cron) {
+            #     const currentId = uuidv7()
+            #     const taskRequest: SerializedTaskRequest = {
+            #         id: currentId,
+            #         durable_id: currentId,
+            #         workflow_run_id: null,
+            #         workflow_dependencies: null,
+            #         root_id: currentId,
+            #         parent_id: null,
+            #         queue: typeof taskConfig.queue === 'string' ? taskConfig.queue : taskConfig.queue.name,
+            #         status: 'queued',
+            #         task_name: taskName,
+            #         args: {},
+            #         max_retries: taskConfig.maxRetries,
+            #         priority: taskConfig.priority,
+            #         timeout_seconds: taskConfig.timeoutSeconds || null,
+            #         idempotency_key: taskConfig.idempotencyKey || null
+            #     }
+
+            #     const insertTaskCommand = createInsertTaskCronExpression(taskRequest)
+            #     await client.query(cronSQL.CREATE_CRON_JOB_FOR_TASK, [
+            #         taskConfig.cron, insertTaskCommand, cronJobName
+            #     ])
+            # } else {
+            #     await client.query(cronSQL.TURN_OFF_CRON_FOR_TASK, [cronJobName])
+            # }
 
     def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
         with self.transaction() as cur:
@@ -376,18 +435,53 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(cron_sql.UPDATE_CRON_JOB_CONFIRMATION_TS, [jobid])
 
-    # In progress...
-    def schedule_cron_job_runs(self, cron_job_runs: list[CronJobRun]):
+    def schedule_cron_job_runs(self, cron_job_runs: List[CronJobRun]) -> None:
         if not cron_job_runs:
             return
 
-        # Verify all jobs have the same ID
-        all_same_id = all(
-            job["jobid"] == cron_job_runs[0]["jobid"] for job in cron_job_runs
-        )
+        # Check all jobs have same ID
+        all_same_id = all(job.jobid == cron_job_runs[0].jobid for job in cron_job_runs)
         if not all_same_id:
-            job_ids = [job["jobid"] for job in cron_job_runs]
-            self.logger.error(f"Got jobIds: {job_ids}, {cron_job_runs}")
+            job_ids = [job.jobid for job in cron_job_runs]
+            self.logger.error(f"Got jobIds {job_ids}, {cron_job_runs}")
             raise ValueError(
                 "All cronJobsRuns submitted here need to have the same job id."
             )
+
+        # Execute the SQL
+        with self.transaction() as cur:
+            sql_dict = cron_sql.cron_job_runs_to_sql(cron_job_runs)
+            self.logger.debug(
+                f"cron-scheduling: <====== Running SQL =======>:\n\n{sql_dict['sql']}\n\n{sql_dict['values']}\n\n<==== DONE =====>\n\n"
+            )
+            cur.execute(sql_dict["sql"], sql_dict["values"])
+
+        # Update confirmation timestamp
+        self.update_cron_job_confirmation_timestamp(cron_job_runs[0].jobid)
+
+    def execute_queued_cron_job_run(self) -> str | None:
+        with self.transaction() as cur:
+            cur.execute("SELECT execute_queued_command();")
+            rows = cur.fetchall()
+            if not rows:
+                raise ValueError("Hyrex framework error.")
+            return rows[0][0]  # "executed" or "not_found"
+
+    def register_cron_sql_query(
+        self,
+        cron_job_name: str,
+        cron_sql_query: str,
+        cron_expr: str,
+        should_backfill: bool,
+    ) -> None:
+        """Register a new cron job for executing a SQL query on a schedule."""
+        with self.transaction() as cur:
+            cur.execute(
+                cron_sql.CREATE_CRON_JOB_FOR_SQL_QUERY,
+                [cron_expr, cron_sql_query, cron_job_name, should_backfill],
+            )
+
+    def release_scheduler_lock(self, worker_name: str) -> None:
+        """Release the scheduler lock for the specified worker."""
+        with self.transaction() as cur:
+            cur.execute(cron_sql.RELEASE_SCHEDULER_LOCK, [worker_name])

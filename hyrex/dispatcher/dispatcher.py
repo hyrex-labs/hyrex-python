@@ -8,6 +8,8 @@ from uuid import UUID
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
     TaskStatus,
@@ -154,6 +156,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def release_scheduler_lock(self, worker_name: str) -> None:
+        pass
+
+    @abstractmethod
     def stop(self):
         pass
 
@@ -167,4 +173,14 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def advance_workflow_run(self, workflow_run_id: UUID):
+        pass
+
+    @abstractmethod
+    def register_cron_sql_query(
+        self,
+        cron_job_name: str,
+        cron_sql_query: str,
+        cron_expr: str,
+        should_backfill: bool,
+    ) -> None:
         pass

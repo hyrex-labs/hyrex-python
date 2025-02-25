@@ -10,16 +10,21 @@ from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin
+from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+)
 
 
 class WorkerRootProcess:
@@ -46,6 +51,7 @@ class WorkerRootProcess:
         self.task_id_to_executor_id: dict[str, str] = {}
         self.executor_id_to_process: dict[str, Process] = {}
         self.admin_process: Process = None
+        self.cron_scheduler_process: Process = None
         self.root_message_queue = Queue()
         self.admin_message_queue = Queue()
 
@@ -119,6 +125,23 @@ class WorkerRootProcess:
                 self.admin_process.join(timeout=1.0)
             self._spawn_admin()
 
+    def _spawn_cron_scheduler(self):
+        cron_scheduler = WorkerCronScheduler(
+            log_level=self.log_level, worker_name="TODO"
+        )
+        cron_scheduler.start()
+        self.cron_scheduler_process = cron_scheduler
+
+    def check_cron_scheduler_process(self):
+        if (
+            not self.cron_scheduler_process
+            or not self.cron_scheduler_process.is_alive()
+        ):
+            self.logger.warning("Cron scheduler process not running, respawning...")
+            if self.cron_scheduler_process:
+                self.cron_scheduler_process.join(timeout=1.0)
+            self._spawn_cron_scheduler()
+
     def _message_listener(self):
         while True:
             # Blocking
@@ -185,6 +208,9 @@ class WorkerRootProcess:
         self.logger.info("Spawning admin process.")
         self._spawn_admin()
 
+        self.logger.info("Spawning cron scheduler process.")
+        self._spawn_cron_scheduler()
+
         self.logger.info(f"Spawning {self.num_processes} task executor processes.")
         for _ in range(self.num_processes):
             self._spawn_executor()
@@ -229,9 +255,23 @@ class WorkerRootProcess:
                     )
                     executor_process.kill()
                     executor_process.join(timeout=1.0)
-
         except Exception as e:
             print(f"Error during executor shutdown: {e}")
+
+        try:
+            self.logger.info("Stopping cron scheduler process.")
+            self.cron_scheduler_process._stop_event.set()
+            self.cron_scheduler_process.join(
+                timeout=constants.WORKER_CRON_SCHEDULER_PROCESS_TIMEOUT
+            )
+            if self.cron_scheduler_process.is_alive():
+                self.logger.warning(
+                    "Cron scheduler process did not exit cleanly, force killing."
+                )
+                self.cron_scheduler_process.kill()
+                self.cron_scheduler_process.join(timeout=1.0)
+        except Exception as e:
+            print(f"Error during cron scheduler shutdown: {e}")
 
         try:
             # Stop admin
@@ -244,7 +284,6 @@ class WorkerRootProcess:
                 )
                 self.admin_process.kill()
                 self.admin_process.join(timeout=1.0)
-
         except Exception as e:
             print(f"Error during admin shutdown: {e}")
 

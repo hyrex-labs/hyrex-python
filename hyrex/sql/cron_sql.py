@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS hyrex_cron_job
 CREATE_HYREX_CRON_JOB_RUN_DETAILS_TABLE = """
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cron_job_status_enum' AND typnamespace = 'public'::regnamespace) THEN
-        CREATE TYPE public.cron_job_status_enum AS ENUM (
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cron_job_status' AND typnamespace = 'public'::regnamespace) THEN
+        CREATE TYPE public.cron_job_status AS ENUM (
             'success',
             'queued',
             'failed'
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS hyrex_cron_job_run_details (
   jobid        bigint      NOT NULL,
   runid        bigserial   PRIMARY KEY,
   command      text        NOT NULL,
-  status       cron_job_status_enum,
+  status       cron_job_status,
   schedule_time timestamptz not null,
   start_time   timestamptz,
   end_time     timestamptz,
@@ -120,33 +120,57 @@ UPDATE_CRON_JOB_CONFIRMATION_TS = """
     WHERE jobid = $1;
 """
 
-# TODO: Convert
-# export function cronJobRunsToSQL(runs: CronJobRun[]): { sql: string, values: any[] } {
-#     // Calculate the placeholder indices for each run
-#     let placeholderIndex = 1;
-#     const valueStrings = runs.map(() =>
-#         `($${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++})`
-#     );
+from datetime import datetime
+import json
+from pydantic import BaseModel
+from typing import List, Dict, Any
 
-#     // Collect all the values in order
-#     const values = runs.flatMap(run => [
-#         run.jobid,
-#         run.command,
-#         'queued',
-#         run.schedule_time.toISOString()
-#     ]);
+from hyrex.schemas import EnqueueTaskRequest
 
-#     const sql = `
-#         INSERT INTO hyrex_cron_job_run_details
-#             (jobid, command, status, schedule_time)
-#         VALUES
-#             ${valueStrings.join(',\n            ')}
-#         ON CONFLICT (jobid, schedule_time) DO NOTHING
-#         RETURNING runid;
-#     `;
 
-#     return { sql, values };
-# }
+class CronJobRun(BaseModel):
+    jobid: int
+    command: str
+    schedule_time: datetime
+
+
+def cron_job_runs_to_sql(runs: List[CronJobRun]) -> Dict[str, Any]:
+    """
+    Convert a list of cron job runs to SQL insert statement with dollar-sign parameterized values.
+
+    Args:
+        runs: List of CronJobRun objects with jobid, command, and schedule_time attributes
+
+    Returns:
+        dict: Contains 'sql' string and 'values' list for parameterized query
+    """
+    # Calculate the placeholder indices for each run
+    placeholder_index = 1
+    placeholder_strings = []
+
+    for _ in runs:
+        # Use $1, $2, etc. format instead of %(1)s
+        placeholder_strings.append(
+            f"(${placeholder_index}, ${placeholder_index + 1}, ${placeholder_index + 2}, ${placeholder_index + 3})"
+        )
+        placeholder_index += 4
+
+    # Collect all values in order
+    values = []
+    for run in runs:
+        values.extend([run.jobid, run.command, "queued", run.schedule_time.isoformat()])
+
+    sql = f"""
+        INSERT INTO hyrex_cron_job_run_details
+            (jobid, command, status, schedule_time)
+        VALUES
+            {',\n            '.join(placeholder_strings)}
+        ON CONFLICT (jobid, schedule_time) DO NOTHING
+        RETURNING runid;
+    """
+
+    return {"sql": sql, "values": values}
+
 
 CREATE_EXECUTE_QUEUED_COMMAND_FUNCTION = """
 CREATE OR REPLACE FUNCTION execute_queued_command()
@@ -202,71 +226,84 @@ $$
 LANGUAGE plpgsql;
 """
 
-# TODO: Convert
-# export function createInsertTaskCronExpression(serializedTaskRequest: SerializedTaskRequest) {
-#     const tr = serializedTaskRequest;
 
-#     const sql = `WITH vars AS (
-#        SELECT gen_random_uuid() as shared_uuid
-#    ),
-#    task_insertion AS (
-#    INSERT INTO hyrex_task_run (
-#                                      id,
-#                                      durable_id,
-#                                      root_id,
-#                                      task_name,
-#                                      args,
-#                                      queue,
-#                                      max_retries,
-#                                      priority,
-#                                      timeout_seconds,
-#                                      status,
-#                                      attempt_number,
-#                                      queued,
-#                                      idempotency_key
-#        )
-#        SELECT
-#                v.shared_uuid,
-#                v.shared_uuid,
-#                v.shared_uuid,
-#                '${tr.task_name}',
-#                '${JSON.stringify(tr.args)}'::json,
-#                '${tr.queue}',
-#                ${tr.max_retries},
-#                ${tr.priority},
-#                ${tr.timeout_seconds},
-#                'queued'::STATUS_ENUM,
-#                0,
-#                CURRENT_TIMESTAMP,
-#                ${tr.idempotency_key === null ? 'NULL' : `'${tr.idempotency_key}'`}
-#        FROM vars v
-#        ON CONFLICT (task_name, idempotency_key)
-#            WHERE idempotency_key IS NOT NULL
-#            DO NOTHING
-#        RETURNING id),
-#     log_entry AS (
-#         INSERT INTO hyrex_system_logs (
-#                                        id,
-#                                        timestamp,
-#                                        event_name,
-#                                        event_body
-#             )
-#             SELECT gen_random_uuid(),
-#                    CURRENT_TIMESTAMP,
-#                    'IDEMPOTENCY_COLLISION',
-#                    json_build_object(
-#                            'attempted_task_id', v.shared_uuid,
-#                            'idempotency_key', ${tr.idempotency_key === null ? 'NULL' : `'${tr.idempotency_key}'`},
-#                            'task_name', '${tr.task_name}',
-#                            'queue', '${tr.queue}'
-#                    )
-#             FROM vars v
-#             WHERE NOT EXISTS (SELECT 1 FROM task_insertion)
-#               AND ${tr.idempotency_key === null ? 'NULL' : `'${tr.idempotency_key}'`} IS NOT NULL)
-# SELECT (SELECT id FROM task_insertion) as task_created;`
+def create_insert_task_cron_expression(enqueue_task_request: EnqueueTaskRequest) -> str:
+    tr = enqueue_task_request
 
-#     return sql
-# }
+    # Handle idempotency key exactly like the TypeScript version
+    idempotency_key_str = (
+        "NULL" if tr.idempotency_key is None else f"'{tr.idempotency_key}'"
+    )
+
+    # Convert args to JSON string
+    args_json = json.dumps(tr.args)
+
+    # Handle timeout_seconds which could be None
+    timeout_seconds_str = (
+        "NULL" if tr.timeout_seconds is None else str(tr.timeout_seconds)
+    )
+
+    sql = f"""WITH vars AS (
+       SELECT gen_random_uuid() as shared_uuid
+   ),
+   task_insertion AS (
+   INSERT INTO hyrex_task_run (
+                                     id,
+                                     durable_id,
+                                     root_id,
+                                     task_name,
+                                     args,
+                                     queue,
+                                     max_retries,
+                                     priority,
+                                     timeout_seconds,
+                                     status,
+                                     attempt_number,
+                                     queued,
+                                     idempotency_key
+       )
+       SELECT
+               v.shared_uuid,
+               v.shared_uuid,
+               v.shared_uuid,
+               '{tr.task_name}',
+               '{args_json}'::json,
+               '{tr.queue}',
+               {tr.max_retries},
+               {tr.priority},
+               {timeout_seconds_str},
+               'queued'::task_run_status,
+               0,
+               CURRENT_TIMESTAMP,
+               {idempotency_key_str}
+       FROM vars v
+       ON CONFLICT (task_name, idempotency_key)
+           WHERE idempotency_key IS NOT NULL
+           DO NOTHING
+       RETURNING id),
+    log_entry AS (
+        INSERT INTO hyrex_system_logs (
+                                       id,
+                                       timestamp,
+                                       event_name,
+                                       event_body
+            )
+            SELECT gen_random_uuid(),
+                   CURRENT_TIMESTAMP,
+                   'IDEMPOTENCY_COLLISION',
+                   json_build_object(
+                           'attempted_task_id', v.shared_uuid,
+                           'idempotency_key', {idempotency_key_str},
+                           'task_name', '{tr.task_name}',
+                           'queue', '{tr.queue}'
+                   )
+            FROM vars v
+            WHERE NOT EXISTS (SELECT 1 FROM task_insertion)
+              AND {idempotency_key_str} IS NOT NULL)
+SELECT (SELECT id FROM task_insertion) as task_created;"""
+
+    return sql
+
 
 CREATE_CRON_JOB_FOR_TASK = """
     INSERT INTO hyrex_cron_job (schedule, command, jobname, job_source)
@@ -289,4 +326,12 @@ CREATE_CRON_JOB_FOR_SQL_QUERY = """
         should_backfill = EXCLUDED.should_backfill,
         job_source = 'SYSTEM',
         active = true;
+"""
+
+TURN_OFF_CRON_FOR_TASK = """
+    UPDATE hyrex_cron_job
+    SET active   = false,
+        schedule = NULL
+    WHERE jobname = $1
+      AND job_source = 'TASK';
 """

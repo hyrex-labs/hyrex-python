@@ -3,10 +3,10 @@ import os
 import signal
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from multiprocessing import Event, Process, Queue
 
-import croniter
+from croniter import croniter
 from pydantic import BaseModel
 
 from hyrex.dispatcher import CronJob, get_dispatcher
@@ -48,24 +48,30 @@ class WorkerCronScheduler(Process):
     def update_cron_confirmation_timestamp_to_now(self, cron_job: CronJob):
         self.dispatcher.update_cron_confirmation_timestamp(cron_job.jobid)
 
-    def impute_scheduled_cron_job_runs(cron_job: CronJob) -> list[CronJobRun]:
+    def impute_scheduled_cron_job_runs(self, cron_job: CronJob) -> list[CronJobRun]:
         # Create iterator starting from the last confirmed date
         iterator = croniter(cron_job.schedule, cron_job.scheduled_jobs_confirmed_until)
 
         cron_job_runs = []
-        now = datetime.now()
+        now = datetime.now(timezone.utc)  # Create timezone-aware UTC datetime
+
         next_interval_date = iterator.get_next(datetime)
+        # Ensure next_interval_date is timezone-aware with UTC
+        if next_interval_date.tzinfo is None:
+            next_interval_date = next_interval_date.replace(tzinfo=timezone.utc)
 
         while next_interval_date <= now:
             cron_job_runs.append(
-                {
-                    "jobid": cron_job.jobid,
-                    "command": cron_job.command,
-                    "schedule_time": next_interval_date,
-                }
+                CronJobRun(
+                    jobid=cron_job.jobid,
+                    command=cron_job.command,
+                    schedule_time=next_interval_date,
+                )
             )
 
             next_interval_date = iterator.get_next(datetime)
+            if next_interval_date.tzinfo is None:
+                next_interval_date = next_interval_date.replace(tzinfo=timezone.utc)
 
         return cron_job_runs
 
@@ -103,7 +109,7 @@ class WorkerCronScheduler(Process):
                     self.update_cron_confirmation_timestamp_to_now(cron_job.jobid)
 
             # Main loop with lock held
-            while not self._stop_event().is_set():
+            while not self._stop_event.is_set():
                 self.check_stop_conditions()
 
                 cron_expressions = self.dispatcher.pull_cron_job_expressions()
@@ -114,16 +120,13 @@ class WorkerCronScheduler(Process):
                         f"Got cron job {cron_job.jobname}, confirmed_until={cron_job.scheduled_jobs_confirmed_until}"
                     )
                     scheduled_jobs = self.impute_scheduled_cron_job_runs(cron_job)
-                    self.dispatcher.
+                    self.dispatcher.schedule_cron_job_runs(scheduled_jobs)
 
-                    #                 // Queue cron job runs
-                    # for (const cronJob of cronExpressions) {
-                    #     hyrexLogger.info('cron-scheduling', `Got Cron Job. ${cronJob.jobname}, confirmed_until=${cronJob.scheduled_jobs_confirmed_until}`, 'dim')
-                    #     const scheduledJobs = await this.imputeScheduledCronJobRunsList(cronJob)
-                    #     await this.dispatcher.scheduleCronJobRuns(scheduledJobs)
-                    # }
-
-                # HERE SO FAR
+                # Execute cron job runs
+                result = self.dispatcher.execute_queued_cron_job_run()
+                while result and result == "executed":
+                    self.logger.info("Executed cron job run...")
+                    result = self.dispatcher.execute_queued_cron_job_run()
 
                 self._stop_event.wait(LOOP_RATE_SECONDS)
         finally:
@@ -132,4 +135,8 @@ class WorkerCronScheduler(Process):
     def stop(self):
         self.logger.info("Stopping cron scheduler.")
         # TODO: Return lock
+        if self.lock_id:
+            self.logger.info("Releasing scheduler lock...")
+            self.dispatcher.release_scheduler_lock(self.worker_name)
+            self.lock_id = None
         self.dispatcher.stop()

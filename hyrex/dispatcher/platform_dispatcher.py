@@ -10,6 +10,8 @@ from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
     TaskStatus,
@@ -255,6 +257,18 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def schedule_cron_job_runs(self, cron_job_runs: list[CronJobRun]):
+        pass
+
+    def register_cron_sql_query(
+        self,
+        cron_job_name: str,
+        cron_sql_query: str,
+        cron_expr: str,
+        should_backfill: bool,
+    ) -> None:
+        pass
+
+    def release_scheduler_lock(self, worker_name: str) -> None:
         pass
 
     def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
