@@ -222,6 +222,9 @@ class WorkerRootProcess:
                 # Check admin and restart if it has died
                 self.check_admin_process()
 
+                # Check cron scheduler and restart if it has died
+                self.check_cron_scheduler_process()
+
                 # Check all executors and restart any that have died
                 self.check_executor_processes()
 
