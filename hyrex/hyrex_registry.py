@@ -1,15 +1,13 @@
-import functools
 import inspect
 import logging
 import os
-from inspect import signature
-from typing import Any, Callable
+from typing import Callable
 
 from hyrex import constants
 from hyrex.config import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.task import T, TaskWrapper
+from hyrex.task import TaskWrapper
 from hyrex.task_config import TaskConfig
 from hyrex.workflow.workflow import HyrexWorkflow
 from hyrex.workflow.workflow_builder import WorkflowBuilder
@@ -94,7 +92,7 @@ class HyrexRegistry:
         Create task decorator
         """
 
-        def decorator(func: Callable[[T], Any]) -> TaskWrapper:
+        def decorator(func: Callable) -> TaskWrapper:
             task_identifier = func.__name__
             task_config = TaskConfig(
                 queue=queue,

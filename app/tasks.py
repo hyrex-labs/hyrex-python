@@ -28,7 +28,7 @@ async def sleepy_task(context: SleepContext):
 
 
 @hy.task
-def empty_task(context: EmptyContext):
+def empty_task():
     print("Task complete.")
 
 
@@ -43,5 +43,5 @@ def error_task(context: EmptyContext):
 
 
 @hy.task(cron="* * * * *")
-def print_random_number(context: EmptyContext):
+def print_random_number():
     print(random.random())
