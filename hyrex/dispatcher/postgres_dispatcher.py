@@ -407,7 +407,7 @@ class PostgresDispatcher(Dispatcher):
             return None
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        lock_duration = "1 minute"
+        lock_duration = "5 minutes"
         with self.transaction() as cur:
             cur.execute(cron_sql.ACQUIRE_SCHEDULER_LOCK, [worker_name, lock_duration])
             result = cur.fetchone()
