@@ -13,7 +13,7 @@ $$;
 CREATE TABLE IF NOT EXISTS hyrex_cron_job
 (
     jobid                          bigserial PRIMARY KEY,
-    schedule                       text    NOT NULL,
+    schedule                       text,
     command                        text    NOT NULL,
     active                         boolean NOT NULL DEFAULT true,
     jobname                        text    NOT NULL,
@@ -328,6 +328,7 @@ CREATE_CRON_JOB_FOR_SQL_QUERY = """
         active = true;
 """
 
+# TODO: Remove schedule
 TURN_OFF_CRON_FOR_TASK = """
     UPDATE hyrex_cron_job
     SET active   = false,

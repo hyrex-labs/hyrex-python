@@ -328,33 +328,6 @@ class PostgresDispatcher(Dispatcher):
             else:
                 cur.execute(cron_sql.TURN_OFF_CRON_FOR_TASK, [cron_job_name])
 
-            # if (taskConfig?.cron) {
-            #     const currentId = uuidv7()
-            #     const taskRequest: SerializedTaskRequest = {
-            #         id: currentId,
-            #         durable_id: currentId,
-            #         workflow_run_id: null,
-            #         workflow_dependencies: null,
-            #         root_id: currentId,
-            #         parent_id: null,
-            #         queue: typeof taskConfig.queue === 'string' ? taskConfig.queue : taskConfig.queue.name,
-            #         status: 'queued',
-            #         task_name: taskName,
-            #         args: {},
-            #         max_retries: taskConfig.maxRetries,
-            #         priority: taskConfig.priority,
-            #         timeout_seconds: taskConfig.timeoutSeconds || null,
-            #         idempotency_key: taskConfig.idempotencyKey || null
-            #     }
-
-            #     const insertTaskCommand = createInsertTaskCronExpression(taskRequest)
-            #     await client.query(cronSQL.CREATE_CRON_JOB_FOR_TASK, [
-            #         taskConfig.cron, insertTaskCommand, cronJobName
-            #     ])
-            # } else {
-            #     await client.query(cronSQL.TURN_OFF_CRON_FOR_TASK, [cronJobName])
-            # }
-
     def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
         with self.transaction() as cur:
             cron = None
