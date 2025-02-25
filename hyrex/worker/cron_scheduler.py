@@ -112,6 +112,8 @@ class WorkerCronScheduler(Process):
             while not self._stop_event.is_set():
                 self.check_stop_conditions()
 
+                # TODO: Update lock heartbeat
+
                 cron_expressions = self.dispatcher.pull_cron_job_expressions()
 
                 # Queue cron job runs
