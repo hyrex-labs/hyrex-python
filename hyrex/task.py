@@ -98,6 +98,8 @@ class TaskWrapper:
         self.func = func
         self.signature = signature(func)
         self.type_hints = get_type_hints(func)
+
+        # TODO: Validate cron
         self.cron = cron
 
         self.task_config = task_config
