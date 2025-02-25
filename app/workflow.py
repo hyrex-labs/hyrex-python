@@ -8,48 +8,48 @@ from hyrex.hyrex_registry import HyrexRegistry
 hy = HyrexRegistry()
 
 
-class NoContext(BaseModel):
-    pass
-
-
 @hy.task
-def initiate_onboard(context: NoContext):
+def initiate_onboard():
     time.sleep(5)
 
 
 @hy.task
-def validate_payment(context: NoContext):
+def validate_payment():
     time.sleep(5)
 
 
 @hy.task
-def validate_identity(context: NoContext):
+def validate_identity():
     time.sleep(5)
 
 
 @hy.task
-def validate_org(context: NoContext):
+def validate_org():
     time.sleep(5)
 
 
 @hy.task
-def approve_user(context: NoContext):
+def approve_user():
     time.sleep(5)
 
 
 @hy.task
-def check_credit(context: NoContext):
+def check_credit():
     time.sleep(5)
 
 
 @hy.task
-def train_credit_machine_learning_model(context: NoContext):
+def train_credit_machine_learning_model():
     time.sleep(5)
 
 
 class OnboardUserWorkflowArg(BaseModel):
     user_email: str
     sign_up_tier: Literal["FREE", "PRO", "ENTERPRISE"]
+
+
+class NoContext(BaseModel):
+    pass
 
 
 @hy.workflow(

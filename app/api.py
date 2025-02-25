@@ -48,7 +48,7 @@ async def generate_tasks(num_tasks: int):
 
 @app.get("/empty-task/")
 async def run_empty_task():
-    empty_task.send(EmptyContext())
+    empty_task.send()
 
 
 @app.get("/sleepy-task/")
