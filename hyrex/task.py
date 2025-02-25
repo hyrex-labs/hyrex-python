@@ -82,11 +82,11 @@ def validate_error_handler(handler: Callable) -> None:
             )
 
 
-class TaskWrapper(Generic[T]):
+class TaskWrapper:
     def __init__(
         self,
         task_identifier: str,
-        func: Callable[[T], Any],
+        func: Callable,
         dispatcher: Dispatcher,
         cron: str | None,
         task_config: TaskConfig,
@@ -108,70 +108,50 @@ class TaskWrapper(Generic[T]):
         if self.on_error:
             validate_error_handler(self.on_error)
 
-        try:
-            context_klass = next(iter(self.type_hints.values()))
-        except StopIteration:
-            raise ValidationError(
-                "Hyrex expects all tasks to have 1 arg and for that arg to have a type hint."
-            )
+        # Check if function has arguments
+        if self.signature.parameters:
+            try:
+                # Get the first parameter
+                param_name = next(iter(self.signature.parameters))
 
-        self.context_klass = context_klass
+                # Check if type hint exists
+                if param_name not in self.type_hints:
+                    raise TypeError(
+                        f"Hyrex expects all task arguments to have type hints. Argument '{param_name}' has no type hint."
+                    )
 
-    async def async_call(self, context: T):
+                self.context_klass = self.type_hints.get(param_name)
+
+                # Check if it's a Pydantic model
+                if self.context_klass is not None and not (
+                    hasattr(self.context_klass, "model_validate")
+                    or hasattr(self.context_klass, "parse_obj")
+                ):
+                    raise TypeError(
+                        f"Hyrex expects task arguments to be Pydantic models. {self.context_klass.__name__} is not a valid Pydantic model."
+                    )
+            except StopIteration:
+                self.context_klass = None
+        else:
+            self.context_klass = None
+
+    async def async_call(self, context=None):
         self.logger.info(
             f"Executing task {self.func.__name__} on queue: {self.task_config.queue}"
         )
-        self._check_type(context)
-        if asyncio.iscoroutinefunction(self.func):
-            return await self.func(context)
+
+        if context is not None and self.context_klass is not None:
+            self._check_type(context)
+            if asyncio.iscoroutinefunction(self.func):
+                return await self.func(context)
+            else:
+                return self.func(context)
         else:
-            return self.func(context)
-
-    # TODO: Re-implement
-    def schedule(self):
-        if self.api_key:
-            raise NotImplementedError(
-                "Task crons are not yet supported by the Hyrex platform."
-            )
-
-        if not self.cron:
-            self._unschedule()
-            return
-
-        cron_regex = r"(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|([\d\*]+(\/|-)\d+)|\d+|\*) ?){5,7})"
-        is_valid = bool(re.fullmatch(cron_regex, self.cron))
-        if not is_valid:
-            raise ValidationError(f"Cron Expression is not valid: {self.cron}")
-
-        target_db_name = self._get_conn().split("/")[-1]
-        postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
-        with psycopg.connect(postgres_db) as conn:
-            with conn.cursor() as cur:
-                sql = f"""
-                select
-                cron.schedule(
-                    '{self.task_identifier}-cron',
-                    '{self.cron}',
-                    $$INSERT INTO public.hyrextask(id, root_id, task_name, status, queue, scheduled_start, started, finished, max_retries, args) VALUES(gen_random_uuid(), '{self.task_identifier}', 'queued'::statusenum, '{self.queue}', null, null, null, 0, '{{}}');$$
-                    );
-
-                UPDATE cron.job SET database = '{target_db_name}' WHERE jobname = '{self.task_identifier}-cron';
-                """
-                result = cur.execute(sql)
-                conn.commit()
-                self.logger.info(f"{self.task_identifier} successfully scheduled.")
-
-    # TODO: Re-implement
-    def _unschedule(self):
-        postgres_db = "/".join(self._get_conn().split("/")[:-1]) + "/postgres"
-        sql = f"select cron.unschedule('{self.task_identifier}-cron');"
-        with psycopg.connect(postgres_db) as conn:
-            with conn.cursor() as cur:
-                try:
-                    cur.execute(sql)
-                    self.logger.info(f"Successfully unscheduled {self.task_identifier}")
-                except Exception as e:
-                    self.logger.warning(f"Unschedule failed with exception {e}")
+            # No arguments
+            if asyncio.iscoroutinefunction(self.func):
+                return await self.func()
+            else:
+                return self.func()
 
     def withConfig(
         self,
@@ -180,7 +160,7 @@ class TaskWrapper(Generic[T]):
         max_retries: int = None,
         timeout_seconds: int = None,
         idempotency_key: str = None,
-    ) -> "TaskWrapper[T]":
+    ) -> "TaskWrapper":
         new_task_config = TaskConfig(
             queue=queue,
             priority=priority,
@@ -194,6 +174,7 @@ class TaskWrapper(Generic[T]):
             dispatcher=self.dispatcher,
             cron=self.cron,
             task_config=self.task_config.merge(new_task_config),
+            on_error=self.on_error,
         )
         return new_wrapper
 
@@ -202,12 +183,23 @@ class TaskWrapper(Generic[T]):
 
     def send(
         self,
-        context: T,
+        context=None,
     ) -> TaskRun:
         self.logger.info(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
-        self._check_type(context)
+
+        # Only perform type checking if we expect a context
+        if context is not None and self.context_klass is not None:
+            self._check_type(context)
+            args = context.model_dump() if hasattr(context, "model_dump") else {}
+        elif context is not None and self.context_klass is None:
+            # Task was defined with no arguments but context was provided
+            raise TypeError(
+                f"Task {self.task_identifier} was defined with no arguments, but arguments were provided."
+            )
+        else:
+            args = {}
 
         current_context = get_hyrex_context()
 
@@ -219,7 +211,7 @@ class TaskWrapper(Generic[T]):
             parent_id=current_context.task_id if current_context else None,
             task_name=self.task_identifier,
             queue=self.task_config.get_queue_name(),
-            args=context.model_dump(),
+            args=args,
             max_retries=self.task_config.max_retries,
             timeout_seconds=self.task_config.timeout_seconds,
             priority=self.task_config.priority,
@@ -237,17 +229,21 @@ class TaskWrapper(Generic[T]):
             dispatcher=self.dispatcher,
         )
 
-    def _check_type(self, context: T):
-        expected_type = next(iter(self.type_hints.values()))
+    def _check_type(self, context):
+        if self.context_klass is None:
+            return
+
         try:
-            validated_arg = (
-                expected_type.parse_obj(context)
-                if isinstance(context, dict)
-                else expected_type.model_validate(context)
-            )
+            if isinstance(context, dict):
+                validated_arg = self.context_klass.parse_obj(context)
+            elif hasattr(self.context_klass, "model_validate"):
+                validated_arg = self.context_klass.model_validate(context)
+            else:
+                # If not a Pydantic model, assume it's the correct type
+                return
         except ValidationError as e:
             raise TypeError(
-                f"Invalid argument type. Expected {expected_type.__name__}. Error: {e}"
+                f"Invalid argument type. Expected {self.context_klass.__name__}. Error: {e}"
             )
 
     def __repr__(self):
