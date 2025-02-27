@@ -76,10 +76,11 @@ CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued_priority
 
 CREATE_HYREX_TASK_TABLE = """
 CREATE TABLE IF NOT EXISTS hyrex_task (
-    task_name    TEXT NOT NULL PRIMARY KEY,
-    cron_expr    TEXT,
-    source_code  TEXT,
-    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    task_name      TEXT NOT NULL PRIMARY KEY,
+    cron_expr      TEXT,
+    source_code    TEXT,
+    default_config JSON,
+    last_updated   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 """
 

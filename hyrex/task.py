@@ -256,6 +256,10 @@ class TaskWrapper:
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
+        
+    def __call__(self, *args, **kwargs):
+        # Simply pass through all arguments to the original function
+        return self.func(*args, **kwargs)
 
     # Methods for workflows:
     def __rshift__(self, other):
