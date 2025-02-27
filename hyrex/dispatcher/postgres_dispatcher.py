@@ -289,6 +289,18 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.SAVE_RESULT, [task_id, result])
 
+    # TODO: Handle durable runs, unfinished tasks.
+    def get_result(self, task_id: UUID) -> dict:
+        with self.transaction() as cur:
+            cur.execute(sql.FETCH_RESULT, [task_id])
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+
+            result = row[0]
+            return result
+
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         with self.transaction() as cur:
             cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])

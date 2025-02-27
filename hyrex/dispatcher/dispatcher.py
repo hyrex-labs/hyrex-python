@@ -97,6 +97,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def get_result(self, task_id: UUID) -> dict:
+        pass
+
+    @abstractmethod
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         pass
 

@@ -48,14 +48,11 @@ class OnboardUserWorkflowArg(BaseModel):
     sign_up_tier: Literal["FREE", "PRO", "ENTERPRISE"]
 
 
-class NoContext(BaseModel):
-    pass
-
-
 @hy.workflow(
     name="onboard-user",
     queue="onboard-user",
-    workflow_arg_schema=NoContext,
+    timeout_seconds=100,
+    workflow_arg_schema=OnboardUserWorkflowArg,
 )
 def onboard_user():
     (
@@ -64,4 +61,8 @@ def onboard_user():
         >> approve_user
     )
 
-    validate_identity >> check_credit >> train_credit_machine_learning_model
+    (
+        validate_identity.with_config(priority=5)
+        >> check_credit.with_config(queue="credit-queue")
+        >> train_credit_machine_learning_model.with_config(queue="credit-queue")
+    )

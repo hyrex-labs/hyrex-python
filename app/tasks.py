@@ -42,6 +42,13 @@ def error_task(context: EmptyContext):
     raise RuntimeError("The task has caused an error!")
 
 
-@hy.task(cron="* * * * *")
+# @hy.task(cron="* * * * *")
+@hy.task
 def print_random_number():
-    print(random.random())
+    random_number = random.random()
+    return {"output": random_number}
+    # print(random.random())
+
+
+# TODO: FIX BUG
+# print_random_number.send()

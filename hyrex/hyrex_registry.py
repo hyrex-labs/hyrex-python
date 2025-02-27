@@ -4,11 +4,11 @@ import os
 from typing import Callable
 
 from hyrex import constants
-from hyrex.config import EnvVars
+from hyrex.env_vars import EnvVars
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.task import TaskWrapper
-from hyrex.task_config import TaskConfig
+from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.workflow.workflow import HyrexWorkflow
 from hyrex.workflow.workflow_builder import WorkflowBuilder
 
@@ -16,7 +16,12 @@ from hyrex.workflow.workflow_builder import WorkflowBuilder
 
 
 class HyrexRegistry:
-    def __init__(self):
+    def __init__(
+        self,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        max_retries: int = 0,
+        priority: int = constants.DEFAULT_PRIORITY,
+    ):
         self.logger = logging.getLogger(__name__)
         if os.getenv(EnvVars.WORKER_PROCESS):
             self.dispatcher = None
@@ -25,6 +30,16 @@ class HyrexRegistry:
 
         self.internal_task_registry: dict[str, TaskWrapper] = {}
         self.internal_queue_registry: dict[str, HyrexQueue] = {}
+
+        # Registry-level task and workflow configs.
+        # Decorated tasks/workflows will merge their own configs into these.
+        task_config = TaskConfig(
+            config_phase=ConfigPhase.registry,
+            queue=queue,
+            max_retries=max_retries,
+            priority=priority,
+        )
+        self.task_config = task_config
 
     def register_task(self, task_wrapper: TaskWrapper):
         self.logger.debug(f"Registering task: {task_wrapper.task_identifier}")
@@ -52,7 +67,6 @@ class HyrexRegistry:
         self.internal_queue_registry[queue.name] = queue
 
     def get_concurrency_limit(self, queue_name: str):
-        # TODO: Add queue patterns?
         if self.internal_queue_registry.get(queue_name):
             return self.internal_queue_registry[queue_name].concurrency_limit
         else:
@@ -94,7 +108,8 @@ class HyrexRegistry:
 
         def decorator(func: Callable) -> TaskWrapper:
             task_identifier = func.__name__
-            task_config = TaskConfig(
+            decorated_task_config = TaskConfig(
+                config_phase=ConfigPhase.decorator,
                 queue=queue,
                 max_retries=max_retries,
                 timeout_seconds=timeout_seconds,
@@ -104,7 +119,7 @@ class HyrexRegistry:
                 task_identifier=task_identifier,
                 func=func,
                 cron=cron,
-                task_config=task_config,
+                task_config=self.task_config.merge(decorated_task_config),
                 dispatcher=self.dispatcher,
                 on_error=on_error,
             )
@@ -115,17 +130,12 @@ class HyrexRegistry:
             return decorator(func)
         return decorator
 
-    def schedule(self):
-        for task_wrapper in self.values():
-            task_wrapper.schedule()
-
     def workflow(
         self,
         name: str,
-        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-        max_retries: int = 0,
+        queue: str | HyrexQueue = None,
         timeout_seconds: int | None = None,
-        priority: int = constants.DEFAULT_PRIORITY,
+        priority: int = None,
         cron: str = None,
         workflow_arg_schema=None,
     ):
@@ -134,12 +144,6 @@ class HyrexRegistry:
         """
 
         def decorator(func):
-            task_config = TaskConfig(
-                queue=queue,
-                max_retries=max_retries,
-                timeout_seconds=timeout_seconds,
-                priority=priority,
-            )
 
             with WorkflowBuilder() as workflow_builder:
                 # Build the workflow by calling the function.
@@ -147,17 +151,19 @@ class HyrexRegistry:
 
                 # Register workflow on publisher (on worker processes, self.dispatcher won't be set yet)
                 if self.dispatcher:
-                    source_code = inspect.getsource(func)
                     self.dispatcher.register_workflow(
                         name=name,
-                        source_code=source_code,
+                        source_code=inspect.getsource(func),
                         workflow_dag_json=workflow_builder.to_json(),
                     )
 
                 # Create and return a HyrexWorkflow instance
+                workflow_config = WorkflowConfig(
+                    config_phase=ConfigPhase.decorator, queue=queue, priority=priority
+                )
                 workflow = HyrexWorkflow(
                     name=name,
-                    task_config=task_config,
+                    workflow_config=workflow_config,
                     workflow_arg_schema=workflow_arg_schema,
                     workflow_builder=workflow_builder,
                     dispatcher=self.dispatcher,

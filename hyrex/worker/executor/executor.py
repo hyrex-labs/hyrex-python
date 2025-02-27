@@ -20,7 +20,7 @@ from psycopg.types.json import Json
 from pydantic import BaseModel
 
 from hyrex import constants
-from hyrex.config import EnvVars
+from hyrex.env_vars import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager

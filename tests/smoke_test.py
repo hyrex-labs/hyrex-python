@@ -6,8 +6,13 @@ import psycopg  # Added import for database connections
 import pytest
 from pydantic import BaseModel
 
-from hyrex.app import Hyrex
 from hyrex.models import create_tables
+from hyrex.hyrex_app import HyrexApp
+from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.constants import DEFAULT_QUEUE
+from hyrex.dispatcher import get_dispatcher
+from hyrex.dispatcher.postgres_dispatcher import PostgresDispatcher
+from hyrex.worker.root_process import run_worker
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,16 +27,16 @@ class NumberContext(BaseModel):
     number: int
 
 
-def register_tasks(hy: Hyrex):
-    @hy.task
+def register_tasks(registry: HyrexRegistry):
+    @registry.task
     def empty_task(context: EmptyContext):
         print("Completed empty task.")
 
-    @hy.task
+    @registry.task
     def error_task(context: EmptyContext):
         raise RuntimeError("This task has raised an error.")
 
-    @hy.task
+    @registry.task
     def number_task(context: NumberContext):
         print(f"Received number {context.number}")
 
@@ -39,9 +44,21 @@ def register_tasks(hy: Hyrex):
 
 
 def worker_process(db_connection_string):
-    hy = Hyrex(app_id="hyrex-smoke-test", conn=db_connection_string)
-    register_tasks(hy)
-    hy.run_worker()
+    import os
+    from hyrex.env_vars import EnvVars
+    
+    # Set worker process environment variable
+    os.environ[EnvVars.WORKER_PROCESS] = "1"
+    os.environ[EnvVars.DATABASE_URL] = db_connection_string
+    
+    # Create a HyrexApp for the worker
+    app = HyrexApp(app_name="hyrex-smoke-test")
+    registry = HyrexRegistry(queue=DEFAULT_QUEUE)
+    register_tasks(registry)
+    app.add_registry(registry)
+    
+    # Run the worker
+    run_worker(app_name="hyrex-smoke-test", dispatcher_type="postgres")
 
 
 @pytest.fixture
@@ -60,6 +77,7 @@ def clear_db(db_connection_string: str):
     try:
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM hyrextask;")
+            conn.commit()
     finally:
         conn.close()
 
@@ -91,8 +109,15 @@ async def test_hyrex(db_connection_string):
     logger.info("Creating tables...")
     create_tables(db_connection_string)
 
-    hy = Hyrex(app_id="hyrex-smoke-test", conn=db_connection_string)
-    empty_task, error_task, number_task = register_tasks(hy)
+    # Create a dispatcher for sending tasks
+    dispatcher = PostgresDispatcher(conn_string=db_connection_string, app_name="hyrex-smoke-test")
+    
+    # Create a registry with the dispatcher
+    registry = HyrexRegistry(queue=DEFAULT_QUEUE)
+    registry.set_dispatcher(dispatcher)
+    
+    # Register tasks
+    empty_task, error_task, number_task = register_tasks(registry)
 
     # Run worker in a separate process
     ctx = multiprocessing.get_context("spawn")
@@ -108,21 +133,21 @@ async def test_hyrex(db_connection_string):
         clear_db(db_connection_string)
 
         # Task with errors is retried
-        error_task.send(EmptyContext(), max_retries=3)
+        error_task.with_config(max_retries=3).send(EmptyContext())
         await asyncio.sleep(5)
-        assert get_failed_tasks(db_connection_string) == 4
+        assert get_failed_tasks(db_connection_string) == 4  # Original + 3 retries
         clear_db(db_connection_string)
 
         # Many tasks queued/run
         for i in range(1, 20):
             number_task.send(NumberContext(number=i))
         await asyncio.sleep(3)
-        assert get_completed_tasks(db_connection_string) == 20
+        assert get_completed_tasks(db_connection_string) == 19
         clear_db(db_connection_string)
 
     finally:
         worker.terminate()
         worker.join()
 
-        # Close out dispatcher thread.
-        hy.stop()
+        # Close out dispatcher
+        dispatcher.stop()

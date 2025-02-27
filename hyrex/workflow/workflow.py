@@ -4,8 +4,9 @@ from uuid_extensions import uuid7
 from pydantic import BaseModel
 
 from hyrex.dispatcher.dispatcher import Dispatcher
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus, WorkflowRunRequest
-from hyrex.task_config import TaskConfig
+from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.workflow.workflow_builder import DagNode, WorkflowBuilder
 
 
@@ -16,22 +17,31 @@ class HyrexWorkflow(Generic[T]):
     def __init__(
         self,
         name: str,
-        task_config: TaskConfig,
+        workflow_config: WorkflowConfig,
         workflow_arg_schema: T,
         workflow_builder: WorkflowBuilder,
         dispatcher: Dispatcher,
     ):
         self.name = name
-        self.task_config = task_config
+        self.workflow_config = workflow_config
         self.workflow_arg_schema = workflow_arg_schema
         self.workflow_builder = workflow_builder
         self.dispatcher = dispatcher
 
-    def withConfig(
-        self,
-    ):
-        # TODO: Complete
-        pass
+    def with_config(
+        self, queue: str | HyrexQueue = None, priority: int = None
+    ) -> "HyrexWorkflow":
+        new_workflow_config = WorkflowConfig(
+            config_phase=ConfigPhase.send, queue=queue, priority=priority
+        )
+        new_workflow = HyrexWorkflow(
+            name=self.name,
+            workflow_config=self.workflow_config.merge(new_workflow_config),
+            workflow_arg_schema=self.workflow_arg_schema,
+            workflow_builder=self.workflow_builder,
+            dispatcher=self.dispatcher,
+        )
+        return new_workflow
 
     def serialize_workflow_to_task_requests(
         self,
@@ -59,14 +69,13 @@ class HyrexWorkflow(Generic[T]):
         return node_to_task_request.values()
 
     def send(self, context: T):
-        # TODO: Fill in all other config fields. Maybe make a separate workflow config class.
         workflow_run_request = WorkflowRunRequest(
             id=uuid7(),
             workflow_name=self.name,
             args=context.model_dump(),
-            queue=self.task_config.queue,
-            timeout_seconds=self.task_config.timeout_seconds,
-            idempotency_key=self.task_config.idempotency_key,
+            queue=self.workflow_config.queue,
+            timeout_seconds=self.workflow_config.timeout_seconds,
+            idempotency_key=self.workflow_config.idempotency_key,
         )
 
         workflow_run_id = self.dispatcher.send_workflow_run(workflow_run_request)
@@ -99,12 +108,10 @@ class HyrexWorkflow(Generic[T]):
             # Generate a single UUID for the task
             task_id = uuid7()
 
-            # TODO: Cleaner separation of task and workflow configurations.
-
             # For max_retries, timeout_seconds, idempotency_key, etc.
-            task_config = node.task_wrapper.task_config
-            # Merge with workflow config for queue, priority, etc.
-            merged_config = task_config.merge(self.task_config)
+            task_config = node.task_wrapper.task_config.apply_workflow_config(
+                self.workflow_config
+            )
 
             # All three IDs are set to the same UUID
             task_request = EnqueueTaskRequest(
@@ -117,9 +124,9 @@ class HyrexWorkflow(Generic[T]):
                 status=TaskStatus.waiting,
                 task_name=node.task_wrapper.task_identifier,
                 args={},
-                queue=merged_config.get_queue_name(),
+                queue=task_config.get_queue_name(),
                 max_retries=task_config.max_retries,
-                priority=merged_config.priority,
+                priority=task_config.priority,
                 timeout_seconds=task_config.timeout_seconds,
                 idempotency_key=task_config.idempotency_key,
             )
