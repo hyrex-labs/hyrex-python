@@ -53,7 +53,7 @@ async def run_empty_task():
 
 @app.get("/sleepy-task/")
 async def run_sleepy_task(seconds: int):
-    task = sleepy_task.withConfig(timeout_seconds=5).send(
+    task = sleepy_task.with_config(timeout_seconds=5).send(
         SleepContext(duration=seconds)
     )
     # tasks = []
@@ -70,12 +70,14 @@ def print_hello():
 
 @app.get("/error-task/")
 async def run_error_task():
-    error_task.withConfig(max_retries=1).send(EmptyContext())
+    error_task.with_config(max_retries=1).send(EmptyContext())
 
 
 @app.get("/random-number/")
 async def random_number_task():
-    print_random_number.send(EmptyContext())
+    task = print_random_number.send()
+    task.wait()
+    return task.get_result()
 
 
 @app.get("/onboard-user/")

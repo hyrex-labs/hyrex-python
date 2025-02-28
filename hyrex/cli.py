@@ -10,7 +10,7 @@ import typer
 from uuid_extensions import uuid7
 
 from hyrex import constants
-from hyrex.config import EnvVars
+from hyrex.env_vars import EnvVars
 from hyrex.models import create_tables
 from hyrex.worker.logging import LogLevel
 from hyrex.worker.root_process import WorkerRootProcess

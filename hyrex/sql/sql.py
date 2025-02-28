@@ -76,10 +76,12 @@ CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued_priority
 
 CREATE_HYREX_TASK_TABLE = """
 CREATE TABLE IF NOT EXISTS hyrex_task (
-    task_name    TEXT NOT NULL PRIMARY KEY,
-    cron_expr    TEXT,
-    source_code  TEXT,
-    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    task_name      TEXT NOT NULL PRIMARY KEY,
+    cron_expr      TEXT,
+    source_code    TEXT,
+    default_config JSON,
+    arg_schema     JSON,
+    last_updated   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 """
 
@@ -152,7 +154,7 @@ WITH next_task AS (
     WHERE
         queue = $1 AND
         status = 'queued'
-    ORDER BY priority DESC, id
+    ORDER BY priority ASC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
@@ -175,7 +177,7 @@ next_task AS (
         AND queue = $1
         AND status = 'queued'
         AND (SELECT COUNT(*) FROM hyrex_task_run WHERE queue = $1 AND status = 'running') < $2
-    ORDER BY priority DESC, id
+    ORDER BY priority ASC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
@@ -245,10 +247,12 @@ FROM existing_task;
 """
 
 UPSERT_TASK = """
-INSERT INTO hyrex_task (task_name, cron_expr, source_code, last_updated)
-VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+INSERT INTO hyrex_task (task_name, arg_schema, default_config, cron_expr, source_code, last_updated)
+VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 ON CONFLICT (task_name)
 DO UPDATE SET 
+    arg_schema = EXCLUDED.arg_schema,
+    default_config = EXCLUDED.default_config,
     cron_expr = EXCLUDED.cron_expr,
     source_code = EXCLUDED.source_code,
     last_updated = CURRENT_TIMESTAMP;

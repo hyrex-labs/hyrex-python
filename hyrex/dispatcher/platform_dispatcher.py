@@ -2,8 +2,10 @@ import threading
 import time
 from datetime import datetime
 from queue import Empty, Queue
+from typing import Type
 from uuid import UUID
 
+from pydantic import BaseModel
 import requests
 
 from hyrex import constants
@@ -244,7 +246,14 @@ class PlatformDispatcher(Dispatcher):
     def get_queues_for_pattern(self, pattern: str) -> list[str]:
         pass
 
-    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+    def register_task(
+        self,
+        task_name: str,
+        arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+        cron: str = None,
+        source_code: str = None,
+    ):
         pass
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
@@ -271,7 +280,14 @@ class PlatformDispatcher(Dispatcher):
     def release_scheduler_lock(self, worker_name: str) -> None:
         pass
 
-    def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
+    def register_workflow(
+        self,
+        name: str,
+        source_code: str,
+        workflow_dag_json: str,
+        workflow_arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+    ):
         pass
 
     def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:

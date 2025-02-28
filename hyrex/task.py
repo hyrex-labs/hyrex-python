@@ -11,8 +11,9 @@ from uuid_extensions import uuid7
 
 from hyrex.dispatcher import Dispatcher
 from hyrex.hyrex_context import get_hyrex_context
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
-from hyrex.task_config import TaskConfig
+from hyrex.configs import ConfigPhase, TaskConfig
 from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
 T = TypeVar("T", bound=BaseModel)
@@ -54,6 +55,10 @@ class TaskRun:
             time.sleep(interval)
             task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
             elapsed = time.time() - start
+
+    # TODO: Implement
+    def get_result(self):
+        return self.dispatcher.get_result(self.task_run_id)
 
     def cancel(self):
         self.dispatcher.try_to_cancel_task(self.task_run_id)
@@ -137,6 +142,9 @@ class TaskWrapper:
         else:
             self.context_klass = None
 
+    def get_arg_schema(self):
+        return self.context_klass
+
     async def async_call(self, context=None):
         self.logger.info(
             f"Executing task {self.func.__name__} on queue: {self.task_config.queue}"
@@ -155,15 +163,16 @@ class TaskWrapper:
             else:
                 return self.func()
 
-    def withConfig(
+    def with_config(
         self,
-        queue: str = None,
+        queue: str | HyrexQueue = None,
         priority: int = None,
         max_retries: int = None,
         timeout_seconds: int = None,
         idempotency_key: str = None,
     ) -> "TaskWrapper":
         new_task_config = TaskConfig(
+            config_phase=ConfigPhase.send,
             queue=queue,
             priority=priority,
             max_retries=max_retries,
@@ -250,6 +259,10 @@ class TaskWrapper:
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
+
+    def __call__(self, *args, **kwargs):
+        # Simply pass through all arguments to the original function
+        return self.func(*args, **kwargs)
 
     # Methods for workflows:
     def __rshift__(self, other):

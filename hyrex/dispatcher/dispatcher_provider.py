@@ -1,7 +1,7 @@
 import os
 from enum import StrEnum
 
-from hyrex.config import EnvVars
+from hyrex.env_vars import EnvVars
 
 from .dispatcher import Dispatcher
 from .platform_dispatcher import PlatformDispatcher

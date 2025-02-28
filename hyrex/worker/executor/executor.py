@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import inspect
 import json
 import logging
 import os
@@ -20,7 +19,7 @@ from psycopg.types.json import Json
 from pydantic import BaseModel
 
 from hyrex import constants
-from hyrex.config import EnvVars
+from hyrex.env_vars import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
@@ -76,7 +75,7 @@ class WorkerExecutor(Process):
         self.dequeue_duration_averager = TimeSeriesAverager()
 
         self.dispatcher = None
-        self.task_registry: HyrexRegistry = None
+        self.registry: HyrexRegistry = None
         self.register_app = register_app
 
         # To check if root process is running
@@ -85,7 +84,7 @@ class WorkerExecutor(Process):
         self.worker_name = "worker_" + str(self.parent_pid)
 
     def get_concurrency_for_queue(self, queue_name: str):
-        return self.task_registry.get_concurrency_limit(queue_name=queue_name)
+        return self.registry.get_concurrency_limit(queue_name=queue_name)
 
     def update_queue_list(self):
         self.queues = []
@@ -125,11 +124,11 @@ class WorkerExecutor(Process):
         app_module = importlib.import_module(module_path)
         app_instance: HyrexApp = getattr(app_module, instance_name)
 
-        self.task_registry = app_instance.task_registry
+        self.registry = app_instance.registry
         self.app_info = app_instance.app_info
 
     async def process_item(self, task: DequeuedTask):
-        task_wrapper = self.task_registry.get_task(task.task_name)
+        task_wrapper = self.registry.get_task(task.task_name)
 
         # Prepare context if needed, otherwise None
         context = (
@@ -246,7 +245,7 @@ class WorkerExecutor(Process):
                 self.mark_task_failed(task.id)
                 self.attempt_retry(task.id)
 
-                on_error = self.task_registry.get_on_error_handler(task.task_name)
+                on_error = self.registry.get_on_error_handler(task.task_name)
                 if on_error:
                     try:
                         sig = signature(on_error)
@@ -298,7 +297,7 @@ class WorkerExecutor(Process):
     def run_static_queue_loop(self):
         queue = HyrexQueue(
             name=self.queue_pattern,
-            concurrency_limit=self.task_registry.get_concurrency_limit(
+            concurrency_limit=self.registry.get_concurrency_limit(
                 queue_name=self.queue_pattern
             ),
         )
@@ -340,14 +339,15 @@ class WorkerExecutor(Process):
                 if no_task_count >= 5:
                     break
 
-    def register_tasks_with_dispatcher(self):
-        """Register all current tasks with dispatcher."""
-        for task_wrapper in self.task_registry.get_task_wrappers():
-            self.dispatcher.register_task(
-                task_name=task_wrapper.task_identifier,
-                cron=task_wrapper.cron,
-                source_code=inspect.getsource(task_wrapper.func),
-            )
+    # Now done in run() line self.registry.register_with_db()
+    # def register_tasks_with_dispatcher(self):
+    #     """Register all current tasks with dispatcher."""
+    #     for task_wrapper in self.registry.get_task_wrappers():
+    #         self.dispatcher.register_task(
+    #             task_name=task_wrapper.task_identifier,
+    #             cron=task_wrapper.cron,
+    #             source_code=inspect.getsource(task_wrapper.func),
+    #         )
 
     def register_hyrex_app(self):
         self.dispatcher.register_app(self.app_info.model_dump_json())
@@ -377,10 +377,10 @@ class WorkerExecutor(Process):
             queues=self.queues,
             worker_name=self.worker_name,
         )
-        self.task_registry.set_dispatcher(self.dispatcher)
+        self.registry.set_dispatcher(self.dispatcher)
         if self.register_app:
-            # TODO: Register workflows
-            self.register_tasks_with_dispatcher()
+            self.registry.register_with_db()
+            # self.register_tasks_with_dispatcher()
             self.register_hyrex_app()
 
         # Ignore termination signals, let main process manage shutdown.

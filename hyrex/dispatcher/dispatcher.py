@@ -3,7 +3,10 @@ import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Type
 from uuid import UUID
+
+from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
@@ -97,11 +100,22 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def get_result(self, task_id: UUID) -> dict:
+        pass
+
+    @abstractmethod
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         pass
 
     @abstractmethod
-    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+    def register_task(
+        self,
+        task_name: str,
+        arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+        cron: str = None,
+        source_code: str = None,
+    ):
         pass
 
     @abstractmethod
@@ -164,7 +178,14 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_workflow(self, name: str, source_code: str, workflow_dag_json: str):
+    def register_workflow(
+        self,
+        name: str,
+        source_code: str,
+        workflow_dag_json: str,
+        workflow_arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+    ):
         pass
 
     @abstractmethod

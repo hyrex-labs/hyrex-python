@@ -1,22 +1,26 @@
 CREATE_WORKFLOW_TABLE = """
     CREATE TABLE IF NOT EXISTS hyrex_workflow
     (
-        workflow_name TEXT NOT NULL PRIMARY KEY,
-        cron_expr     TEXT,
-        source_code   TEXT,
-        dag_structure JSON,
-        last_updated  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        workflow_name  TEXT NOT NULL PRIMARY KEY,
+        cron_expr      TEXT,
+        source_code    TEXT,
+        default_config JSON,
+        arg_schema     JSON,
+        dag_structure  JSON,
+        last_updated   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 """
 
 UPSERT_WORKFLOW = """
-INSERT INTO hyrex_workflow (workflow_name, cron_expr, source_code, dag_structure, last_updated)
-VALUES ($1, $2, $3, $4, NOW())
+INSERT INTO hyrex_workflow (workflow_name, cron_expr, source_code, dag_structure, arg_schema, default_config, last_updated)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
 ON CONFLICT (workflow_name)
 DO UPDATE SET 
     cron_expr = EXCLUDED.cron_expr,
     source_code = EXCLUDED.source_code,
     dag_structure = EXCLUDED.dag_structure,
+    arg_schema = EXCLUDED.arg_schema,
+    default_config = EXCLUDED.default_config,
     last_updated = NOW();
 """
 
