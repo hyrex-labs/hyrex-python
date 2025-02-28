@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar
+from typing import Type
 from uuid import UUID
 from uuid_extensions import uuid7
 from pydantic import BaseModel
@@ -10,23 +10,25 @@ from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.workflow.workflow_builder import DagNode, WorkflowBuilder
 
 
-T = TypeVar("T", bound=BaseModel)
-
-
-class HyrexWorkflow(Generic[T]):
+class HyrexWorkflow:
     def __init__(
         self,
         name: str,
         workflow_config: WorkflowConfig,
-        workflow_arg_schema: T,
+        workflow_arg_schema: Type[BaseModel] | None,
         workflow_builder: WorkflowBuilder,
         dispatcher: Dispatcher,
+        source_code: str,
     ):
         self.name = name
         self.workflow_config = workflow_config
         self.workflow_arg_schema = workflow_arg_schema
         self.workflow_builder = workflow_builder
         self.dispatcher = dispatcher
+        self.source_code = source_code
+
+    def get_queue(self) -> HyrexQueue | str | None:
+        return self.workflow_config.queue
 
     def with_config(
         self, queue: str | HyrexQueue = None, priority: int = None
@@ -68,7 +70,14 @@ class HyrexWorkflow(Generic[T]):
 
         return node_to_task_request.values()
 
-    def send(self, context: T):
+    def send(self, context: BaseModel):
+        # Runtime type checking to ensure context is the expected schema type
+        if not isinstance(context, self.workflow_arg_schema):
+            raise TypeError(
+                f"Expected context of type {self.workflow_arg_schema.__name__}, "
+                f"got {type(context).__name__} instead"
+            )
+
         workflow_run_request = WorkflowRunRequest(
             id=uuid7(),
             workflow_name=self.name,

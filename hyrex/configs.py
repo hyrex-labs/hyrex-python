@@ -31,6 +31,19 @@ class WorkflowConfig(BaseModel):
             )
         return value
 
+    def get_default_config(self):
+        assert (
+            self.config_phase == ConfigPhase.decorator
+        ), "Default config must be specified at decorator-time."
+        default_config = {}
+        if self.queue:
+            default_config["queue"] = self.get_queue_name()
+        if self.priority:
+            default_config["priority"] = self.priority
+        if self.timeout_seconds:
+            default_config["timeout_seconds"] = self.timeout_seconds
+        return default_config
+
     def get_queue_name(self) -> str:
         if isinstance(self.queue, str):
             return self.queue
@@ -60,6 +73,21 @@ class TaskConfig(BaseModel):
     max_retries: int | None = Field(default=None, ge=0)
     timeout_seconds: int | None = Field(default=None, gt=0)
     idempotency_key: str | None = None
+
+    def get_default_config(self):
+        assert (
+            self.config_phase == ConfigPhase.decorator
+        ), "Default config must be specified at decorator-time."
+        default_config = {}
+        if self.queue:
+            default_config["queue"] = self.get_queue_name()
+        if self.priority:
+            default_config["priority"] = self.priority
+        if self.max_retries:
+            default_config["max_retries"] = self.max_retries
+        if self.timeout_seconds:
+            default_config["timeout_seconds"] = self.timeout_seconds
+        return default_config
 
     def get_queue_name(self) -> str:
         if isinstance(self.queue, str):

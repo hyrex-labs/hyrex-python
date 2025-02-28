@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import inspect
 import json
 import logging
 import os
@@ -342,12 +341,13 @@ class WorkerExecutor(Process):
 
     def register_tasks_with_dispatcher(self):
         """Register all current tasks with dispatcher."""
-        for task_wrapper in self.task_registry.get_task_wrappers():
-            self.dispatcher.register_task(
-                task_name=task_wrapper.task_identifier,
-                cron=task_wrapper.cron,
-                source_code=inspect.getsource(task_wrapper.func),
-            )
+        pass
+        # for task_wrapper in self.task_registry.get_task_wrappers():
+        #     self.dispatcher.register_task(
+        #         task_name=task_wrapper.task_identifier,
+        #         cron=task_wrapper.cron,
+        #         source_code=inspect.getsource(task_wrapper.func),
+        #     )
 
     def register_hyrex_app(self):
         self.dispatcher.register_app(self.app_info.model_dump_json())
@@ -380,6 +380,7 @@ class WorkerExecutor(Process):
         self.task_registry.set_dispatcher(self.dispatcher)
         if self.register_app:
             # TODO: Register workflows
+            # TODO: Fix double registration between here and registry
             self.register_tasks_with_dispatcher()
             self.register_hyrex_app()
 

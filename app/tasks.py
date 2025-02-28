@@ -46,6 +46,7 @@ def error_task(context: EmptyContext):
 @hy.task
 def print_random_number():
     random_number = random.random()
+    print(random_number)
     return {"output": random_number}
     # print(random.random())
 

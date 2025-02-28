@@ -142,6 +142,9 @@ class TaskWrapper:
         else:
             self.context_klass = None
 
+    def get_arg_schema(self):
+        return self.context_klass
+
     async def async_call(self, context=None):
         self.logger.info(
             f"Executing task {self.func.__name__} on queue: {self.task_config.queue}"
@@ -256,7 +259,7 @@ class TaskWrapper:
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
-        
+
     def __call__(self, *args, **kwargs):
         # Simply pass through all arguments to the original function
         return self.func(*args, **kwargs)

@@ -5,12 +5,13 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from queue import Empty, Queue
-from typing import List
+from typing import List, Type
 from uuid import UUID
 
 from psycopg import RawCursor
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
+from pydantic import BaseModel
 from uuid_extensions import uuid7
 
 from hyrex import constants
@@ -307,9 +308,25 @@ class PostgresDispatcher(Dispatcher):
             return [row[0] for row in cur.fetchall()]
 
     # TODO: Update to include config
-    def register_task(self, task_name: str, cron: str = None, source_code: str = None):
+    def register_task(
+        self,
+        task_name: str,
+        arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+        cron: str = None,
+        source_code: str = None,
+    ):
         with self.transaction() as cur:
-            cur.execute(sql.UPSERT_TASK, [task_name, cron, source_code])
+            cur.execute(
+                sql.UPSERT_TASK,
+                [
+                    task_name,
+                    Json(arg_schema.model_json_schema()) if arg_schema else None,
+                    Json(default_config),
+                    cron,
+                    source_code,
+                ],
+            )
 
             cron_job_name = f"ScheduledTask-{task_name}"
             if cron:
@@ -340,12 +357,30 @@ class PostgresDispatcher(Dispatcher):
             else:
                 cur.execute(cron_sql.TURN_OFF_CRON_FOR_TASK, [cron_job_name])
 
-    def register_workflow(self, name: str, source_code: str, workflow_dag_json: dict):
+    def register_workflow(
+        self,
+        name: str,
+        source_code: str,
+        workflow_dag_json: dict,
+        workflow_arg_schema: Type[BaseModel] | None,
+        default_config: dict,
+    ):
         with self.transaction() as cur:
             cron = None
             cur.execute(
                 workflow_sql.UPSERT_WORKFLOW,
-                [name, cron, source_code, json.dumps(workflow_dag_json)],
+                [
+                    name,
+                    cron,
+                    source_code,
+                    Json(workflow_dag_json),
+                    (
+                        Json(workflow_arg_schema.model_json_schema())
+                        if workflow_arg_schema
+                        else None
+                    ),
+                    Json(default_config),
+                ],
             )
 
     def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:

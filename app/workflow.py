@@ -49,7 +49,6 @@ class OnboardUserWorkflowArg(BaseModel):
 
 
 @hy.workflow(
-    name="onboard-user",
     queue="onboard-user",
     timeout_seconds=100,
     workflow_arg_schema=OnboardUserWorkflowArg,
@@ -66,3 +65,6 @@ def onboard_user():
         >> check_credit.with_config(queue="credit-queue")
         >> train_credit_machine_learning_model.with_config(queue="credit-queue")
     )
+
+
+# onboard_user.with_config(queue="new_queue").send()
