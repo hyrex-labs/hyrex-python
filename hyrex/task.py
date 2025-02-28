@@ -146,9 +146,7 @@ class TaskWrapper:
         return self.context_klass
 
     async def async_call(self, context=None):
-        self.logger.info(
-            f"Executing task {self.func.__name__} on queue: {self.task_config.queue}"
-        )
+        self.logger.info(f"Executing task {self.func.__name__}.")
 
         if context is not None and self.context_klass is not None:
             self._check_type(context)
@@ -189,7 +187,7 @@ class TaskWrapper:
         )
         return new_wrapper
 
-    def get_queue(self):
+    def get_queue(self) -> HyrexQueue | str:
         return self.task_config.queue
 
     def send(

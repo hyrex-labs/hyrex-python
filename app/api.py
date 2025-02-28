@@ -83,3 +83,4 @@ async def random_number_task():
 @app.get("/onboard-user/")
 async def onboard_user_workflow():
     onboard_user.send(EmptyContext())
+    # onboard_user.send()

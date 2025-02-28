@@ -307,7 +307,6 @@ class PostgresDispatcher(Dispatcher):
             cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
             return [row[0] for row in cur.fetchall()]
 
-    # TODO: Update to include config
     def register_task(
         self,
         task_name: str,

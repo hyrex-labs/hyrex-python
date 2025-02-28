@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.tasks import EmptyContext
 from hyrex.hyrex_registry import HyrexRegistry
 
 hy = HyrexRegistry()
@@ -51,7 +52,7 @@ class OnboardUserWorkflowArg(BaseModel):
 @hy.workflow(
     queue="onboard-user",
     timeout_seconds=100,
-    workflow_arg_schema=OnboardUserWorkflowArg,
+    workflow_arg_schema=EmptyContext,
 )
 def onboard_user():
     (
