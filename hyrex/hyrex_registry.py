@@ -42,7 +42,7 @@ class HyrexRegistry:
 
     def register_with_db(self):
         # Register tasks and workflows with DB
-        for task in self._task_registry:
+        for task in self._task_registry.values():
             self.dispatcher.register_task(
                 task_name=task.task_identifier,
                 arg_schema=task.get_arg_schema(),
@@ -51,7 +51,7 @@ class HyrexRegistry:
                 source_code=inspect.getsource(task.func),
             )
 
-        for workflow in self._workflow_registry:
+        for workflow in self._workflow_registry.values():
             self.dispatcher.register_workflow(
                 name=workflow.name,
                 source_code=workflow.source_code,

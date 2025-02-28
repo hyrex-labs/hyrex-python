@@ -13,8 +13,8 @@ class HyrexApp:
     """
 
     def __init__(self, app_name: str = "HelloHyrex"):
-        self.task_registry: HyrexRegistry = HyrexRegistry()
+        self.registry: HyrexRegistry = HyrexRegistry()
         self.app_info = HyrexAppInfo(name=app_name)
 
     def add_registry(self, registry: HyrexRegistry):
-        self.task_registry.add_registry(registry)
+        self.registry.add_registry(registry)
