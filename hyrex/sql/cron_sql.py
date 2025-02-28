@@ -148,6 +148,11 @@ def cron_job_runs_to_sql(runs: List[CronJobRun]) -> Dict[str, Any]:
     placeholder_index = 1
     placeholder_strings = []
 
+    # Collect all values in order
+    values = []
+    for run in runs:
+        values.extend([run.jobid, run.command, "queued", run.schedule_time.isoformat()])
+
     for _ in runs:
         # Use $1, $2, etc. format instead of %(1)s
         placeholder_strings.append(
@@ -155,16 +160,15 @@ def cron_job_runs_to_sql(runs: List[CronJobRun]) -> Dict[str, Any]:
         )
         placeholder_index += 4
 
-    # Collect all values in order
-    values = []
-    for run in runs:
-        values.extend([run.jobid, run.command, "queued", run.schedule_time.isoformat()])
+    # Build this part separately to avoid Python3.11 f-string backslash limitations
+    placeholder_section = ",\n            ".join(placeholder_strings)
 
+    # Construct the final SQL string
     sql = f"""
         INSERT INTO hyrex_cron_job_run_details
             (jobid, command, status, schedule_time)
         VALUES
-            {',\n            '.join(placeholder_strings)}
+            {placeholder_section}
         ON CONFLICT (jobid, schedule_time) DO NOTHING
         RETURNING runid;
     """
