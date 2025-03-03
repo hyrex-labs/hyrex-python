@@ -74,7 +74,6 @@ class WorkerExecutor(Process):
         self.refresh_queue_duration_averager = TimeSeriesAverager()
         self.dequeue_duration_averager = TimeSeriesAverager()
 
-        self.dispatcher = None
         self.registry: HyrexRegistry = None
         self.register_app = register_app
 
@@ -339,16 +338,6 @@ class WorkerExecutor(Process):
                 if no_task_count >= 5:
                     break
 
-    # Now done in run() line self.registry.register_with_db()
-    # def register_tasks_with_dispatcher(self):
-    #     """Register all current tasks with dispatcher."""
-    #     for task_wrapper in self.registry.get_task_wrappers():
-    #         self.dispatcher.register_task(
-    #             task_name=task_wrapper.task_identifier,
-    #             cron=task_wrapper.cron,
-    #             source_code=inspect.getsource(task_wrapper.func),
-    #         )
-
     def register_hyrex_app(self):
         self.dispatcher.register_app(self.app_info.model_dump_json())
 
@@ -377,7 +366,6 @@ class WorkerExecutor(Process):
             queues=self.queues,
             worker_name=self.worker_name,
         )
-        self.registry.set_dispatcher(self.dispatcher)
 
         # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)

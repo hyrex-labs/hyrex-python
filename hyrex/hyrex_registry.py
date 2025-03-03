@@ -21,10 +21,12 @@ class HyrexRegistry:
         priority: int = constants.DEFAULT_PRIORITY,
     ):
         self.logger = logging.getLogger(__name__)
+
         if os.getenv(EnvVars.WORKER_PROCESS):
-            self.dispatcher = None
+            self.is_worker_process = True
         else:
-            self.dispatcher = get_dispatcher()
+            self.is_worker_process = False
+        self.dispatcher = get_dispatcher(self.is_worker_process)
 
         self._task_registry: dict[str, TaskWrapper] = {}
         self._queue_registry: dict[str, HyrexQueue] = {}
@@ -108,11 +110,6 @@ class HyrexRegistry:
             return self._queue_registry[queue_name].concurrency_limit
         else:
             return 0
-
-    def set_dispatcher(self, dispatcher: Dispatcher):
-        self.dispatcher = dispatcher
-        for task_wrapper in self._task_registry.values():
-            task_wrapper.dispatcher = dispatcher
 
     def get_on_error_handler(self, task_name: str) -> Callable | None:
         task_wrapper = self._task_registry[task_name]
