@@ -5,20 +5,14 @@ from queue import Empty, Queue
 from typing import Type
 from uuid import UUID
 
-from pydantic import BaseModel
 import requests
+from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (
-    CronJob,
-    CronJobRun,
-    DequeuedTask,
-    EnqueueTaskRequest,
-    TaskStatus,
-    WorkflowRunRequest,
-)
+from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
+                           EnqueueTaskRequest, TaskStatus, WorkflowRunRequest)
 
 
 class PlatformDispatcher(Dispatcher):

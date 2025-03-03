@@ -1,11 +1,10 @@
 from psycopg.types.json import Json
-from hyrex.hyrex_queue import HyrexQueue
-from hyrex.sql import sql, cron_sql
 from psycopg_pool import ConnectionPool
 
 from hyrex.dispatcher.postgres_dispatcher import PostgresDispatcher
+from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest
-from hyrex.sql import sql
+from hyrex.sql import cron_sql, sql
 
 
 # Single-threaded variant of Postgres dispatcher. (Slower enqueuing.)

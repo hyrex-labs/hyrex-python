@@ -47,6 +47,7 @@ class WorkerCronScheduler(Process):
 
     def impute_scheduled_cron_job_runs(self, cron_job: CronJob) -> list[CronJobRun]:
         # Create iterator starting from the last confirmed date
+        # TODO: Should this go from activated_at if it's reactivated?
         iterator = croniter(cron_job.schedule, cron_job.scheduled_jobs_confirmed_until)
 
         cron_job_runs = []
@@ -138,7 +139,6 @@ class WorkerCronScheduler(Process):
 
     def stop(self):
         self.logger.info("Stopping cron scheduler.")
-        # TODO: Return lock
         if self.lock_id:
             self.logger.info("Releasing scheduler lock...")
             self.dispatcher.release_scheduler_lock(self.worker_name)
