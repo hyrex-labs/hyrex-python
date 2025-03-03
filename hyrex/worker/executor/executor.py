@@ -378,14 +378,16 @@ class WorkerExecutor(Process):
             worker_name=self.worker_name,
         )
         self.registry.set_dispatcher(self.dispatcher)
-        if self.register_app:
-            self.registry.register_with_db()
-            # self.register_tasks_with_dispatcher()
-            self.register_hyrex_app()
 
         # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        if self.register_app:
+            self.logger.info("Registering app, tasks, and workflows to the DB.")
+            self.registry.register_with_db()
+            # self.register_tasks_with_dispatcher()
+            self.register_hyrex_app()
 
         # Set up to throw HyrexTaskTimeout and then end process on task timeout.
         def timeout_handler(signum, frame):

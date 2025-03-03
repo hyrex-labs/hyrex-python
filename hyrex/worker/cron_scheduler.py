@@ -37,9 +37,6 @@ class WorkerCronScheduler(Process):
             self.logger.warning("Root process died unexpectedly. Shutting down.")
             self._stop_event.set()
 
-        if self._stop_event.is_set():
-            self.stop()
-
     def acquire_scheduler_lock(self) -> int | None:
         self.logger.info("Acquiring cron scheduler lock...")
         result = self.dispatcher.acquire_scheduler_lock(self.worker_name)
@@ -88,17 +85,22 @@ class WorkerCronScheduler(Process):
         self.lock_id = None
 
         try:
-            while not self.lock_id:
+            while not self._stop_event.is_set() and not self.lock_id:
                 self.check_stop_conditions()
 
                 self.lock_id = self.acquire_scheduler_lock()
-                if not self.lock_id:
+                if not self.lock_id and not self._stop_event.is_set():
                     self.logger.info(
                         "Failed to acquire lock. Trying again in 15 seconds."
                     )
                     # Sleep and then try again
                     self._stop_event.wait(15)
                     continue
+
+            # If we're stopping, exit early
+            if self._stop_event.is_set():
+                self.logger.info("Stop event detected during lock acquisition.")
+                return
 
             self.logger.info("Acquired lock.")
 
