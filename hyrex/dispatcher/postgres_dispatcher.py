@@ -90,6 +90,7 @@ class PostgresDispatcher(Dispatcher):
     def dequeue(
         self,
         executor_id: UUID,
+        task_names: list[str],
         queue: str = constants.ANY_QUEUE,
         concurrency_limit: int = 0,
     ) -> DequeuedTask:
@@ -98,10 +99,10 @@ class PostgresDispatcher(Dispatcher):
             if concurrency_limit > 0:
                 cur.execute(
                     sql.FETCH_TASK_WITH_CONCURRENCY,
-                    [queue, concurrency_limit, executor_id],
+                    [queue, concurrency_limit, executor_id, task_names],
                 )
             else:
-                cur.execute(sql.FETCH_TASK, [queue, executor_id])
+                cur.execute(sql.FETCH_TASK, [queue, executor_id, task_names])
             row = cur.fetchone()
             if row:
                 (
