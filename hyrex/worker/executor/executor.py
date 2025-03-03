@@ -23,16 +23,14 @@ from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 
 
 def generate_executor_name():
@@ -176,15 +174,15 @@ class WorkerExecutor(Process):
             SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
-    def process(self, queue: HyrexQueue):
+    def process(self, queue: HyrexQueue) -> bool:
         """Returns True if a task is found and attempted, False otherwise"""
-        try:
-            task: DequeuedTask | None = self.fetch_task(
-                queue=queue.name, concurrency_limit=queue.concurrency_limit
-            )
-            if not task:
-                return False
+        task: DequeuedTask | None = self.fetch_task(
+            queue=queue.name, concurrency_limit=queue.concurrency_limit
+        )
+        if not task:
+            return False
 
+        try:
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
@@ -310,6 +308,7 @@ class WorkerExecutor(Process):
             self.check_root_process()
 
     def run_round_robin_loop(self):
+        self.update_queue_list()
         last_queue_refresh = time.monotonic()
         no_task_count = 0
 
@@ -323,8 +322,7 @@ class WorkerExecutor(Process):
             ):
                 self.update_queue_list()
                 last_queue_refresh = time.monotonic()
-
-            no_task_count = 0
+                no_task_count = 0
 
             for queue in self.queues:
                 self.check_root_process()

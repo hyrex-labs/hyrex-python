@@ -45,7 +45,7 @@ class TaskRun(BaseModel):
         return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
 
 
-class DurableTask:
+class DurableTaskRun:
     def __init__(
         self,
         task_name: str,

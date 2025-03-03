@@ -8,7 +8,7 @@ from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.task import TaskWrapper
+from hyrex.task_wrapper import TaskWrapper
 from hyrex.workflow.workflow import HyrexWorkflow
 from hyrex.workflow.workflow_builder import WorkflowBuilder
 

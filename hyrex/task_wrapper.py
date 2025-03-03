@@ -9,63 +9,13 @@ import psycopg
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
-from hyrex.configs import ConfigPhase, TaskConfig
 from hyrex.dispatcher import Dispatcher
+from hyrex.durable_run import DurableTaskRun
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
-from hyrex.workflow.workflow_builder_context import \
-    get_current_workflow_builder
-
-T = TypeVar("T", bound=BaseModel)
-
-
-class UnboundTaskException(Exception):
-    """Exception raised for errors in the task binding."""
-
-    def __init__(self, message="Task is unbound."):
-        self.message = message
-        super().__init__(self.message)
-
-
-class TaskRun:
-    def __init__(
-        self,
-        task_name: str,
-        task_run_id: str,
-        dispatcher: Dispatcher,
-    ):
-        self.logger = logging.getLogger(__name__)
-
-        self.task_name = task_name
-        self.task_run_id = task_run_id
-        self.dispatcher = dispatcher
-
-    def wait(self, timeout: float = 30.0, interval: float = 1.0):
-        start = time.time()
-        elapsed = 0
-        try:
-            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
-        except ValueError:
-            # Task hasn't yet moved from self.local_queue to DB
-            task_status = TaskStatus.queued
-
-        while task_status in [TaskStatus.queued, TaskStatus.running]:
-            if elapsed > timeout:
-                raise TimeoutError("Waiting for task timed out.")
-            time.sleep(interval)
-            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
-            elapsed = time.time() - start
-
-    # TODO: Implement
-    def get_result(self):
-        return self.dispatcher.get_result(self.task_run_id)
-
-    def cancel(self):
-        self.dispatcher.try_to_cancel_task(self.task_run_id)
-
-    def __repr__(self):
-        return f"TaskRun<{self.task_name}>[{self.task_run_id}]"
+from hyrex.configs import ConfigPhase, TaskConfig
+from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
 
 def validate_error_handler(handler: Callable) -> None:
@@ -194,7 +144,7 @@ class TaskWrapper:
     def send(
         self,
         context=None,
-    ) -> TaskRun:
+    ) -> DurableTaskRun:
         self.logger.info(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
@@ -233,9 +183,9 @@ class TaskWrapper:
 
         self.dispatcher.enqueue([task])
 
-        return TaskRun(
+        return DurableTaskRun(
             task_name=self.task_identifier,
-            task_run_id=task.id,
+            durable_id=task.id,
             dispatcher=self.dispatcher,
         )
 
