@@ -150,6 +150,8 @@ class WorkerExecutor(Process):
         start = time.perf_counter()
         dequeued_task = self.dispatcher.dequeue(
             executor_id=self.executor_id,
+            # TODO: Cache this list.
+            task_names=self.registry.get_task_names(),
             queue=queue,
             concurrency_limit=concurrency_limit,
         )

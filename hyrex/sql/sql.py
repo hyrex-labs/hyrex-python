@@ -152,8 +152,9 @@ WITH next_task AS (
     SELECT id 
     FROM hyrex_task_run
     WHERE
-        queue = $1 AND
-        status = 'queued'
+        queue = $1
+        AND status = 'queued'
+        AND task_name = ANY($3)
     ORDER BY priority ASC, id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -176,6 +177,7 @@ next_task AS (
         lock_acquired = TRUE
         AND queue = $1
         AND status = 'queued'
+        AND task_name = ANY($4)
         AND (SELECT COUNT(*) FROM hyrex_task_run WHERE queue = $1 AND status = 'running') < $2
     ORDER BY priority ASC, id
     FOR UPDATE SKIP LOCKED
