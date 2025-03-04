@@ -1,9 +1,6 @@
-from datetime import datetime
 import logging
 import time
 from uuid import UUID
-
-from pydantic import BaseModel
 
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.schemas import TaskRun, TaskStatus
@@ -21,7 +18,7 @@ class DurableTaskRun:
         self.durable_id = durable_id
         self.dispatcher = dispatcher
 
-        self.task_runs = list[TaskRun]
+        self.task_runs: list[TaskRun] = []
 
     def wait(self, timeout: float = 30.0, interval: float = 0.5) -> bool:
         start = time.time()
