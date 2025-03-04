@@ -35,12 +35,16 @@ class DurableTaskRun:
                 if task.status == TaskStatus.success:
                     # Completed successfully
                     return True
-                if (
+                elif (
                     task.status == TaskStatus.failed
                     and task.attempt_number == task.max_retries
                 ):
                     # Failed with no retries left
                     return False
+                elif task.status == TaskStatus.canceled:
+                    # Canceled
+                    return False
+
             time.sleep(interval)
             elapsed = time.time() - start
             if elapsed > timeout:
@@ -56,15 +60,10 @@ class DurableTaskRun:
         return None
 
     def cancel(self):
-        # TODO: Find currently active task or try to mark all tasks as up for cancel.
-        # self.dispatcher.try_to_cancel_task(self.task_run_id)
-        raise NotImplementedError
+        self.dispatcher.try_to_cancel_durable_run(self.durable_id)
 
     def __repr__(self):
         return f"DurableTaskRun<{self.task_name}>[{self.durable_id}]"
 
     def refresh(self):
-        self.task_runs = self.dispatcher.get_durable_task_run_info(self.durable_id)
-        for task in self.task_runs:
-            pass
-        # TODO: Compute any derived properties
+        self.task_runs = self.dispatcher.get_durable_run_tasks(self.durable_id)

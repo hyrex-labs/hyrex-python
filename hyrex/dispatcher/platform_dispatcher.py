@@ -298,5 +298,8 @@ class PlatformDispatcher(Dispatcher):
     def advance_workflow_run(self, workflow_run_id: UUID):
         pass
 
-    def get_durable_task_run_info(self, durable_id: UUID) -> list[TaskRun]:
+    def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
+        pass
+
+    def try_to_cancel_durable_run(self, durable_id: UUID):
         pass

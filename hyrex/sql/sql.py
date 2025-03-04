@@ -332,6 +332,15 @@ TRY_TO_CANCEL_TASK = """
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
+TRY_TO_CANCEL_DURABLE_RUN = """
+    UPDATE hyrex_task_run
+    SET status = CASE 
+                WHEN status = 'running' THEN 'up_for_cancel'::task_run_status
+                WHEN status = 'queued' THEN 'canceled'::task_run_status
+                END
+    WHERE durable_id = $1 AND status IN ('running', 'queued');
+"""
+
 TASK_CANCELED = """
     UPDATE hyrex_task_run
     SET status = 'canceled'

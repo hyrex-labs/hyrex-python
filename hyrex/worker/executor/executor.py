@@ -167,9 +167,6 @@ class WorkerExecutor(Process):
     def attempt_retry(self, task_id: UUID):
         self.dispatcher.attempt_retry(task_id=task_id)
 
-    def reset_or_cancel_task(self, task_id: UUID):
-        self.dispatcher.reset_or_cancel_task(task_id=task_id)
-
     # Notifies root process of current task being processed.
     def update_current_task(self, task_id: UUID):
         self.root_message_queue.put(

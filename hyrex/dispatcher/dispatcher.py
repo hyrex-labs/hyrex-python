@@ -93,6 +93,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def try_to_cancel_durable_run(self, durable_id: UUID):
+        pass
+
+    @abstractmethod
     def task_canceled(self, task_id: UUID):
         pass
 
@@ -209,5 +213,5 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def get_durable_task_run_info(self, durable_id: UUID) -> list[TaskRun]:
+    def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         pass

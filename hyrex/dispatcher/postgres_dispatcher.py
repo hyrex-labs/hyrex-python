@@ -512,7 +512,7 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(cron_sql.RELEASE_SCHEDULER_LOCK, [worker_name])
 
-    def get_durable_task_run_info(self, durable_id: UUID) -> list[TaskRun]:
+    def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         with self.transaction() as cur:
             cur.execute(sql.GET_TASK_RUNS_BY_DURABLE_ID, [durable_id])
             results = cur.fetchall()
@@ -556,3 +556,7 @@ class PostgresDispatcher(Dispatcher):
                 task_runs.append(task_run)
 
             return task_runs
+
+    def try_to_cancel_durable_run(self, durable_id: UUID):
+        with self.transaction() as cur:
+            cur.execute(sql.TRY_TO_CANCEL_DURABLE_RUN, [durable_id])
