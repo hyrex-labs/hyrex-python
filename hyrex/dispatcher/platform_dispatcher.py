@@ -120,7 +120,8 @@ class PlatformDispatcher(Dispatcher):
 
     def dequeue(
         self,
-        worker_id: UUID,
+        executor_id: UUID,
+        task_names: list[str],
         queue: str = constants.ANY_QUEUE,
         concurrency_limit: int = 0,
     ) -> DequeuedTask:

@@ -63,6 +63,7 @@ class Dispatcher(ABC):
     def dequeue(
         self,
         executor_id: UUID,
+        task_names: list[str],
         queue: str = constants.ANY_QUEUE,
         concurrency_limit: int = 0,
     ) -> DequeuedTask:

@@ -115,10 +115,13 @@ class HyrexRegistry:
         task_wrapper = self._task_registry[task_name]
         return task_wrapper.on_error
 
-    def get_task_wrappers(self):
+    def get_task_wrappers(self) -> list[TaskWrapper]:
         return self._task_registry.values()
 
-    def get_workflows(self):
+    def get_task_names(self) -> list[str]:
+        return [task.task_identifier for task in self._task_registry.values()]
+
+    def get_workflows(self) -> list[HyrexWorkflow]:
         return self._workflow_registry.values()
 
     def get_task(self, task_name: str):
