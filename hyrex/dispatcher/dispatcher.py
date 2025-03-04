@@ -10,8 +10,15 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskStatus, WorkflowRunRequest)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class Dispatcher(ABC):
@@ -199,4 +206,8 @@ class Dispatcher(ABC):
         cron_expr: str,
         should_backfill: bool,
     ) -> None:
+        pass
+
+    @abstractmethod
+    def get_durable_task_run_info(self, durable_id: UUID) -> list[TaskRun]:
         pass

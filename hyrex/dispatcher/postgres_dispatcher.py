@@ -17,9 +17,17 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskStatus, WorkflowRunRequest,
-                           WorkflowStatus)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskResult,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 
@@ -113,6 +121,8 @@ class PostgresDispatcher(Dispatcher):
                     queued,
                     started,
                     workflow_run_id,
+                    attempt_number,
+                    max_retries,
                 ) = row
                 dequeued_task = DequeuedTask(
                     id=task_id,
@@ -128,6 +138,8 @@ class PostgresDispatcher(Dispatcher):
                     queued=queued,
                     started=started,
                     workflow_run_id=workflow_run_id,
+                    attempt_number=attempt_number,
+                    max_retries=max_retries,
                 )
 
         return dequeued_task
@@ -499,3 +511,48 @@ class PostgresDispatcher(Dispatcher):
         """Release the scheduler lock for the specified worker."""
         with self.transaction() as cur:
             cur.execute(cron_sql.RELEASE_SCHEDULER_LOCK, [worker_name])
+
+    def get_durable_task_run_info(self, durable_id: UUID) -> list[TaskRun]:
+        with self.transaction() as cur:
+            cur.execute(sql.GET_TASK_RUNS_BY_DURABLE_ID, [durable_id])
+            results = cur.fetchall()
+
+            task_runs = []
+            for row in results:
+                (
+                    task_id,
+                    max_retries,
+                    attempt_number,
+                    status,
+                    queued,
+                    started,
+                    finished,
+                    task_result_id,
+                    task_result_created_at,
+                    task_result,
+                ) = row
+
+                # Handle the task result
+                task_result_obj = None
+                if task_result_id is not None:
+                    task_result_obj = TaskResult(
+                        task_run_id=task_result_id,
+                        created_at=task_result_created_at,
+                        # Handle None result by defaulting to empty dict
+                        result=task_result if task_result is not None else {},
+                    )
+
+                # Create the TaskRun object without the result field
+                task_run = TaskRun(
+                    id=task_id,
+                    max_retries=max_retries,
+                    attempt_number=attempt_number,
+                    status=status,
+                    queued=queued,
+                    started=started,
+                    finished=finished,
+                    task_result=task_result_obj,
+                )
+                task_runs.append(task_run)
+
+            return task_runs

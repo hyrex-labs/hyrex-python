@@ -48,6 +48,26 @@ class DequeuedTask(BaseModel):
     queued: datetime
     started: datetime
     workflow_run_id: UUID | None
+    attempt_number: int
+    max_retries: int
+
+
+class TaskResult(BaseModel):
+    task_run_id: UUID
+    created_at: datetime
+    result: dict
+
+
+# For tracking durable runs:
+class TaskRun(BaseModel):
+    id: UUID
+    max_retries: int
+    attempt_number: int
+    status: TaskStatus
+    queued: datetime
+    started: datetime | None
+    finished: datetime | None
+    task_result: TaskResult | None
 
 
 class WorkflowStatus(StrEnum):

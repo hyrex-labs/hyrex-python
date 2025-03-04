@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import time
 from uuid import UUID
@@ -5,13 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex.dispatcher.dispatcher import Dispatcher
-from hyrex.schemas import TaskStatus
-
-
-class TaskRun(BaseModel):
-    task_run_id: UUID
-    status: TaskStatus
-    result: dict
+from hyrex.schemas import TaskRun, TaskStatus
 
 
 class DurableTaskRun:
@@ -28,42 +23,48 @@ class DurableTaskRun:
 
         self.task_runs = list[TaskRun]
 
-    def wait(self, timeout: float = 30.0, interval: float = 1.0):
+    def wait(self, timeout: float = 30.0, interval: float = 0.5) -> bool:
         start = time.time()
         elapsed = 0
-        try:
-            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
-        except ValueError:
-            # Task hasn't yet moved from self.local_queue to DB
-            task_status = TaskStatus.queued
 
-        while task_status in [TaskStatus.queued, TaskStatus.running]:
-            if elapsed > timeout:
-                raise TimeoutError("Waiting for task timed out.")
+        run_complete = False
+
+        while not run_complete:
+            self.refresh()
+            for task in self.task_runs:
+                if task.status == TaskStatus.success:
+                    # Completed successfully
+                    return True
+                if (
+                    task.status == TaskStatus.failed
+                    and task.attempt_number == task.max_retries
+                ):
+                    # Failed with no retries left
+                    return False
             time.sleep(interval)
-            task_status = self.dispatcher.get_task_status(task_id=self.task_run_id)
             elapsed = time.time() - start
+            if elapsed > timeout:
+                raise TimeoutError("Waiting for durable task run timed out.")
 
     def get_result(self):
-        # TODO: Find successful task run first.
-        task_run_id = None
-        return self.dispatcher.get_result(task_run_id)
+        self.refresh()
+        for task in self.task_runs:
+            if task.status == TaskStatus.success and task.task_result is not None:
+                # Return only the result dict, not the whole object
+                return task.task_result.result
+        self.logger.warning(f"No result found for durable run {self.durable_id}.")
+        return None
 
     def cancel(self):
-        # TODO: Find currently active task.
-        self.dispatcher.try_to_cancel_task(self.task_run_id)
+        # TODO: Find currently active task or try to mark all tasks as up for cancel.
+        # self.dispatcher.try_to_cancel_task(self.task_run_id)
+        raise NotImplementedError
 
     def __repr__(self):
         return f"DurableTaskRun<{self.task_name}>[{self.durable_id}]"
 
     def refresh(self):
-        # TODO
-        pass
-
-    def wait(self):
-        # TODO
-        pass
-
-    def get_result(self):
-        # TODO
-        pass
+        self.task_runs = self.dispatcher.get_durable_task_run_info(self.durable_id)
+        for task in self.task_runs:
+            pass
+        # TODO: Compute any derived properties

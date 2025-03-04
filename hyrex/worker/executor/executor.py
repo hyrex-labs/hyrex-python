@@ -199,6 +199,8 @@ class WorkerExecutor(Process):
                     queued=task.queued,
                     started=task.started,
                     executor_id=self.executor_id,
+                    attempt_number=task.attempt_number,
+                    max_retries=task.max_retries,
                 )
             )
 
