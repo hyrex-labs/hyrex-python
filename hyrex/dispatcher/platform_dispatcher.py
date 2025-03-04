@@ -5,8 +5,8 @@ from queue import Empty, Queue
 from typing import Type
 from uuid import UUID
 
-from pydantic import BaseModel
 import requests
+from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
@@ -16,6 +16,7 @@ from hyrex.schemas import (
     CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
+    TaskRun,
     TaskStatus,
     WorkflowRunRequest,
 )
@@ -295,4 +296,10 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def advance_workflow_run(self, workflow_run_id: UUID):
+        pass
+
+    def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
+        pass
+
+    def try_to_cancel_durable_run(self, durable_id: UUID):
         pass

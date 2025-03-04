@@ -17,6 +17,8 @@ class HyrexContext(BaseModel):
     queued: datetime
     started: datetime
     executor_id: UUID
+    attempt_number: int
+    max_retries: int
 
 
 # Simple global context

@@ -1,5 +1,6 @@
 import os
 from enum import StrEnum
+
 from hyrex.env_vars import EnvVars
 
 from .dispatcher import Dispatcher

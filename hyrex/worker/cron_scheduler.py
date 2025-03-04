@@ -46,8 +46,9 @@ class WorkerCronScheduler(Process):
         self.dispatcher.update_cron_confirmation_timestamp(cron_job.jobid)
 
     def impute_scheduled_cron_job_runs(self, cron_job: CronJob) -> list[CronJobRun]:
-        # Create iterator starting from the last confirmed date
-        iterator = croniter(cron_job.schedule, cron_job.scheduled_jobs_confirmed_until)
+        # Create iterator starting from the last confirmed date or activation date
+        start_time = max(cron_job.activated_at, cron_job.scheduled_jobs_confirmed_until)
+        iterator = croniter(cron_job.schedule, start_time=start_time)
 
         cron_job_runs = []
         now = datetime.now(timezone.utc)  # Create timezone-aware UTC datetime
@@ -138,7 +139,6 @@ class WorkerCronScheduler(Process):
 
     def stop(self):
         self.logger.info("Stopping cron scheduler.")
-        # TODO: Return lock
         if self.lock_id:
             self.logger.info("Releasing scheduler lock...")
             self.dispatcher.release_scheduler_lock(self.worker_name)

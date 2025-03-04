@@ -163,7 +163,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $2
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id, ht.attempt_number, ht.max_retries;
 """
 
 FETCH_TASK_WITH_CONCURRENCY = """
@@ -187,7 +187,7 @@ UPDATE hyrex_task_run as ht
 SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
 FROM next_task
 WHERE ht.id = next_task.id
-RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id;
+RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id, ht.attempt_number, ht.max_retries;
 """
 
 CONDITIONALLY_RETRY_TASK = """
@@ -332,6 +332,15 @@ TRY_TO_CANCEL_TASK = """
     WHERE id = $1 AND status IN ('running', 'queued');
 """
 
+TRY_TO_CANCEL_DURABLE_RUN = """
+    UPDATE hyrex_task_run
+    SET status = CASE 
+                WHEN status = 'running' THEN 'up_for_cancel'::task_run_status
+                WHEN status = 'queued' THEN 'canceled'::task_run_status
+                END
+    WHERE durable_id = $1 AND status IN ('running', 'queued');
+"""
+
 TASK_CANCELED = """
     UPDATE hyrex_task_run
     SET status = 'canceled'
@@ -428,6 +437,28 @@ GET_QUEUES_FOR_PATTERN = """
                         queue_count qc
                    WHERE qc.cnt > 100000) sub
              WHERE rn <= 100000) final_result;"""
+
+GET_TASK_RUNS_BY_DURABLE_ID = """
+    SELECT 
+        tr.id,
+        tr.max_retries,
+        tr.attempt_number,
+        tr.status,
+        tr.queued,
+        tr.started,
+        tr.finished,
+        tres.task_id,
+        tres.created_at,
+        tres.result
+    FROM 
+        hyrex_task_run tr
+    LEFT JOIN 
+        hyrex_task_result tres ON tr.id = tres.task_id
+    WHERE 
+        tr.durable_id = $1
+    ORDER BY 
+        tr.queued DESC
+"""
 
 MARK_LOST_TASKS = """
     SELECT id, task_name, queue, last_heartbeat

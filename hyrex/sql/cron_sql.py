@@ -1,5 +1,7 @@
-# import { CronJobRun } from "../../../HyrexCronScheduler";
-# import { SerializedTaskRequest } from "../../HyrexDispatcher";
+import json
+from typing import Any, Dict, List
+
+from hyrex.schemas import CronJobRun, EnqueueTaskRequest
 
 CREATE_HYREX_CRON_JOB_TABLE = """
 DO $$
@@ -119,19 +121,6 @@ UPDATE_CRON_JOB_CONFIRMATION_TS = """
     SET scheduled_jobs_confirmed_until = now()
     WHERE jobid = $1;
 """
-
-from datetime import datetime
-import json
-from pydantic import BaseModel
-from typing import List, Dict, Any
-
-from hyrex.schemas import EnqueueTaskRequest
-
-
-class CronJobRun(BaseModel):
-    jobid: int
-    command: str
-    schedule_time: datetime
 
 
 def cron_job_runs_to_sql(runs: List[CronJobRun]) -> Dict[str, Any]:
@@ -314,6 +303,7 @@ CREATE_CRON_JOB_FOR_TASK = """
     VALUES ($1, $2, $3, 'TASK')
     ON CONFLICT (jobname) 
     DO UPDATE SET 
+        activated_at = CURRENT_TIMESTAMP,
         schedule = EXCLUDED.schedule,
         command = EXCLUDED.command,
         job_source = 'TASK',
@@ -325,6 +315,7 @@ CREATE_CRON_JOB_FOR_SQL_QUERY = """
     VALUES ($1, $2, $3, $4, 'SYSTEM')
     ON CONFLICT (jobname) 
     DO UPDATE SET 
+        activated_at = CURRENT_TIMESTAMP,
         schedule = EXCLUDED.schedule,
         command = EXCLUDED.command,
         should_backfill = EXCLUDED.should_backfill,

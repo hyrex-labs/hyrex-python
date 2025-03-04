@@ -2,10 +2,10 @@ import collections
 import json
 from typing import Sequence
 
-from hyrex.task import TaskWrapper
+from hyrex.task_wrapper import TaskWrapper
 from hyrex.workflow.workflow_builder_context import (
-    set_current_workflow_builder,
     clear_current_workflow_builder,
+    set_current_workflow_builder,
 )
 
 

@@ -6,12 +6,12 @@ import psycopg  # Added import for database connections
 import pytest
 from pydantic import BaseModel
 
-from hyrex.models import create_tables
-from hyrex.hyrex_app import HyrexApp
-from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.constants import DEFAULT_QUEUE
 from hyrex.dispatcher import get_dispatcher
 from hyrex.dispatcher.postgres_dispatcher import PostgresDispatcher
+from hyrex.hyrex_app import HyrexApp
+from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.models import create_tables
 from hyrex.worker.root_process import run_worker
 
 logging.basicConfig(level=logging.INFO)
@@ -45,8 +45,9 @@ def register_tasks(registry: HyrexRegistry):
 
 def worker_process(db_connection_string):
     import os
+
     from hyrex.env_vars import EnvVars
-    
+
     # Set worker process environment variable
     os.environ[EnvVars.WORKER_PROCESS] = "1"
     os.environ[EnvVars.DATABASE_URL] = db_connection_string

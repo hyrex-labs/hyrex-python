@@ -1,12 +1,13 @@
 from typing import Type
 from uuid import UUID
-from uuid_extensions import uuid7
-from pydantic import BaseModel
 
+from pydantic import BaseModel
+from uuid_extensions import uuid7
+
+from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus, WorkflowRunRequest
-from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.workflow.workflow_builder import DagNode, WorkflowBuilder
 
 

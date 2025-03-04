@@ -19,8 +19,8 @@ from psycopg.types.json import Json
 from pydantic import BaseModel
 
 from hyrex import constants
-from hyrex.env_vars import EnvVars
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
 from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
@@ -74,7 +74,6 @@ class WorkerExecutor(Process):
         self.refresh_queue_duration_averager = TimeSeriesAverager()
         self.dequeue_duration_averager = TimeSeriesAverager()
 
-        self.dispatcher = None
         self.registry: HyrexRegistry = None
         self.register_app = register_app
 
@@ -168,24 +167,21 @@ class WorkerExecutor(Process):
     def attempt_retry(self, task_id: UUID):
         self.dispatcher.attempt_retry(task_id=task_id)
 
-    def reset_or_cancel_task(self, task_id: UUID):
-        self.dispatcher.reset_or_cancel_task(task_id=task_id)
-
     # Notifies root process of current task being processed.
     def update_current_task(self, task_id: UUID):
         self.root_message_queue.put(
             SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
-    def process(self, queue: HyrexQueue):
+    def process(self, queue: HyrexQueue) -> bool:
         """Returns True if a task is found and attempted, False otherwise"""
-        try:
-            task: DequeuedTask | None = self.fetch_task(
-                queue=queue.name, concurrency_limit=queue.concurrency_limit
-            )
-            if not task:
-                return False
+        task: DequeuedTask | None = self.fetch_task(
+            queue=queue.name, concurrency_limit=queue.concurrency_limit
+        )
+        if not task:
+            return False
 
+        try:
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
@@ -200,6 +196,8 @@ class WorkerExecutor(Process):
                     queued=task.queued,
                     started=task.started,
                     executor_id=self.executor_id,
+                    attempt_number=task.attempt_number,
+                    max_retries=task.max_retries,
                 )
             )
 
@@ -311,6 +309,7 @@ class WorkerExecutor(Process):
             self.check_root_process()
 
     def run_round_robin_loop(self):
+        self.update_queue_list()
         last_queue_refresh = time.monotonic()
         no_task_count = 0
 
@@ -324,8 +323,7 @@ class WorkerExecutor(Process):
             ):
                 self.update_queue_list()
                 last_queue_refresh = time.monotonic()
-
-            no_task_count = 0
+                no_task_count = 0
 
             for queue in self.queues:
                 self.check_root_process()
@@ -340,16 +338,6 @@ class WorkerExecutor(Process):
                 # We're not hitting populated queues - pause and refresh queue list.
                 if no_task_count >= 5:
                     break
-
-    # Now done in run() line self.registry.register_with_db()
-    # def register_tasks_with_dispatcher(self):
-    #     """Register all current tasks with dispatcher."""
-    #     for task_wrapper in self.registry.get_task_wrappers():
-    #         self.dispatcher.register_task(
-    #             task_name=task_wrapper.task_identifier,
-    #             cron=task_wrapper.cron,
-    #             source_code=inspect.getsource(task_wrapper.func),
-    #         )
 
     def register_hyrex_app(self):
         self.dispatcher.register_app(self.app_info.model_dump_json())
@@ -379,7 +367,6 @@ class WorkerExecutor(Process):
             queues=self.queues,
             worker_name=self.worker_name,
         )
-        self.registry.set_dispatcher(self.dispatcher)
 
         # Ignore termination signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
