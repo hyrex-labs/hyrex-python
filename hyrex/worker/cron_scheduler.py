@@ -46,9 +46,9 @@ class WorkerCronScheduler(Process):
         self.dispatcher.update_cron_confirmation_timestamp(cron_job.jobid)
 
     def impute_scheduled_cron_job_runs(self, cron_job: CronJob) -> list[CronJobRun]:
-        # Create iterator starting from the last confirmed date
-        # TODO: Should this go from activated_at if it's reactivated?
-        iterator = croniter(cron_job.schedule, cron_job.scheduled_jobs_confirmed_until)
+        # Create iterator starting from the last confirmed date or activation date
+        start_time = max(cron_job.activated_at, cron_job.scheduled_jobs_confirmed_until)
+        iterator = croniter(cron_job.schedule, start_time=start_time)
 
         cron_job_runs = []
         now = datetime.now(timezone.utc)  # Create timezone-aware UTC datetime
