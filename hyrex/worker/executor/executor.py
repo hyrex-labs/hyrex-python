@@ -198,6 +198,7 @@ class WorkerExecutor(Process):
                     executor_id=self.executor_id,
                     attempt_number=task.attempt_number,
                     max_retries=task.max_retries,
+                    workflow_run_id=task.workflow_run_id,
                 )
             )
 
