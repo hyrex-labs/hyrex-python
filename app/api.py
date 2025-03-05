@@ -13,7 +13,7 @@ from .tasks import (
     print_random_number,
     sleepy_task,
 )
-from .workflow import onboard_user
+from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()
 hyrex_logger = logging.getLogger("hyrex")
@@ -82,5 +82,7 @@ async def random_number_task():
 
 @app.get("/onboard-user/")
 async def onboard_user_workflow():
-    onboard_user.send(EmptyContext())
+    onboard_user.send(
+        OnboardUserWorkflowArg(user_email="email@website.com", sign_up_tier="PRO")
+    )
     # onboard_user.send()

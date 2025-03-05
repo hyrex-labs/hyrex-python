@@ -173,3 +173,9 @@ ADVANCE_WORKFLOW_RUN = """
     SET status = 'queued'
     WHERE id IN (SELECT id FROM tasks_ready_to_queue);
 """
+
+GET_WORKFLOW_RUN_ARGS = """
+    SELECT args
+    FROM hyrex_workflow_run
+    WHERE id = $1;
+"""

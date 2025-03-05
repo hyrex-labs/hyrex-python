@@ -432,8 +432,14 @@ class PostgresDispatcher(Dispatcher):
             cur.execute(workflow_sql.ADVANCE_WORKFLOW_RUN, [workflow_run_id])
             return None
 
+    def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
+        with self.transaction() as cur:
+            cur.execute(workflow_sql.GET_WORKFLOW_RUN_ARGS, [workflow_run_id])
+            result = cur.fetchone()
+            return result[0] if result else None
+
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        lock_duration = "5 minutes"
+        lock_duration = "2 minutes"
         with self.transaction() as cur:
             cur.execute(cron_sql.ACQUIRE_SCHEDULER_LOCK, [worker_name, lock_duration])
             result = cur.fetchone()

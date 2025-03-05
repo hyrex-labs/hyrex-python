@@ -203,6 +203,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
+        pass
+
+    @abstractmethod
     def register_cron_sql_query(
         self,
         cron_job_name: str,

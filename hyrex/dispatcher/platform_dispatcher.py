@@ -298,6 +298,9 @@ class PlatformDispatcher(Dispatcher):
     def advance_workflow_run(self, workflow_run_id: UUID):
         pass
 
+    def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
+        pass
+
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         pass
 
