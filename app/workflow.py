@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.tasks import EmptyContext
+from hyrex.hyrex_context import get_hyrex_workflow_args
 from hyrex.hyrex_registry import HyrexRegistry
 
 hy = HyrexRegistry()
@@ -11,6 +11,8 @@ hy = HyrexRegistry()
 
 @hy.task
 def initiate_onboard():
+    args = OnboardUserWorkflowArg.model_validate(get_hyrex_workflow_args())
+    print(args)
     time.sleep(5)
 
 
@@ -52,7 +54,7 @@ class OnboardUserWorkflowArg(BaseModel):
 @hy.workflow(
     queue="onboard-user",
     timeout_seconds=100,
-    workflow_arg_schema=EmptyContext,
+    workflow_arg_schema=OnboardUserWorkflowArg,
 )
 def onboard_user():
     (
