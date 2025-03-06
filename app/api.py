@@ -12,6 +12,7 @@ from .tasks import (
     error_task,
     print_random_number,
     sleepy_task,
+    root_level_task,
 )
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
@@ -78,6 +79,11 @@ async def random_number_task():
     task = print_random_number.send()
     task.wait()
     return task.get_result()
+
+
+@app.get("/root-level-task/")
+async def send_root_level_task():
+    root_level_task.send()
 
 
 @app.get("/onboard-user/")

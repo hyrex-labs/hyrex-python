@@ -49,3 +49,36 @@ def print_random_number():
     print(random_number)
     return {"output": random_number}
     # print(random.random())
+
+
+@hy.task(queue="level3")
+def level_three_task():
+    context = get_hyrex_context()
+    print(f"Level three task: {context}")
+    time.sleep(0.003)
+
+
+@hy.task(queue="level2")
+def level_two_task():
+    context = get_hyrex_context()
+    print(f"Level two task: {context}")
+    time.sleep(0.03)
+
+    num_tasks = 20
+    for _ in range(num_tasks):
+        level_three_task.send()
+
+    return {"tasks_queued": num_tasks}
+
+
+@hy.task
+def root_level_task():
+    context = get_hyrex_context()
+    print(f"Root level task: {context}")
+    time.sleep(0.3)
+
+    num_tasks = 5000
+    for _ in range(num_tasks):
+        level_two_task.send()
+
+    return {"tasks_queued": num_tasks}

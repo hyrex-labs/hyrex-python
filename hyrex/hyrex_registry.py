@@ -143,6 +143,7 @@ class HyrexRegistry:
         timeout_seconds: int | None = None,
         priority: int = constants.DEFAULT_PRIORITY,
         on_error: Callable = None,
+        retry_backoff: Callable[[int], int] = None,
     ) -> TaskWrapper:
         """
         Create task decorator

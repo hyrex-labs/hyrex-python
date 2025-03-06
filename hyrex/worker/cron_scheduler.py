@@ -1,18 +1,14 @@
 import logging
 import os
 import signal
-import threading
-import time
 from datetime import datetime, timezone
-from multiprocessing import Event, Process, Queue
+from multiprocessing import Event, Process
 
 from croniter import croniter
-from pydantic import BaseModel
 
 from hyrex.dispatcher import CronJob, get_dispatcher
 from hyrex.dispatcher.dispatcher import CronJobRun
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.root_messages import CancelTaskMessage
 from hyrex.worker.utils import is_process_alive
 
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 10
@@ -78,6 +74,10 @@ class WorkerCronScheduler(Process):
 
         self.logger.info("Initializing cron scheduler.")
         self.dispatcher = get_dispatcher(worker=True)
+
+        # TODO: Wait until all tasks/workflows are registered before running this process.
+        self.logger.info("Waiting a few seconds to allow cron job updates...")
+        self._stop_event.wait(10)
 
         # Ignore signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)

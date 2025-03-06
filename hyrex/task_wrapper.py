@@ -145,10 +145,11 @@ class TaskWrapper:
         self,
         context=None,
     ) -> DurableTaskRun:
-        self.logger.info(
+        self.logger.debug(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
 
+        # TODO: Improve this arg-checking logic
         # Only perform type checking if we expect a context
         if context is not None and self.context_klass is not None:
             self._check_type(context)
