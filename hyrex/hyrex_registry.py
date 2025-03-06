@@ -115,6 +115,10 @@ class HyrexRegistry:
         task_wrapper = self._task_registry[task_name]
         return task_wrapper.on_error
 
+    def get_retry_backoff(self, task_name: str, attempt_number: int) -> int:
+        task_wrapper = self._task_registry[task_name]
+        return task_wrapper.get_retry_backoff(attempt_number=attempt_number)
+
     def get_task_wrappers(self) -> list[TaskWrapper]:
         return self._task_registry.values()
 
@@ -138,12 +142,12 @@ class HyrexRegistry:
         func: Callable = None,
         *,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-        cron: str = None,
+        cron: str | None = None,
         max_retries: int = 0,
         timeout_seconds: int | None = None,
         priority: int = constants.DEFAULT_PRIORITY,
-        on_error: Callable = None,
-        retry_backoff: Callable[[int], int] = None,
+        on_error: Callable | None = None,
+        retry_backoff: int | Callable[[int], int] | None = None,
     ) -> TaskWrapper:
         """
         Create task decorator
@@ -166,6 +170,7 @@ class HyrexRegistry:
                 task_config=self.task_config.merge(decorated_task_config),
                 dispatcher=self.dispatcher,
                 on_error=on_error,
+                retry_backoff=retry_backoff,
             )
             # Register task within this registry
             self.register_task(task_wrapper=task_wrapper)
