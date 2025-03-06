@@ -71,7 +71,7 @@ def print_hello():
 
 @app.get("/error-task/")
 async def run_error_task():
-    error_task.with_config(max_retries=1).send(EmptyContext())
+    error_task.with_config(max_retries=10).send(EmptyContext())
 
 
 @app.get("/random-number/")

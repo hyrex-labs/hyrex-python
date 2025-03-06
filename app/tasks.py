@@ -37,7 +37,14 @@ def error_handler():
     print(get_hyrex_context())
 
 
-@hy.task(max_retries=3, on_error=error_handler)
+def backup_strategy(attempt_number: int):
+    if attempt_number == 0:
+        return 0
+    else:
+        return attempt_number * 10
+
+
+@hy.task(max_retries=3, on_error=error_handler, retry_backoff=backup_strategy)
 def error_task(context: EmptyContext):
     raise RuntimeError("The task has caused an error!")
 
