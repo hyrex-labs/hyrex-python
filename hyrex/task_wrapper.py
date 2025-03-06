@@ -143,7 +143,7 @@ class TaskWrapper:
     def get_queue(self) -> HyrexQueue | str:
         return self.task_config.queue
 
-    def get_retry_backoff(self, attempt_number: int):
+    def get_retry_backoff(self, attempt_number: int) -> int:
         if self.retry_backoff is None:
             return 0
         elif isinstance(self.retry_backoff, int):
