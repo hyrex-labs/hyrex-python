@@ -164,8 +164,8 @@ class WorkerExecutor(Process):
     def mark_task_failed(self, task_id: UUID):
         self.dispatcher.mark_failed(task_id=task_id)
 
-    def attempt_retry(self, task_id: UUID):
-        self.dispatcher.attempt_retry(task_id=task_id)
+    def retry_task(self, task_id: UUID, backoff_seconds: int):
+        self.dispatcher.attempt_retry(task_id=task_id, backoff_seconds=backoff_seconds)
 
     # Notifies root process of current task being processed.
     def update_current_task(self, task_id: UUID):
@@ -244,7 +244,11 @@ class WorkerExecutor(Process):
                     f"Marking task {task.id} as failed and retrying if applicable."
                 )
                 self.mark_task_failed(task.id)
-                self.attempt_retry(task.id)
+                if task.attempt_number < task.max_retries:
+                    backoff_seconds = self.registry.get_retry_backoff(
+                        task_name=task.name, attempt_number=task.attempt_number
+                    )
+                    self.retry_task(task_id=task.id, backoff_seconds=backoff_seconds)
 
                 on_error = self.registry.get_on_error_handler(task.task_name)
                 if on_error:

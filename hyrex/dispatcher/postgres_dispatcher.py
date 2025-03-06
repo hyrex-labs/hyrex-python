@@ -74,12 +74,19 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.MARK_TASK_FAILED, [task_id])
 
-    def attempt_retry(self, task_id: UUID):
-        with self.transaction() as cur:
-            cur.execute(
-                sql.CONDITIONALLY_RETRY_TASK,
-                [task_id, uuid7()],
-            )
+    def retry_task(self, task_id: UUID, backoff_seconds: int):
+        if backoff_seconds > 0:
+            with self.transaction() as cur:
+                cur.execute(
+                    sql.CREATE_RETRY_TASK_WITH_BACKOFF,
+                    [task_id, uuid7(), backoff_seconds],
+                )
+        else:
+            with self.transaction() as cur:
+                cur.execute(
+                    sql.CREATE_RETRY_TASK,
+                    [task_id, uuid7()],
+                )
 
     def try_to_cancel_task(self, task_id: UUID):
         with self.transaction() as cur:

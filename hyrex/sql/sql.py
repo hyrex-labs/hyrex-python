@@ -190,7 +190,7 @@ WHERE ht.id = next_task.id
 RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id, ht.attempt_number, ht.max_retries;
 """
 
-CONDITIONALLY_RETRY_TASK = """
+CREATE_RETRY_TASK = """
 WITH existing_task AS (
     SELECT
         durable_id,
@@ -208,7 +208,6 @@ WITH existing_task AS (
         workflow_dependencies
     FROM hyrex_task_run
     WHERE id = $1
-      AND attempt_number < max_retries
 )
 INSERT INTO hyrex_task_run (
     id,
@@ -235,6 +234,63 @@ SELECT
     parent_id,
     CURRENT_TIMESTAMP as queued,
     'queued' AS status,
+    task_name,
+    args,
+    queue,
+    attempt_number + 1 AS attempt_number,
+    max_retries,
+    priority,
+    timeout_seconds,
+    idempotency_key,
+    workflow_run_id,
+    workflow_dependencies
+FROM existing_task;
+"""
+
+CREATE_RETRY_TASK_WITH_BACKOFF = """
+WITH existing_task AS (
+    SELECT
+        durable_id,
+        root_id,
+        parent_id,
+        task_name,
+        args,
+        queue,
+        attempt_number,
+        max_retries,
+        priority,
+        timeout_seconds,
+        idempotency_key,
+        workflow_run_id,
+        workflow_dependencies
+    FROM hyrex_task_run
+    WHERE id = $1
+)
+INSERT INTO hyrex_task_run (
+    id,
+    durable_id,
+    root_id,
+    parent_id,
+    scheduled_start,
+    status,
+    task_name,
+    args,
+    queue,
+    attempt_number,
+    max_retries,
+    priority,
+    timeout_seconds,
+    idempotency_key,
+    workflow_run_id,
+    workflow_dependencies
+)
+SELECT
+    $2 AS id,
+    durable_id,
+    root_id,
+    parent_id,
+    $3 AS scheduled_start,
+    'waiting' AS status,
     task_name,
     args,
     queue,
@@ -328,8 +384,9 @@ TRY_TO_CANCEL_TASK = """
     SET status = CASE 
                 WHEN status = 'running' THEN 'up_for_cancel'::task_run_status
                 WHEN status = 'queued' THEN 'canceled'::task_run_status
+                WHEN status = 'waiting' THEN 'canceled'::task_run_status
                 END
-    WHERE id = $1 AND status IN ('running', 'queued');
+    WHERE id = $1 AND status IN ('running', 'queued', 'waiting');
 """
 
 TRY_TO_CANCEL_DURABLE_RUN = """

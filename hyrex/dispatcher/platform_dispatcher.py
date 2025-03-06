@@ -186,7 +186,7 @@ class PlatformDispatcher(Dispatcher):
     def mark_failed(self, task_id: UUID):
         self._update_task_status(task_id, TaskStatus.failed)
 
-    def attempt_retry(self, task_id: UUID):
+    def attempt_retry(self, task_id: UUID, backoff_seconds: int):
         raise NotImplementedError("Retries not yet implemented on Hyrex platform")
 
     # TODO: Implement

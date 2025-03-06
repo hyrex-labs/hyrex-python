@@ -85,7 +85,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def attempt_retry(self, task_id: UUID):
+    def attempt_retry(self, task_id: UUID, backoff_seconds: int):
         pass
 
     @abstractmethod
