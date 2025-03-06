@@ -240,11 +240,10 @@ class WorkerExecutor(Process):
             self.logger.error("Traceback:\n%s", traceback.format_exc())
 
             if "task" in locals():
-                self.logger.error(
-                    f"Marking task {task.id} as failed and retrying if applicable."
-                )
+                self.logger.error(f"Marking task {task.id} as failed.")
                 self.mark_task_failed(task.id)
                 if task.attempt_number < task.max_retries:
+                    self.logger.info("Submitting task for retry...")
                     try:
                         backoff_seconds = self.registry.get_retry_backoff(
                             task_name=task.task_name, attempt_number=task.attempt_number
@@ -260,6 +259,9 @@ class WorkerExecutor(Process):
 
                 on_error = self.registry.get_on_error_handler(task.task_name)
                 if on_error:
+                    self.logger.info(
+                        f"Running on_error handler for task {task.task_name}"
+                    )
                     try:
                         sig = signature(on_error)
                         if len(sig.parameters) == 0:
