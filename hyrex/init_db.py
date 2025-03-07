@@ -1,6 +1,6 @@
 import psycopg
 
-from hyrex.sql import cron_sql, sql, stats_sql, workflow_sql, durability_sql
+from hyrex.sql import cron_sql, durability_sql, sql, stats_sql, workflow_sql
 
 
 def register_cron_sql_query(

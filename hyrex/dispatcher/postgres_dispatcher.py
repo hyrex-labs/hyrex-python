@@ -17,17 +17,9 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (
-    CronJob,
-    CronJobRun,
-    DequeuedTask,
-    EnqueueTaskRequest,
-    TaskResult,
-    TaskRun,
-    TaskStatus,
-    WorkflowRunRequest,
-    WorkflowStatus,
-)
+from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
+                           EnqueueTaskRequest, TaskResult, TaskRun, TaskStatus,
+                           WorkflowRunRequest, WorkflowStatus)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 

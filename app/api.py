@@ -5,15 +5,8 @@ from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .tasks import (
-    EmptyContext,
-    SleepContext,
-    empty_task,
-    error_task,
-    print_random_number,
-    sleepy_task,
-    root_level_task,
-)
+from .tasks import (EmptyContext, SleepContext, empty_task, error_task,
+                    print_random_number, root_level_task, sleepy_task)
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()

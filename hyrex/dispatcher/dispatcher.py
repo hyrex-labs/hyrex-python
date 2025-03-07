@@ -10,15 +10,9 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (
-    CronJob,
-    CronJobRun,
-    DequeuedTask,
-    EnqueueTaskRequest,
-    TaskRun,
-    TaskStatus,
-    WorkflowRunRequest,
-)
+from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
+                           EnqueueTaskRequest, TaskRun, TaskStatus,
+                           WorkflowRunRequest)
 
 
 class Dispatcher(ABC):

@@ -1,13 +1,18 @@
+import multiprocessing as mp
+
+# To ensure consistency between MacOS and Linux
+try:
+    mp.set_start_method("spawn")
+except RuntimeError:
+    # Context already set, which is fine
+    pass
+
 import importlib
-import logging
 import os
 import sys
-from enum import Enum
 from pathlib import Path
-from uuid import UUID
 
 import typer
-from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.env_vars import EnvVars

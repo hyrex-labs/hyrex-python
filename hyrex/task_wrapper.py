@@ -9,13 +9,14 @@ import psycopg
 from pydantic import BaseModel, ValidationError
 from uuid_extensions import uuid7
 
+from hyrex.configs import ConfigPhase, TaskConfig
 from hyrex.dispatcher import Dispatcher
 from hyrex.durable_run import DurableTaskRun
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
-from hyrex.configs import ConfigPhase, TaskConfig
-from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
+from hyrex.workflow.workflow_builder_context import \
+    get_current_workflow_builder
 
 
 def validate_error_handler(handler: Callable) -> None:
