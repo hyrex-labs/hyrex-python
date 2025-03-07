@@ -38,8 +38,8 @@ class WorkerCronScheduler(Process):
         result = self.dispatcher.acquire_scheduler_lock(self.worker_name)
         return result
 
-    def update_cron_confirmation_timestamp_to_now(self, cron_job: CronJob):
-        self.dispatcher.update_cron_confirmation_timestamp(cron_job.jobid)
+    def update_cron_confirmation_timestamp_to_now(self, cron_job_id: int):
+        self.dispatcher.update_cron_job_confirmation_timestamp(cron_job_id)
 
     def impute_scheduled_cron_job_runs(self, cron_job: CronJob) -> list[CronJobRun]:
         # Create iterator starting from the last confirmed date or activation date

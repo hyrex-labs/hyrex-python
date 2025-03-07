@@ -1,9 +1,24 @@
 import psycopg
 
-from hyrex.sql import cron_sql, sql, stats_sql, workflow_sql
+from hyrex.sql import cron_sql, sql, stats_sql, workflow_sql, durability_sql
 
 
-def create_tables(conn_string):
+def register_cron_sql_query(
+    conn: psycopg.Connection,
+    cron_job_name: str,
+    cron_sql_query: str,
+    cron_expr: str,
+    should_backfill: bool,
+) -> None:
+    """Register a new cron job for executing a SQL query on a schedule."""
+    with psycopg.RawCursor(conn) as cur:
+        cur.execute(
+            cron_sql.CREATE_CRON_JOB_FOR_SQL_QUERY,
+            [cron_expr, cron_sql_query, cron_job_name, should_backfill],
+        )
+
+
+def init_postgres_db(conn_string):
     with psycopg.connect(conn_string) as conn:
         with conn.cursor() as cur:
             cur.execute(sql.CREATE_HYREX_APP_TABLE)
@@ -20,3 +35,11 @@ def create_tables(conn_string):
             cur.execute(workflow_sql.CREATE_WORKFLOW_TABLE)
             cur.execute(workflow_sql.CREATE_WORKFLOW_RUN_TABLE)
         conn.commit()
+
+        register_cron_sql_query(
+            conn,
+            cron_job_name="QueueWaitingTasks",
+            cron_expr="* * * * *",
+            cron_sql_query=durability_sql.QUEUE_WAITING_TASKS,
+            should_backfill=False,
+        )

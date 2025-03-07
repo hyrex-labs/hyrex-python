@@ -11,7 +11,7 @@ from uuid_extensions import uuid7
 
 from hyrex import constants
 from hyrex.env_vars import EnvVars
-from hyrex.models import create_tables
+from hyrex.init_db import init_postgres_db
 from hyrex.worker.logging import LogLevel
 from hyrex.worker.root_process import WorkerRootProcess
 
@@ -30,7 +30,7 @@ def init_db(
     Creates the tables for hyrex tasks/workers in the given Postgres database
     """
     if database_string:
-        create_tables(database_string)
+        init_postgres_db(database_string)
         typer.echo("Hyrex tables initialized.")
         return
 
