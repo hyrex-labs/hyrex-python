@@ -43,3 +43,41 @@ def init_postgres_db(conn_string):
             cron_sql_query=durability_sql.QUEUE_WAITING_TASKS,
             should_backfill=False,
         )
+
+        register_cron_sql_query(
+            conn,
+            cron_job_name="FillHistoryTaskCountsTable",
+            cron_expr="* * * * *",
+            cron_sql_query=stats_sql.FILL_HISTORICAL_TASK_STATUS_COUNTS_TABLE,
+            should_backfill=False,
+        )
+
+        register_cron_sql_query(
+            conn,
+            cron_job_name="SetOrphanedRunningTaskToLost",
+            cron_expr="* * * * *",
+            cron_sql_query=durability_sql.SET_ORPHANED_TASK_EXECUTION_TO_LOST_AND_RETRY,
+            should_backfill=False,
+        )
+
+        register_cron_sql_query(
+            conn,
+            cron_job_name="SetExecutorToLostIfNoHeartbeat",
+            cron_expr="* * * * *",
+            cron_sql_query=durability_sql.SET_EXECUTOR_TO_LOST_IF_NO_HEARTBEAT,
+            should_backfill=False,
+        )
+
+        # await this.registerCronSQLQuery({
+        #     cronJobName: "SetOrphanedRunningTaskToLost",
+        #     cronExpr: "* * * * *",
+        #     cronSqlQuery: durabilitySQL.SET_ORPHANED_TASK_EXECUTION_TO_LOST_AND_RETRY,
+        #     shouldBackfill: false
+        # })
+
+        # await this.registerCronSQLQuery({
+        #     cronJobName: "SetExecutorToLostIfNoHeartbeat",
+        #     cronExpr: "* * * * *",
+        #     cronSqlQuery: durabilitySQL.SET_EXECUTOR_TO_LOST_IF_NO_HEARTBEAT,
+        #     shouldBackfill: false
+        # })
