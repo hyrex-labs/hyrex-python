@@ -37,7 +37,14 @@ def error_handler():
     print(get_hyrex_context())
 
 
-@hy.task(max_retries=3, on_error=error_handler)
+def backup_strategy(attempt_number: int):
+    if attempt_number == 0:
+        return 0
+    else:
+        return attempt_number * 10
+
+
+@hy.task(max_retries=3, on_error=error_handler, retry_backoff=backup_strategy)
 def error_task(context: EmptyContext):
     raise RuntimeError("The task has caused an error!")
 
@@ -49,3 +56,36 @@ def print_random_number():
     print(random_number)
     return {"output": random_number}
     # print(random.random())
+
+
+@hy.task(queue="level3")
+def level_three_task():
+    context = get_hyrex_context()
+    print(f"Level three task: {context}")
+    time.sleep(0.003)
+
+
+@hy.task(queue="level2")
+def level_two_task():
+    context = get_hyrex_context()
+    print(f"Level two task: {context}")
+    time.sleep(0.03)
+
+    num_tasks = 20
+    for _ in range(num_tasks):
+        level_three_task.send()
+
+    return {"tasks_queued": num_tasks}
+
+
+@hy.task
+def root_level_task():
+    context = get_hyrex_context()
+    print(f"Root level task: {context}")
+    time.sleep(0.3)
+
+    num_tasks = 5000
+    for _ in range(num_tasks):
+        level_two_task.send()
+
+    return {"tasks_queued": num_tasks}

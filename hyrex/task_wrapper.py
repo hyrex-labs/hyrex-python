@@ -47,6 +47,7 @@ class TaskWrapper:
         cron: str | None,
         task_config: TaskConfig,
         on_error: Callable = None,
+        retry_backoff: int | Callable[[int], int] | None = None,
     ):
         self.logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class TaskWrapper:
 
         self.dispatcher = dispatcher
         self.on_error = on_error
+        self.retry_backoff = retry_backoff
 
         if self.on_error:
             validate_error_handler(self.on_error)
@@ -141,14 +143,27 @@ class TaskWrapper:
     def get_queue(self) -> HyrexQueue | str:
         return self.task_config.queue
 
+    def get_retry_backoff(self, attempt_number: int) -> int:
+        if self.retry_backoff is None:
+            return 0
+        elif isinstance(self.retry_backoff, int):
+            return self.retry_backoff
+        elif callable(self.retry_backoff):
+            return self.retry_backoff(attempt_number)
+        else:
+            raise RuntimeError(
+                f"Unsupported type for retry_backoff in task {self.task_identifier}"
+            )
+
     def send(
         self,
         context=None,
     ) -> DurableTaskRun:
-        self.logger.info(
+        self.logger.debug(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
 
+        # TODO: Improve this arg-checking logic
         # Only perform type checking if we expect a context
         if context is not None and self.context_klass is not None:
             self._check_type(context)

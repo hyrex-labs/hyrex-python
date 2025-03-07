@@ -3,7 +3,7 @@ import random
 import threading
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from queue import Empty, Queue
 from typing import List, Type
 from uuid import UUID
@@ -74,12 +74,22 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.MARK_TASK_FAILED, [task_id])
 
-    def attempt_retry(self, task_id: UUID):
-        with self.transaction() as cur:
-            cur.execute(
-                sql.CONDITIONALLY_RETRY_TASK,
-                [task_id, uuid7()],
+    def retry_task(self, task_id: UUID, backoff_seconds: int):
+        if backoff_seconds > 0:
+            scheduled_start = datetime.now(timezone.utc) + timedelta(
+                seconds=backoff_seconds
             )
+            with self.transaction() as cur:
+                cur.execute(
+                    sql.CREATE_RETRY_TASK_WITH_BACKOFF,
+                    [task_id, uuid7(), scheduled_start],
+                )
+        else:
+            with self.transaction() as cur:
+                cur.execute(
+                    sql.CREATE_RETRY_TASK,
+                    [task_id, uuid7()],
+                )
 
     def try_to_cancel_task(self, task_id: UUID):
         with self.transaction() as cur:
