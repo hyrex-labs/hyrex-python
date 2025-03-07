@@ -8,12 +8,7 @@ from .platform_dispatcher import PlatformDispatcher
 from .postgres_dispatcher import PostgresDispatcher
 from .postgres_lite_dispatcher import PostgresLiteDispatcher
 
-
-class DispatcherType(StrEnum):
-    POSTGRES = "postgres"
-    POSTGRES_LITE = "postgres_lite"
-    PLATFORM = "platform"
-
+# TODO: Clean up logic and decide if PostgresLiteDispatcher should be sunsetted.
 
 # Single global dispatcher instance
 _global_dispatcher: Dispatcher | None = None
@@ -50,11 +45,12 @@ def get_dispatcher(worker: bool = False) -> Dispatcher:
     if api_key:
         _global_dispatcher = PlatformDispatcher(api_key=api_key)
     elif conn_string:
-        if worker:
-            # Single-threaded dispatcher simplifies worker
-            _global_dispatcher = PostgresLiteDispatcher(conn_string=conn_string)
-        else:
-            _global_dispatcher = PostgresDispatcher(conn_string=conn_string)
+        _global_dispatcher = PostgresDispatcher(conn_string=conn_string)
+        # if worker:
+        #     # Single-threaded dispatcher simplifies worker
+        #     _global_dispatcher = PostgresLiteDispatcher(conn_string=conn_string)
+        # else:
+        #     _global_dispatcher = PostgresDispatcher(conn_string=conn_string)
     else:
         raise ValueError(
             f"Hyrex requires either {EnvVars.DATABASE_URL} or {EnvVars.API_KEY} to be set."
