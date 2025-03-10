@@ -1,4 +1,6 @@
+from datetime import datetime
 import multiprocessing as mp
+import tempfile
 
 # To ensure consistency between MacOS and Linux
 try:
@@ -7,6 +9,9 @@ except RuntimeError:
     # Context already set, which is fine
     pass
 
+
+import cProfile
+import pstats
 import importlib
 import os
 import sys
@@ -56,6 +61,32 @@ def validate_app_module_path(app_module_path):
         sys.exit(1)
 
 
+# Profile a specific function
+def profile_function(func, *args, **kwargs):
+    profiler = cProfile.Profile()
+    profiler.enable()
+    result = func(*args, **kwargs)
+    profiler.disable()
+
+    # Create a temporary file with a timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    profile_dir = tempfile.gettempdir()  # Gets the system temp directory
+    profile_path = os.path.join(profile_dir, f"hyrex_profile_{timestamp}.prof")
+
+    # Save stats to the file
+    stats = pstats.Stats(profiler)
+    stats.dump_stats(profile_path)
+
+    # Also print the top 20 time-consuming calls to console
+    stats.sort_stats("cumulative")
+    stats.print_stats(20)
+
+    # Print the file path for reference
+    print(f"\nProfile data saved to: {profile_path}")
+
+    return result
+
+
 @cli.command()
 def run_worker(
     app_module_path: str = typer.Argument(..., help="Module path to the Hyrex app"),
@@ -77,6 +108,7 @@ def run_worker(
         show_default=True,
         show_choices=True,
     ),
+    profiling: bool = False,
 ):
     """
     Run a Hyrex worker for the specified app module path
@@ -100,7 +132,11 @@ def run_worker(
             queue_pattern=queue_pattern,
             num_processes=num_processes,
         )
-        worker_root.run()
+
+        if profiling:
+            profile_function(worker_root.run)  # Pass the function, not the result
+        else:
+            worker_root.run()
 
     except Exception as e:
         typer.echo(f"Error running worker: {e}")

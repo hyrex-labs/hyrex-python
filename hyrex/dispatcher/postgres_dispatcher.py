@@ -17,9 +17,17 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskResult, TaskRun, TaskStatus,
-                           WorkflowRunRequest, WorkflowStatus)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskResult,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 
@@ -158,38 +166,42 @@ class PostgresDispatcher(Dispatcher):
     def _batch_enqueue(self):
         tasks = []
         last_flush_time = time.monotonic()
+
         while True:
-            time_left = self.flush_interval - (time.monotonic() - last_flush_time)
-            if time_left <= 0:
-                # Flush if the flush interval has passed
-                if tasks:
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                last_flush_time = time.monotonic()
-                continue
-
+            # Use a longer timeout and bulk collect tasks
             try:
-                # Wait for a task or until the timeout expires
-                task = self.local_queue.get(timeout=time_left)
-                if task is None:
-                    # Stop sequence initiated
+                # Collect as many tasks as possible with one lock acquisition
+                task = self.local_queue.get(timeout=self.flush_interval)
+                if task is None:  # Stop signal
                     break
+
                 tasks.append(task)
-                if len(tasks) >= self.batch_size:
-                    # Flush if batch size is reached
-                    self._enqueue_tasks(tasks)
-                    tasks = []
-                    last_flush_time = time.monotonic()
+                # Drain queue without blocking (significantly reduces lock contention)
+                while len(tasks) < self.batch_size:
+                    try:
+                        task = self.local_queue.get_nowait()
+                        if task is None:
+                            break
+                        tasks.append(task)
+                    except Empty:
+                        break
+
+                # Check if we should flush based on time or batch size
+                current_time = time.monotonic()
+                if (current_time - last_flush_time >= self.flush_interval) or len(
+                    tasks
+                ) >= self.batch_size:
+                    if tasks:
+                        self._enqueue_tasks(tasks)
+                        tasks = []
+                    last_flush_time = current_time
+
             except Empty:
-                # No task received within the timeout
+                # Flush on timeout if we have tasks
                 if tasks:
                     self._enqueue_tasks(tasks)
                     tasks = []
                 last_flush_time = time.monotonic()
-
-        # Flush any remaining tasks when stopping
-        if tasks:
-            self._enqueue_tasks(tasks)
 
     def _enqueue_tasks(self, tasks: List[EnqueueTaskRequest]):
         """
