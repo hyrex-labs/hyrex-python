@@ -23,16 +23,14 @@ from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
 from hyrex.worker.s3_logs import write_task_logs_to_s3
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 
 
 def generate_executor_name():
@@ -131,19 +129,12 @@ class WorkerExecutor(Process):
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.registry.get_task(task.task_name)
 
-        # Prepare context if needed, otherwise None
-        context = (
-            task_wrapper.context_klass(**task.args)
-            if task_wrapper.context_klass is not None
-            else None
-        )
-
-        # Execute task (async_call handles None context appropriately)
+        # Execute task with unpacked arguments
         if self.logs_s3_bucket:
             async with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
-                result = await task_wrapper.async_call(context)
+                result = await task_wrapper.async_call(**task.args)
         else:
-            result = await task_wrapper.async_call(context)
+            result = await task_wrapper.async_call(**task.args)
 
         return result
 

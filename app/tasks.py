@@ -32,6 +32,12 @@ def empty_task():
     print("Task complete.")
 
 
+@hy.task
+def spawn_empty_tasks(num: int):
+    for _ in range(num):
+        empty_task.send()
+
+
 def error_handler():
     print("It's working a bit!")
     print(get_hyrex_context())
