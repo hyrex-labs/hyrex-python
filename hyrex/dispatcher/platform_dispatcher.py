@@ -11,9 +11,15 @@ from pydantic import BaseModel
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskRun, TaskStatus,
-                           WorkflowRunRequest)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -299,4 +305,7 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def try_to_cancel_durable_run(self, durable_id: UUID):
+        pass
+
+    def update_executor_queues(self, executor_id: UUID, queues: list[str]):
         pass
