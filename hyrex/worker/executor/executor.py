@@ -94,7 +94,8 @@ class WorkerExecutor(Process):
             self.postgres_queue_pattern
         )
         end = time.perf_counter()
-        self.refresh_queue_duration_averager.submit(end - start)
+        # Milliseconds
+        self.refresh_queue_duration_averager.submit((end - start) * 1000)
         self.num_distinct_queues_averager.submit(len(queue_names))
 
         self.logger.debug(f"Queues found: {queue_names}")
@@ -155,7 +156,8 @@ class WorkerExecutor(Process):
             concurrency_limit=concurrency_limit,
         )
         end = time.perf_counter()
-        self.dequeue_duration_averager.submit(end - start)
+        # Milliseconds
+        self.dequeue_duration_averager.submit((end - start) * 1000)
         return dequeued_task
 
     def mark_task_success(self, task_id: UUID):
