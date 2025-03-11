@@ -1,7 +1,7 @@
 # Default queue for enqueued tasks
 DEFAULT_QUEUE = "default"
 # Default task priority
-DEFAULT_PRIORITY = 10
+DEFAULT_PRIORITY = 5
 # Default for executors pulling tasks
 ANY_QUEUE = "*"
 # Default # of executors when running worker via CLI

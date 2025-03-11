@@ -17,9 +17,17 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskResult, TaskRun, TaskStatus,
-                           WorkflowRunRequest, WorkflowStatus)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskResult,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 
@@ -568,3 +576,7 @@ class PostgresDispatcher(Dispatcher):
     def try_to_cancel_durable_run(self, durable_id: UUID):
         with self.transaction() as cur:
             cur.execute(sql.TRY_TO_CANCEL_DURABLE_RUN, [durable_id])
+
+    def update_executor_queues(self, executor_id: UUID, queues: list[str]):
+        with self.transaction() as cur:
+            cur.execute(sql.UPDATE_EXECUTOR_QUEUES, [executor_id, queues])
