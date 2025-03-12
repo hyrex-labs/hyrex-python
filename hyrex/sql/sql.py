@@ -55,6 +55,11 @@ CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued
 CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_running
     ON hyrex_task_run (queue)
     WHERE (status = 'running');
+
+-- Unique index for task_name + idempotency_key
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_task_idempotency 
+ON hyrex_task_run (task_name, idempotency_key) 
+WHERE idempotency_key IS NOT NULL;
 """
 
 CREATE_HYREX_TASK_TABLE = """
