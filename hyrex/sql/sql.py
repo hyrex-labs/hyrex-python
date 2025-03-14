@@ -154,6 +154,32 @@ WHERE ht.id = next_task.id
 RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue, ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started, ht.workflow_run_id, ht.attempt_number, ht.max_retries;
 """
 
+
+# TODO: Consider this alternative:
+# FETCH_TASK_WITH_CONCURRENCY = """
+# WITH current_running AS (
+#     SELECT COUNT(*) AS count FROM hyrex_task_run WHERE queue = $1 AND status = 'running'
+# ),
+# next_task AS (
+#     SELECT id
+#     FROM hyrex_task_run, current_running
+#     WHERE
+#         queue = $1
+#         AND status = 'queued'
+#         AND task_name = ANY($4)
+#         AND current_running.count < $2
+#     ORDER BY priority ASC, queued
+#     FOR UPDATE SKIP LOCKED
+#     LIMIT 1
+# )
+# UPDATE hyrex_task_run as ht
+# SET status = 'running', started = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP, executor_id = $3
+# FROM next_task
+# WHERE ht.id = next_task.id
+# RETURNING ht.id, ht.durable_id, ht.root_id, ht.parent_id, ht.task_name, ht.args, ht.queue,
+#           ht.priority, ht.timeout_seconds, ht.scheduled_start, ht.queued, ht.started,
+#           ht.workflow_run_id, ht.attempt_number, ht.max_retries;
+# """
 FETCH_TASK_WITH_CONCURRENCY = """
 WITH lock_result AS (
     SELECT pg_try_advisory_xact_lock(hashtext($1)) AS lock_acquired
