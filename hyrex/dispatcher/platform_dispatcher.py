@@ -24,11 +24,13 @@ from hyrex.schemas import (
 
 class PlatformDispatcher(Dispatcher):
 
-    HYREX_PLATFORM_URL = "https://platform-dev.hyrex.io"
+    # TODO: Update with correct URL and paths
+    # HYREX_PLATFORM_URL = "https://platform-dev.hyrex.io"
+    HYREX_PLATFORM_URL = "http://localhost:8000"
+    ENQUEUE_TASK_PATH = "/enqueue"
     DEQUEUE_TASK_PATH = "/connect/dequeue-task"
     GET_STATUS_PATH = "/connect/get-task-status"
     UPDATE_STATUS_PATH = "/connect/update-task-status"
-    ENQUEUE_TASK_PATH = "/connect/enqueue-task"
 
     def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
         super().__init__()
@@ -87,28 +89,16 @@ class PlatformDispatcher(Dispatcher):
         if tasks:
             self._enqueue_tasks(tasks)
 
-    # TODO: Add in all task fields once platform supports them
     def _enqueue_tasks(self, tasks: list[EnqueueTaskRequest]):
         enqueue_url = f"{self.HYREX_PLATFORM_URL}{self.ENQUEUE_TASK_PATH}"
         headers = {
-            "x-project-api-key": self.api_key,
+            "X-API-Key": self.api_key,
         }
-        data = {
-            "tasks": [
-                {
-                    "id": str(task.id),
-                    # "root_id": str(task.root_id),
-                    "task_name": task.task_name,
-                    "queue": task.queue,
-                    "args": task.args,
-                    "max_retries": task.max_retries,
-                    # "priority": task.priority,
-                }
-                for task in tasks
-            ]
-        }
+
+        task_list_json = [task.model_dump(mode="json") for task in tasks]
+
         try:
-            response = requests.post(enqueue_url, headers=headers, json=data)
+            response = requests.post(enqueue_url, headers=headers, json=task_list_json)
             if response.status_code != 200:
                 self.logger.error(f"Error enqueuing task: {response.status_code}")
                 self.logger.error(f"Response body: {response.text}")
@@ -308,4 +298,10 @@ class PlatformDispatcher(Dispatcher):
         pass
 
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
+        pass
+
+    def save_result(self, task_id: UUID, result: str):
+        pass
+
+    def get_result(self, task_id: UUID) -> dict:
         pass
