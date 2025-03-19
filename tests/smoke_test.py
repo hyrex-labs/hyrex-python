@@ -11,7 +11,7 @@ from hyrex.dispatcher import get_dispatcher
 from hyrex.dispatcher.postgres_dispatcher import PostgresDispatcher
 from hyrex.hyrex_app import HyrexApp
 from hyrex.hyrex_registry import HyrexRegistry
-from hyrex.models import create_tables
+from hyrex.init_db import create_tables
 from hyrex.worker.root_process import run_worker
 
 logging.basicConfig(level=logging.INFO)
@@ -51,13 +51,13 @@ def worker_process(db_connection_string):
     # Set worker process environment variable
     os.environ[EnvVars.WORKER_PROCESS] = "1"
     os.environ[EnvVars.DATABASE_URL] = db_connection_string
-    
+
     # Create a HyrexApp for the worker
     app = HyrexApp(app_name="hyrex-smoke-test")
     registry = HyrexRegistry(queue=DEFAULT_QUEUE)
     register_tasks(registry)
     app.add_registry(registry)
-    
+
     # Run the worker
     run_worker(app_name="hyrex-smoke-test", dispatcher_type="postgres")
 
@@ -111,12 +111,14 @@ async def test_hyrex(db_connection_string):
     create_tables(db_connection_string)
 
     # Create a dispatcher for sending tasks
-    dispatcher = PostgresDispatcher(conn_string=db_connection_string, app_name="hyrex-smoke-test")
-    
+    dispatcher = PostgresDispatcher(
+        conn_string=db_connection_string, app_name="hyrex-smoke-test"
+    )
+
     # Create a registry with the dispatcher
     registry = HyrexRegistry(queue=DEFAULT_QUEUE)
     registry.set_dispatcher(dispatcher)
-    
+
     # Register tasks
     empty_task, error_task, number_task = register_tasks(registry)
 
