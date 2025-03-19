@@ -3,7 +3,7 @@ import logging
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from typing import Any, Callable, Generic, ParamSpec, TypeVar, get_type_hints, overload
 
 import psycopg
 from pydantic import BaseModel, ValidationError
@@ -15,8 +15,7 @@ from hyrex.durable_run import DurableTaskRun
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
-from hyrex.workflow.workflow_builder_context import \
-    get_current_workflow_builder
+from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
 
 def validate_error_handler(handler: Callable) -> None:
@@ -39,11 +38,33 @@ def validate_error_handler(handler: Callable) -> None:
             )
 
 
-class TaskWrapper:
+P = ParamSpec("P")  # Captures the parameter specification of the wrapped function
+R = TypeVar("R")  # Captures the return type of the wrapped function
+
+
+class TaskWrapper(Generic[P, R]):
+    class ParamInfo(BaseModel):
+        """Pydantic model to store parameter information"""
+
+        type_hint: Any
+        default: Any = None
+        has_default: bool = False
+
+        def __repr__(self):
+            type_name = (
+                self.type_hint.__name__
+                if hasattr(self.type_hint, "__name__")
+                else str(self.type_hint)
+            )
+            return f"ParamInfo(type_hint={type_name}, default={self.default}, has_default={self.has_default})"
+
+        class Config:
+            arbitrary_types_allowed = True  # Allow any Python type in type_hint field
+
     def __init__(
         self,
         task_identifier: str,
-        func: Callable,
+        func: Callable[P, R],
         dispatcher: Dispatcher,
         cron: str | None,
         task_config: TaskConfig,
@@ -69,51 +90,33 @@ class TaskWrapper:
         if self.on_error:
             validate_error_handler(self.on_error)
 
-        # Check if function has arguments
-        if self.signature.parameters:
-            try:
-                # Get the first parameter
-                param_name = next(iter(self.signature.parameters))
+        # Track the parameter names and their type hints for validation
+        # Enforce that all parameters have type hints
+        self.param_info = {}
+        for param_name, param in self.signature.parameters.items():
+            # Check if type hint exists for this parameter
+            if param_name not in self.type_hints:
+                raise TypeError(
+                    f"Hyrex expects all task arguments to have type hints. Argument '{param_name}' in task '{task_identifier}' has no type hint."
+                )
 
-                # Check if type hint exists
-                if param_name not in self.type_hints:
-                    raise TypeError(
-                        f"Hyrex expects all task arguments to have type hints. Argument '{param_name}' has no type hint."
-                    )
+            # Create a Pydantic model instance for this parameter
+            self.param_info[param_name] = self.ParamInfo(
+                type_hint=self.type_hints.get(param_name),
+                default=param.default if param.default is not param.empty else None,
+                has_default=param.default is not param.empty,
+            )
 
-                self.context_klass = self.type_hints.get(param_name)
-
-                # Check if it's a Pydantic model
-                if self.context_klass is not None and not (
-                    hasattr(self.context_klass, "model_validate")
-                    or hasattr(self.context_klass, "parse_obj")
-                ):
-                    raise TypeError(
-                        f"Hyrex expects task arguments to be Pydantic models. {self.context_klass.__name__} is not a valid Pydantic model."
-                    )
-            except StopIteration:
-                self.context_klass = None
-        else:
-            self.context_klass = None
-
-    def get_arg_schema(self):
-        return self.context_klass
-
-    async def async_call(self, context=None):
+    async def async_call(self, **kwargs):
         self.logger.info(f"Executing task {self.func.__name__}.")
 
-        if context is not None and self.context_klass is not None:
-            self._check_type(context)
-            if asyncio.iscoroutinefunction(self.func):
-                return await self.func(context)
-            else:
-                return self.func(context)
+        # Validate kwargs against expected parameters
+        validated_kwargs = self._validate_kwargs(kwargs)
+
+        if asyncio.iscoroutinefunction(self.func):
+            return await self.func(**validated_kwargs)
         else:
-            # No arguments
-            if asyncio.iscoroutinefunction(self.func):
-                return await self.func()
-            else:
-                return self.func()
+            return self.func(**validated_kwargs)
 
     def with_config(
         self,
@@ -138,6 +141,7 @@ class TaskWrapper:
             cron=self.cron,
             task_config=self.task_config.merge(new_task_config),
             on_error=self.on_error,
+            retry_backoff=self.retry_backoff,
         )
         return new_wrapper
 
@@ -156,26 +160,18 @@ class TaskWrapper:
                 f"Unsupported type for retry_backoff in task {self.task_identifier}"
             )
 
-    def send(
-        self,
-        context=None,
-    ) -> DurableTaskRun:
+    def send(self, *args: P.args, **kwargs: P.kwargs) -> DurableTaskRun:
+        """
+        Send this task to the Hyrex queue with the provided parameters.
+
+        This method accepts the same parameters as the wrapped function.
+        """
         self.logger.debug(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
 
-        # TODO: Improve this arg-checking logic
-        # Only perform type checking if we expect a context
-        if context is not None and self.context_klass is not None:
-            self._check_type(context)
-            args = context.model_dump() if hasattr(context, "model_dump") else {}
-        elif context is not None and self.context_klass is None:
-            # Task was defined with no arguments but context was provided
-            raise TypeError(
-                f"Task {self.task_identifier} was defined with no arguments, but arguments were provided."
-            )
-        else:
-            args = {}
+        # Validate the provided kwargs against our function signature
+        validated_kwargs = self._validate_kwargs(kwargs)
 
         current_context = get_hyrex_context()
 
@@ -187,7 +183,7 @@ class TaskWrapper:
             parent_id=current_context.task_id if current_context else None,
             task_name=self.task_identifier,
             queue=self.task_config.get_queue_name(),
-            args=args,
+            args=validated_kwargs,  # Pass the validated kwargs directly
             max_retries=self.task_config.max_retries,
             timeout_seconds=self.task_config.timeout_seconds,
             priority=self.task_config.priority,
@@ -205,27 +201,93 @@ class TaskWrapper:
             dispatcher=self.dispatcher,
         )
 
-    def _check_type(self, context):
-        if self.context_klass is None:
-            return
+    def _validate_kwargs(self, kwargs):
+        """
+        Validate that the provided kwargs match the function signature.
+        Apply type coercion if possible, otherwise raise appropriate errors.
+        """
+        validated_kwargs = {}
 
-        try:
-            if isinstance(context, dict):
-                validated_arg = self.context_klass.parse_obj(context)
-            elif hasattr(self.context_klass, "model_validate"):
-                validated_arg = self.context_klass.model_validate(context)
+        # Check for missing required arguments
+        for param_name, info in self.param_info.items():
+            if param_name not in kwargs and not info.has_default:
+                raise TypeError(
+                    f"Missing required argument '{param_name}' for task '{self.task_identifier}'"
+                )
+
+        # Process provided arguments
+        for param_name, value in kwargs.items():
+            if param_name not in self.param_info:
+                raise TypeError(
+                    f"Unexpected argument '{param_name}' for task '{self.task_identifier}'"
+                )
+
+            param_type = self.param_info[param_name].type_hint
+
+            # If we have a type hint, try to validate/convert the value
+            if param_type is not None:
+                try:
+                    # Handle Pydantic models for backward compatibility
+                    if hasattr(param_type, "model_validate"):
+                        validated_kwargs[param_name] = param_type.model_validate(value)
+                    elif hasattr(param_type, "parse_obj"):
+                        validated_kwargs[param_name] = param_type.parse_obj(value)
+                    # For primitive types, try basic conversion
+                    elif param_type in (int, float, str, bool) and not isinstance(
+                        value, param_type
+                    ):
+                        try:
+                            validated_kwargs[param_name] = param_type(value)
+                        except (ValueError, TypeError):
+                            raise TypeError(
+                                f"Cannot convert argument '{param_name}' value '{value}' to expected type {param_type.__name__}"
+                            )
+                    else:
+                        # For other types, just pass the value as is
+                        validated_kwargs[param_name] = value
+                except Exception as e:
+                    raise TypeError(
+                        f"Validation error for argument '{param_name}': {str(e)}"
+                    )
             else:
-                # If not a Pydantic model, assume it's the correct type
-                return
-        except ValidationError as e:
-            raise TypeError(
-                f"Invalid argument type. Expected {self.context_klass.__name__}. Error: {e}"
-            )
+                # No type hint, just use the value as is
+                validated_kwargs[param_name] = value
+
+        # Add default values for missing arguments
+        for param_name, info in self.param_info.items():
+            if param_name not in kwargs and info.has_default:
+                validated_kwargs[param_name] = info.default
+
+        return validated_kwargs
+
+    def get_arg_schema(self):
+        """
+        Return a schema describing the expected arguments for this task.
+        This is useful for documentation and UI generation.
+        """
+        schema = {}
+        for param_name, info in self.param_info.items():
+            param_type = info.type_hint
+            param_schema = {
+                "required": not info.has_default,
+                "type": param_type.__name__ if param_type else "any",
+            }
+
+            if info.has_default and info.default is not None:
+                param_schema["default"] = str(info.default)
+
+            # For Pydantic models, include their schema if available
+            if param_type and hasattr(param_type, "model_json_schema"):
+                param_schema["schema"] = param_type.model_json_schema()
+
+            schema[param_name] = param_schema
+
+        return schema
 
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs):
         # Simply pass through all arguments to the original function
         return self.func(*args, **kwargs)
 

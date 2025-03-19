@@ -331,7 +331,7 @@ class PostgresDispatcher(Dispatcher):
     def register_task(
         self,
         task_name: str,
-        arg_schema: Type[BaseModel] | None,
+        arg_schema: dict,
         default_config: dict,
         cron: str = None,
         source_code: str = None,
@@ -341,7 +341,7 @@ class PostgresDispatcher(Dispatcher):
                 sql.UPSERT_TASK,
                 [
                     task_name,
-                    Json(arg_schema.model_json_schema()) if arg_schema else None,
+                    Json(arg_schema),
                     Json(default_config),
                     cron,
                     source_code,

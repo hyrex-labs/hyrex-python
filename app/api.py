@@ -5,8 +5,16 @@ from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .tasks import (EmptyContext, SleepContext, empty_task, error_task,
-                    print_random_number, root_level_task, sleepy_task)
+from .tasks import (
+    EmptyContext,
+    SleepContext,
+    empty_task,
+    error_task,
+    print_random_number,
+    root_level_task,
+    sleepy_task,
+    spawn_empty_tasks,
+)
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()
@@ -43,6 +51,12 @@ async def generate_tasks(num_tasks: int):
 @app.get("/empty-task/")
 async def run_empty_task():
     empty_task.send()
+
+
+@app.get("/spawn-empty-tasks/")
+async def send_empty_tasks():
+    # Test out type hints
+    spawn_empty_tasks.send(num=50)
 
 
 @app.get("/sleepy-task/")

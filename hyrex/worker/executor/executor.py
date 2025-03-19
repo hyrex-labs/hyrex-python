@@ -130,19 +130,12 @@ class WorkerExecutor(Process):
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.registry.get_task(task.task_name)
 
-        # Prepare context if needed, otherwise None
-        context = (
-            task_wrapper.context_klass(**task.args)
-            if task_wrapper.context_klass is not None
-            else None
-        )
-
-        # Execute task (async_call handles None context appropriately)
+        # Execute task with unpacked arguments
         if self.logs_s3_bucket:
             async with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
-                result = await task_wrapper.async_call(context)
+                result = await task_wrapper.async_call(**task.args)
         else:
-            result = await task_wrapper.async_call(context)
+            result = await task_wrapper.async_call(**task.args)
 
         return result
 
