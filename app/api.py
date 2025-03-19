@@ -55,7 +55,8 @@ async def run_empty_task():
 
 @app.get("/spawn-empty-tasks/")
 async def send_empty_tasks():
-    spawn_empty_tasks.send()
+    # Test out type hints
+    spawn_empty_tasks.send(num=50)
 
 
 @app.get("/sleepy-task/")

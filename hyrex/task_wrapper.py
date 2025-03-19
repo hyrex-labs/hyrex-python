@@ -3,7 +3,7 @@ import logging
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from typing import Any, Callable, Generic, ParamSpec, TypeVar, get_type_hints, overload
 
 import psycopg
 from pydantic import BaseModel, ValidationError
@@ -38,7 +38,11 @@ def validate_error_handler(handler: Callable) -> None:
             )
 
 
-class TaskWrapper:
+P = ParamSpec("P")  # Captures the parameter specification of the wrapped function
+R = TypeVar("R")  # Captures the return type of the wrapped function
+
+
+class TaskWrapper(Generic[P, R]):
     class ParamInfo(BaseModel):
         """Pydantic model to store parameter information"""
 
@@ -60,7 +64,7 @@ class TaskWrapper:
     def __init__(
         self,
         task_identifier: str,
-        func: Callable,
+        func: Callable[P, R],
         dispatcher: Dispatcher,
         cron: str | None,
         task_config: TaskConfig,
@@ -156,7 +160,12 @@ class TaskWrapper:
                 f"Unsupported type for retry_backoff in task {self.task_identifier}"
             )
 
-    def send(self, **kwargs) -> DurableTaskRun:
+    def send(self, *args: P.args, **kwargs: P.kwargs) -> DurableTaskRun:
+        """
+        Send this task to the Hyrex queue with the provided parameters.
+
+        This method accepts the same parameters as the wrapped function.
+        """
         self.logger.debug(
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
@@ -278,7 +287,7 @@ class TaskWrapper:
     def __repr__(self):
         return f"TaskWrapper<{self.task_identifier}>"
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs):
         # Simply pass through all arguments to the original function
         return self.func(*args, **kwargs)
 

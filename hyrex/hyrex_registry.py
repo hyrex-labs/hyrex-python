@@ -1,14 +1,14 @@
 import inspect
 import logging
 import os
-from typing import Callable
+from typing import Callable, overload
 
 from hyrex import constants
 from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.task_wrapper import TaskWrapper
+from hyrex.task_wrapper import P, R, TaskWrapper
 from hyrex.workflow.workflow import HyrexWorkflow
 from hyrex.workflow.workflow_builder import WorkflowBuilder
 
@@ -137,9 +137,13 @@ class HyrexRegistry:
         for workflow in registry.get_workflows():
             self.register_workflow(workflow=workflow)
 
+    @overload
+    def task(self, func: Callable[P, R]) -> TaskWrapper[P, R]: ...
+
+    @overload
     def task(
         self,
-        func: Callable = None,
+        func: None = None,
         *,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         cron: str | None = None,
@@ -148,12 +152,25 @@ class HyrexRegistry:
         priority: int = constants.DEFAULT_PRIORITY,
         on_error: Callable | None = None,
         retry_backoff: int | Callable[[int], int] | None = None,
-    ) -> TaskWrapper:
+    ) -> Callable[[Callable[P, R]], TaskWrapper[P, R]]: ...
+
+    def task(
+        self,
+        func: Callable[P, R] | None = None,
+        *,
+        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        cron: str | None = None,
+        max_retries: int = 0,
+        timeout_seconds: int | None = None,
+        priority: int = constants.DEFAULT_PRIORITY,
+        on_error: Callable | None = None,
+        retry_backoff: int | Callable[[int], int] | None = None,
+    ) -> TaskWrapper[P, R] | Callable[[Callable[P, R]], TaskWrapper[P, R]]:
         """
         Create task decorator
         """
 
-        def decorator(func: Callable) -> TaskWrapper:
+        def decorator(func: Callable[P, R]) -> TaskWrapper[P, R]:
             task_identifier = func.__name__
             decorated_task_config = TaskConfig(
                 config_phase=ConfigPhase.decorator,
