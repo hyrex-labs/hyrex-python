@@ -3,7 +3,8 @@ import logging
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, ParamSpec, TypeVar, get_type_hints, overload
+from typing import (Any, Callable, Generic, ParamSpec, TypeVar, get_type_hints,
+                    overload)
 
 import psycopg
 from pydantic import BaseModel, ValidationError
@@ -15,7 +16,8 @@ from hyrex.durable_run import DurableTaskRun
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
-from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
+from hyrex.workflow.workflow_builder_context import \
+    get_current_workflow_builder
 
 
 def validate_error_handler(handler: Callable) -> None:

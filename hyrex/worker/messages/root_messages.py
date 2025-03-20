@@ -14,5 +14,9 @@ class SetExecutorTaskMessage(BaseModel):
     task_id: UUID | None
 
 
+class TaskRegistrationComplete(BaseModel):
+    pass
+
+
 class HeartbeatRequestMessage(BaseModel):
     pass
