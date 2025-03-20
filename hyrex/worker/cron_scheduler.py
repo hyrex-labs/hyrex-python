@@ -75,10 +75,6 @@ class WorkerCronScheduler(Process):
         self.logger.info("Initializing cron scheduler.")
         self.dispatcher = get_dispatcher(worker=True)
 
-        # TODO: Wait until all tasks/workflows are registered before running this process.
-        self.logger.info("Waiting a few seconds to allow cron job updates...")
-        self._stop_event.wait(10)
-
         # Ignore signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         signal.signal(signal.SIGINT, signal.SIG_IGN)

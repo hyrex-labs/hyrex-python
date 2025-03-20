@@ -28,7 +28,10 @@ from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.root_messages import SetExecutorTaskMessage
+from hyrex.worker.messages.root_messages import (
+    SetExecutorTaskMessage,
+    TaskRegistrationComplete,
+)
 from hyrex.worker.s3_logs import write_task_logs_to_s3
 from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 
@@ -53,6 +56,8 @@ class WorkerExecutor(Process):
         app_module_path: str,
         executor_id: UUID,
         queue_pattern: str,
+        executor_name: str,
+        worker_name: str,
         register_app: bool = False,
     ):
         super().__init__()
@@ -66,6 +71,7 @@ class WorkerExecutor(Process):
         self.queue_pattern = queue_pattern
         self.queues: list[HyrexQueue] = []
         self.executor_id = executor_id
+        self.name = executor_name
 
         self.logs_s3_bucket = os.environ.get(EnvVars.LOGS_BUCKET)
 
@@ -79,8 +85,7 @@ class WorkerExecutor(Process):
 
         # To check if root process is running
         self.parent_pid = os.getpid()
-        # TODO: Improve worker naming
-        self.worker_name = "worker_" + str(self.parent_pid)
+        self.worker_name = worker_name
 
     def get_concurrency_for_queue(self, queue_name: str):
         return self.registry.get_concurrency_limit(queue_name=queue_name)
@@ -355,8 +360,6 @@ class WorkerExecutor(Process):
     def run(self):
         init_logging(self.log_level)
 
-        self.name = generate_executor_name()
-
         # Retrieve name and task registry from the provided app module path.
         self.load_app_module()
 
@@ -383,10 +386,13 @@ class WorkerExecutor(Process):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         if self.register_app:
-            self.logger.info("Registering app, tasks, and workflows to the DB.")
-            self.registry.register_with_db()
-            # self.register_tasks_with_dispatcher()
+            self.logger.info(
+                f"{self.name}: Registering app, tasks, and workflows to the DB."
+            )
+            self.registry.register_all_with_db()
             self.register_hyrex_app()
+            # Notify root process that cron scheduler can start
+            self.root_message_queue.put(TaskRegistrationComplete())
 
         # Set up to throw HyrexTaskTimeout and then end process on task timeout.
         def timeout_handler(signum, frame):

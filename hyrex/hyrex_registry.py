@@ -42,7 +42,7 @@ class HyrexRegistry:
         )
         self.task_config = task_config
 
-    def register_with_db(self):
+    def register_all_with_db(self):
         # Register tasks and workflows with DB
         for task in self._task_registry.values():
             self.dispatcher.register_task(

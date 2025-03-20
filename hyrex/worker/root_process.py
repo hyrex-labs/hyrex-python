@@ -1,5 +1,7 @@
 import logging
+import os
 import signal
+import socket
 import threading
 import time
 from datetime import datetime, timezone
@@ -13,14 +15,26 @@ from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+    TaskRegistrationComplete,
+)
+
+
+def generate_worker_name():
+    hostname = socket.gethostname()
+    pid = os.getpid()
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    return f"hyrex-worker-{hostname}-{pid}-{timestamp}"
 
 
 class WorkerRootProcess:
@@ -38,6 +52,11 @@ class WorkerRootProcess:
         self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
         self.num_processes = num_processes
+        self.worker_name = generate_worker_name()
+
+        self.next_executor_number = 1
+        # Has an executor registered all current tasks/workflows? Triggers cron scheduler launch
+        self.task_registration_complete = False
 
         self._register_app = True
 
@@ -63,6 +82,12 @@ class WorkerRootProcess:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
 
+    # Keep incrementing for each new executor
+    def get_next_executor_name(self):
+        name = "E" + str(self.next_executor_number)
+        self.next_executor_number += 1
+        return name
+
     def _spawn_executor(self):
         executor_id = uuid7()
         executor_process = WorkerExecutor(
@@ -72,6 +97,8 @@ class WorkerRootProcess:
             queue_pattern=self.queue_pattern,
             executor_id=executor_id,
             register_app=self._register_app,
+            worker_name=self.worker_name,
+            executor_name=self.get_next_executor_name(),
         )
         # Only register app/tasks once per worker.
         if self._register_app:
@@ -123,7 +150,7 @@ class WorkerRootProcess:
 
     def _spawn_cron_scheduler(self):
         cron_scheduler = WorkerCronScheduler(
-            log_level=self.log_level, worker_name="TODO"
+            log_level=self.log_level, worker_name=self.worker_name
         )
         cron_scheduler.start()
         self.cron_scheduler_process = cron_scheduler
@@ -152,6 +179,8 @@ class WorkerRootProcess:
                 self.set_executor_task(
                     executor_id=message.executor_id, task_id=message.task_id
                 )
+            elif isinstance(message, TaskRegistrationComplete):
+                self.task_registration_complete = True
             elif isinstance(message, HeartbeatRequestMessage):
                 self.heartbeat_requested = True
 
@@ -204,12 +233,16 @@ class WorkerRootProcess:
         self.logger.info("Spawning admin process.")
         self._spawn_admin()
 
-        self.logger.info("Spawning cron scheduler process.")
-        self._spawn_cron_scheduler()
-
         self.logger.info(f"Spawning {self.num_processes} task executor processes.")
         for _ in range(self.num_processes):
             self._spawn_executor()
+
+        self.logger.info("Waiting for executor to complete task registration.")
+        while not self.task_registration_complete:
+            time.sleep(0.5)
+
+        self.logger.info("Spawning cron scheduler process.")
+        self._spawn_cron_scheduler()
 
         last_heartbeat = time.monotonic()
 
