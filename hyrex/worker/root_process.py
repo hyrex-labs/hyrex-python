@@ -15,19 +15,15 @@ from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (
-    ExecutorHeartbeatMessage,
-    ExecutorStoppedMessage,
-    NewExecutorMessage,
-    TaskCanceledMessage,
-    TaskHeartbeatMessage,
-)
-from hyrex.worker.messages.root_messages import (
-    CancelTaskMessage,
-    HeartbeatRequestMessage,
-    SetExecutorTaskMessage,
-    TaskRegistrationComplete,
-)
+from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
+                                                  ExecutorStoppedMessage,
+                                                  NewExecutorMessage,
+                                                  TaskCanceledMessage,
+                                                  TaskHeartbeatMessage)
+from hyrex.worker.messages.root_messages import (CancelTaskMessage,
+                                                 HeartbeatRequestMessage,
+                                                 SetExecutorTaskMessage,
+                                                 TaskRegistrationComplete)
 
 
 def generate_worker_name():

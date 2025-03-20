@@ -1,6 +1,6 @@
-from datetime import datetime
 import multiprocessing as mp
 import tempfile
+from datetime import datetime
 
 # To ensure consistency between MacOS and Linux
 try:
@@ -11,9 +11,9 @@ except RuntimeError:
 
 
 import cProfile
-import pstats
 import importlib
 import os
+import pstats
 import sys
 from pathlib import Path
 
