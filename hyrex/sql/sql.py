@@ -46,9 +46,9 @@ CREATE TABLE IF NOT EXISTS hyrex_task_run (
     log_link        VARCHAR
 );
 
--- Partial index for quickly fetching queued tasks by queue, task_name, priority, and queued timestamp.
+-- Partial index for quickly fetching queued tasks by queue, priority, and queued timestamp.
 CREATE INDEX IF NOT EXISTS idx_hyrex_task_run_queued
-    ON hyrex_task_run (queue, task_name, priority, queued)
+    ON hyrex_task_run (queue, priority ASC, queued ASC)
     WHERE (status = 'queued');
 
 -- Partial index for quickly counting tasks that are running in a particular queue.
@@ -371,7 +371,7 @@ WITH task_insertion AS (
                      'IDEMPOTENCY_COLLISION',
                      json_build_object(
                              'attempted_task_id', $1,
-                             'idempotency_key', $10,
+                             'idempotency_key', $11,
                              'task_name', $5,
                              'queue', $7
                      )
