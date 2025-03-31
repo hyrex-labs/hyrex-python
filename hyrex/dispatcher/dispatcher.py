@@ -213,6 +213,10 @@ class Dispatcher(ABC):
     @abstractmethod
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         pass
+        
+    @abstractmethod
+    def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
+        pass
 
     @abstractmethod
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):

@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from hyrex.hyrex_context import get_hyrex_workflow_args
+from hyrex.hyrex_context import get_hyrex_workflow_context
 from hyrex.hyrex_registry import HyrexRegistry
 
 hy = HyrexRegistry()
@@ -11,8 +11,10 @@ hy = HyrexRegistry()
 
 @hy.task
 def initiate_onboard():
-    args = OnboardUserWorkflowArg.model_validate(get_hyrex_workflow_args())
-    print(args)
+    # Uncomment to use workflow args
+    # context = get_hyrex_workflow_context()
+    # if context and context.workflow_run_args:
+    #     args = OnboardUserWorkflowArg.model_validate(context.workflow_run_args)
     time.sleep(5)
 
 
@@ -28,6 +30,22 @@ def validate_identity():
 
 @hy.task
 def validate_org():
+    context = get_hyrex_workflow_context()
+    if context:
+        # Get workflow arguments
+        args = context.workflow_args
+        
+        # Get DurableTaskRun for a specific task
+        payment_run = context.durable_runs.get("validate_payment")
+        if payment_run:
+            # Check task status
+            payment_run.refresh()  # Get latest status
+            for task_run in payment_run.task_runs:
+                print(f"Payment task status: {task_run.status}")
+        
+        # Print the full context
+        print(context)
+    
     time.sleep(5)
 
 

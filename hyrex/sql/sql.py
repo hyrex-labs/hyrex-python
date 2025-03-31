@@ -512,6 +512,7 @@ GET_QUEUES_FOR_PATTERN = """
 GET_TASK_RUNS_BY_DURABLE_ID = """
     SELECT 
         tr.id,
+        tr.task_name,
         tr.max_retries,
         tr.attempt_number,
         tr.status,
@@ -546,4 +547,11 @@ UPDATE_EXECUTOR_QUEUES = """
         queues = $2,
         last_heartbeat = CURRENT_TIMESTAMP
     WHERE id = $1;
+"""
+
+GET_WORKFLOW_DURABLE_RUNS = """
+    SELECT DISTINCT durable_id
+    FROM hyrex_task_run
+    WHERE workflow_run_id = $1
+    ORDER BY durable_id;
 """
