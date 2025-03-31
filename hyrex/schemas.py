@@ -61,6 +61,7 @@ class TaskResult(BaseModel):
 # For tracking durable runs:
 class TaskRun(BaseModel):
     id: UUID
+    task_name: str
     max_retries: int
     attempt_number: int
     status: TaskStatus

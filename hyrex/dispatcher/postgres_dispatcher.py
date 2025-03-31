@@ -17,9 +17,17 @@ from uuid_extensions import uuid7
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskResult, TaskRun, TaskStatus,
-                           WorkflowRunRequest, WorkflowStatus)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    TaskResult,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 
@@ -533,6 +541,7 @@ class PostgresDispatcher(Dispatcher):
             for row in results:
                 (
                     task_id,
+                    task_name,
                     max_retries,
                     attempt_number,
                     status,
@@ -557,6 +566,7 @@ class PostgresDispatcher(Dispatcher):
                 # Create the TaskRun object without the result field
                 task_run = TaskRun(
                     id=task_id,
+                    task_name=task_name,
                     max_retries=max_retries,
                     attempt_number=attempt_number,
                     status=status,
@@ -568,6 +578,12 @@ class PostgresDispatcher(Dispatcher):
                 task_runs.append(task_run)
 
             return task_runs
+
+    def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
+        with self.transaction() as cur:
+            cur.execute(sql.GET_WORKFLOW_DURABLE_RUNS, [workflow_run_id])
+            results = cur.fetchall()
+            return [row[0] for row in results]
 
     def try_to_cancel_durable_run(self, durable_id: UUID):
         with self.transaction() as cur:
