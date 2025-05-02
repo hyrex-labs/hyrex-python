@@ -27,6 +27,7 @@ from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
                                  set_hyrex_context)
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
+from hyrex.schemas import QueuePattern
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
 from hyrex.worker.messages.root_messages import (SetExecutorTaskMessage,
@@ -55,7 +56,7 @@ class WorkerExecutor(Process):
         log_level: LogLevel,
         app_module_path: str,
         executor_id: UUID,
-        queue_pattern: str,
+        queue: str,
         executor_name: str,
         worker_name: str,
         register_app: bool = False,
@@ -68,7 +69,8 @@ class WorkerExecutor(Process):
         self._stop_event = Event()
 
         self.app_module_path = app_module_path
-        self.queue_pattern = queue_pattern
+        self.queue = queue
+        self.queue_pattern = None
         self.queues: list[HyrexQueue] = []
         self.executor_id = executor_id
         self.name = executor_name
@@ -95,9 +97,7 @@ class WorkerExecutor(Process):
         self.logger.debug("Updating internal queue list from pattern...")
 
         start = time.perf_counter()
-        queue_names = self.dispatcher.get_queues_for_pattern(
-            self.postgres_queue_pattern
-        )
+        queue_names = self.dispatcher.get_queues_for_pattern(self.queue_pattern)
         end = time.perf_counter()
         # Milliseconds
         self.refresh_queue_duration_averager.submit((end - start) * 1000)
@@ -107,7 +107,7 @@ class WorkerExecutor(Process):
         if queue_names:
             random.shuffle(queue_names)
         else:
-            self._stop_event.wait(0.5)
+            self._stop_event.wait(1.0)
             return
 
         for queue_name in queue_names:
@@ -158,8 +158,8 @@ class WorkerExecutor(Process):
         self.dequeue_duration_averager.submit((end - start) * 1000)
         return dequeued_task
 
-    def mark_task_success(self, task_id: UUID):
-        self.dispatcher.mark_success(task_id=task_id)
+    def mark_task_success(self, task_id: UUID, result: str):
+        self.dispatcher.mark_success(task_id=task_id, result=result)
 
     def mark_task_failed(self, task_id: UUID):
         self.dispatcher.mark_failed(task_id=task_id)
@@ -219,9 +219,7 @@ class WorkerExecutor(Process):
                     except (TypeError, ValueError):
                         raise TypeError("Return value must be JSON-serializable")
 
-                self.dispatcher.save_result(task.id, result)
-
-            self.mark_task_success(task.id)
+            self.mark_task_success(task.id, result)
 
             self.logger.info(
                 f"Executor {self.name}: Completed processing item {task.id}"
@@ -311,9 +309,9 @@ class WorkerExecutor(Process):
 
     def run_static_queue_loop(self):
         queue = HyrexQueue(
-            name=self.queue_pattern,
+            name=self.queue,
             concurrency_limit=self.registry.get_concurrency_limit(
-                queue_name=self.queue_pattern
+                queue_name=self.queue
             ),
         )
         while not self._stop_event.is_set():
@@ -364,19 +362,20 @@ class WorkerExecutor(Process):
         self.load_app_module()
 
         # Convert queue pattern to Postgres regex syntax if needed.
-        if is_glob_pattern(self.queue_pattern):
-            self.postgres_queue_pattern = glob_to_postgres_regex(self.queue_pattern)
-            self.logger.debug(
-                f"Converted queue glob to Postgres regex syntax: {self.queue_pattern} -> {self.postgres_queue_pattern}"
+        if is_glob_pattern(self.queue):
+            self.queue_pattern = QueuePattern(
+                glob_pattern=self.queue,
+                postgres_pattern=glob_to_postgres_regex(self.queue),
             )
-        else:
-            self.postgres_queue_pattern = None
+            self.logger.debug(
+                f"Converted queue glob to Postgres regex syntax: {self.queue_pattern.glob_pattern} -> {self.queue_pattern.postgres_pattern}"
+            )
 
         self.dispatcher = get_dispatcher(worker=True)
         self.dispatcher.register_executor(
             executor_id=self.executor_id,
             executor_name=self.name,
-            queue_pattern=self.queue_pattern,
+            queue_pattern=self.queue,
             queues=self.queues,
             worker_name=self.worker_name,
         )
@@ -404,7 +403,7 @@ class WorkerExecutor(Process):
         self.logger.info(f"Executor process {self.name} started - checking for tasks.")
 
         try:
-            if self.postgres_queue_pattern:
+            if self.queue_pattern:
                 self.run_round_robin_loop()
             else:
                 self.run_static_queue_loop()

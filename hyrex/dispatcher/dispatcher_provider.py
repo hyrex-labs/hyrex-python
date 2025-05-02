@@ -1,6 +1,7 @@
 import os
 from enum import StrEnum
 
+from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
 from hyrex.env_vars import EnvVars
 
 from .dispatcher import Dispatcher
@@ -43,7 +44,9 @@ def get_dispatcher(worker: bool = False) -> Dispatcher:
     conn_string = os.environ.get(EnvVars.DATABASE_URL)
 
     if api_key:
-        _global_dispatcher = PlatformDispatcher(api_key=api_key)
+        _global_dispatcher = PerformanceDispatcher(
+            api_key=api_key, conn_string=conn_string
+        )
     elif conn_string:
         _global_dispatcher = PostgresDispatcher(conn_string=conn_string)
         # if worker:

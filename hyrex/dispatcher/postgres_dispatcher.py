@@ -22,7 +22,7 @@ from hyrex.schemas import (
     CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
-    TaskResult,
+    QueuePattern,
     TaskRun,
     TaskStatus,
     WorkflowRunRequest,
@@ -66,9 +66,11 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.REGISTER_APP_INFO_SQL, [1, app_info])
 
-    def mark_success(self, task_id: UUID):
+    def mark_success(self, task_id: UUID, result: str):
         with self.transaction() as cur:
             cur.execute(sql.MARK_TASK_SUCCESS, [task_id])
+            if result:
+                cur.execute(sql.SAVE_RESULT, [task_id, result])
 
     def mark_failed(self, task_id: UUID):
         with self.transaction() as cur:
@@ -323,9 +325,9 @@ class PostgresDispatcher(Dispatcher):
             result = row[0]
             return result
 
-    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+    def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         with self.transaction() as cur:
-            cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern])
+            cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern.postgres_pattern])
             return [row[0] for row in cur.fetchall()]
 
     def register_task(
@@ -548,20 +550,8 @@ class PostgresDispatcher(Dispatcher):
                     queued,
                     started,
                     finished,
-                    task_result_id,
-                    task_result_created_at,
                     task_result,
                 ) = row
-
-                # Handle the task result
-                task_result_obj = None
-                if task_result_id is not None:
-                    task_result_obj = TaskResult(
-                        task_run_id=task_result_id,
-                        created_at=task_result_created_at,
-                        # Handle None result by defaulting to empty dict
-                        result=task_result if task_result is not None else {},
-                    )
 
                 # Create the TaskRun object without the result field
                 task_run = TaskRun(
@@ -573,7 +563,7 @@ class PostgresDispatcher(Dispatcher):
                     queued=queued,
                     started=started,
                     finished=finished,
-                    task_result=task_result_obj,
+                    result=task_result if task_result is not None else {},
                 )
                 task_runs.append(task_run)
 

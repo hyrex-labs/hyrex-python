@@ -519,8 +519,6 @@ GET_TASK_RUNS_BY_DURABLE_ID = """
         tr.queued,
         tr.started,
         tr.finished,
-        tres.task_id,
-        tres.created_at,
         tres.result
     FROM 
         hyrex_task_run tr

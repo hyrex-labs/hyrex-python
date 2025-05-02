@@ -1,13 +1,24 @@
 import logging
 import random
+import time
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .tasks import (EmptyContext, SleepContext, empty_task, error_task,
-                    print_random_number, root_level_task, sleepy_task,
-                    spawn_empty_tasks)
+load_dotenv()
+
+from .tasks import (
+    EmptyContext,
+    SleepContext,
+    empty_task,
+    error_task,
+    print_random_number,
+    root_level_task,
+    sleepy_task,
+    spawn_empty_tasks,
+)
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()
@@ -54,9 +65,10 @@ async def send_empty_tasks():
 
 @app.get("/sleepy-task/")
 async def run_sleepy_task(seconds: int):
-    task = sleepy_task.with_config(timeout_seconds=5).send(
-        SleepContext(duration=seconds)
+    task = sleepy_task.with_config(timeout_seconds=5, max_retries=1).send(
+        context=SleepContext(duration=seconds)
     )
+    task.wait()
     # tasks = []
     # for i in range(10):
     #     tasks.append(sleepy_task.send(SleepContext(duration=seconds)))
@@ -71,14 +83,16 @@ def print_hello():
 
 @app.get("/error-task/")
 async def run_error_task():
-    error_task.with_config(max_retries=10).send(EmptyContext())
+    # error_task.with_config(max_retries=10).send(EmptyContext())
+    error_task.with_config(max_retries=0).send(context=EmptyContext())
 
 
 @app.get("/random-number/")
 async def random_number_task():
     task = print_random_number.send()
     task.wait()
-    return task.get_result()
+    print(task.get_result())
+    # return task.get_result()
 
 
 @app.get("/root-level-task/")

@@ -90,7 +90,7 @@ class WorkerRootProcess:
             log_level=self.log_level,
             root_message_queue=self.root_message_queue,
             app_module_path=self.app_module_path,
-            queue_pattern=self.queue_pattern,
+            queue=self.queue_pattern,
             executor_id=executor_id,
             register_app=self._register_app,
             worker_name=self.worker_name,

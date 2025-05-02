@@ -12,8 +12,8 @@ from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, TaskRun, TaskStatus,
-                           WorkflowRunRequest)
+                           EnqueueTaskRequest, QueuePattern, TaskRun,
+                           TaskStatus, WorkflowRunRequest)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -229,7 +229,7 @@ class PlatformDispatcher(Dispatcher):
     def get_tasks_up_for_cancel(self) -> list[UUID]:
         pass
 
-    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+    def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         pass
 
     def register_task(
@@ -287,7 +287,7 @@ class PlatformDispatcher(Dispatcher):
 
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         pass
-        
+
     def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
         pass
 
