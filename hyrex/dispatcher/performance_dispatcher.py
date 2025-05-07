@@ -45,7 +45,7 @@ def pydantic_aware_default(obj):
 class PerformanceDispatcher(Dispatcher):
     # TODO: Hardcode
     PERFORMANCE_SERVER_HOST = os.environ.get("HYREX_PERFORMANCE_SERVER")
-    PERFORMANCE_SERVER_PORT = "50051"
+    PERFORMANCE_SERVER_PORT = "443"
 
     # Status mapping between Python TaskStatus enum and proto TaskStatus enum
     _PY_TO_PROTO_STATUS = {
@@ -73,7 +73,8 @@ class PerformanceDispatcher(Dispatcher):
         server_address = (
             f"{self.PERFORMANCE_SERVER_HOST}:{self.PERFORMANCE_SERVER_PORT}"
         )
-        self.channel = grpc.insecure_channel(server_address)
+        channel_credentials = grpc.ssl_channel_credentials()
+        self.channel = grpc.secure_channel(server_address, channel_credentials)
         self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
         # TODO: Integrate PostgresLiteDispatcher instance
