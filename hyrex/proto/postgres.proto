@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package hyrex.performanceserver;
+
+option go_package = "proto/";
+
+import "google/protobuf/timestamp.proto";
+import "task.proto";
+
+message RegisterExecutorRequest {
+    string executor_id = 1;
+    string executor_name = 2;
+    string queue_pattern = 3;
+    repeated string queues = 4;
+    string worker_name = 5;
+}
+
+message RegisterExecutorResponse {
+    string message = 1;
+}

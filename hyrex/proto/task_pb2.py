@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntask.proto\x12\x17hyrex.performanceserver\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x04\n\x12\x45nqueueTaskRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\ndurable_id\x18\x02 \x01(\t\x12\x0f\n\x07root_id\x18\x03 \x01(\t\x12\x1c\n\x0fworkflow_run_id\x18\x04 \x01(\tH\x00\x88\x01\x01\x12\x1d\n\x15workflow_dependencies\x18\x05 \x03(\t\x12\x16\n\tparent_id\x18\x06 \x01(\tH\x01\x88\x01\x01\x12\x33\n\x06status\x18\x07 \x01(\x0e\x32#.hyrex.performanceserver.TaskStatus\x12\x11\n\ttask_name\x18\x08 \x01(\t\x12\x0c\n\x04\x61rgs\x18\t \x01(\x0c\x12\r\n\x05queue\x18\n \x01(\t\x12\x13\n\x0bmax_retries\x18\x0b \x01(\x05\x12\x33\n\x08priority\x18\x0c \x01(\x0e\x32!.hyrex.performanceserver.Priority\x12\x1c\n\x0ftimeout_seconds\x18\r \x01(\x05H\x02\x88\x01\x01\x12\x1c\n\x0fidempotency_key\x18\x0e \x01(\tH\x03\x88\x01\x01\x12\x38\n\x0fscheduled_start\x18\x0f \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x04\x88\x01\x01\x42\x12\n\x10_workflow_run_idB\x0c\n\n_parent_idB\x12\n\x10_timeout_secondsB\x12\n\x10_idempotency_keyB\x12\n\x10_scheduled_start\"&\n\x13\x45nqueueTaskResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"8\n\x12\x44\x65queueTaskRequest\x12\x13\n\x0b\x65xecutor_id\x18\x01 \x01(\t\x12\r\n\x05queue\x18\x02 \x01(\t\"\xfc\x04\n\x07TaskRun\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\ndurable_id\x18\x02 \x01(\t\x12\x0f\n\x07root_id\x18\x03 \x01(\t\x12\x11\n\tparent_id\x18\x04 \x01(\t\x12\x11\n\ttask_name\x18\x05 \x01(\t\x12\x33\n\x06status\x18\x06 \x01(\x0e\x32#.hyrex.performanceserver.TaskStatus\x12\x0c\n\x04\x61rgs\x18\x07 \x01(\x0c\x12\r\n\x05queue\x18\x08 \x01(\t\x12\x33\n\x08priority\x18\t \x01(\x0e\x32!.hyrex.performanceserver.Priority\x12\x1c\n\x0ftimeout_seconds\x18\n \x01(\x05H\x00\x88\x01\x01\x12\x38\n\x0fscheduled_start\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x12*\n\x06queued\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\r \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x1c\n\x0fworkflow_run_id\x18\x0f \x01(\tH\x02\x88\x01\x01\x12\x1d\n\x15workflow_dependencies\x18\x10 \x03(\t\x12\x16\n\x0e\x61ttempt_number\x18\x11 \x01(\x05\x12\x13\n\x0bmax_retries\x18\x12 \x01(\x05\x12\x0e\n\x06result\x18\x13 \x01(\tB\x12\n\x10_timeout_secondsB\x12\n\x10_scheduled_startB\x12\n\x10_workflow_run_id\"V\n\x13\x44\x65queueTaskResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12.\n\x04task\x18\x02 \x01(\x0b\x32 .hyrex.performanceserver.TaskRun\";\n\x10GetQueuesRequest\x12\x16\n\x0emax_num_queues\x18\x01 \x01(\x05\x12\x0f\n\x07pattern\x18\x02 \x01(\t\"4\n\x11GetQueuesResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0e\n\x06queues\x18\x02 \x03(\t\"\'\n\x14GetTaskStatusRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\"]\n\x15GetTaskStatusResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x33\n\x06status\x18\x02 \x01(\x0e\x32#.hyrex.performanceserver.TaskStatus\"E\n\x12MarkSuccessRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x13\n\x06result\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\t\n\x07_result\"&\n\x13MarkSuccessResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"$\n\x11MarkFailedRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\"%\n\x12MarkFailedResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"!\n\x0eGetTaskRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\"R\n\x0fGetTaskResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12.\n\x04task\x18\x02 \x01(\x0b\x32 .hyrex.performanceserver.TaskRun\"/\n\x19GetDurableRunTasksRequest\x12\x12\n\ndurable_id\x18\x01 \x01(\t\"^\n\x1aGetDurableRunTasksResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12/\n\x05tasks\x18\x02 \x03(\x0b\x32 .hyrex.performanceserver.TaskRun*n\n\x08Priority\x12\x11\n\rP_UNSPECIFIED\x10\x00\x12\x06\n\x02P1\x10\x01\x12\x06\n\x02P2\x10\x02\x12\x06\n\x02P3\x10\x03\x12\x06\n\x02P4\x10\x04\x12\x06\n\x02P5\x10\x05\x12\x06\n\x02P6\x10\x06\x12\x06\n\x02P7\x10\x07\x12\x06\n\x02P8\x10\x08\x12\x06\n\x02P9\x10\t\x12\x07\n\x03P10\x10\n*\x94\x01\n\nTaskStatus\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\n\n\x06QUEUED\x10\x01\x12\x0b\n\x07WAITING\x10\x02\x12\x0b\n\x07RUNNING\x10\x03\x12\x0b\n\x07SUCCESS\x10\x04\x12\n\n\x06\x46\x41ILED\x10\x05\x12\x11\n\rUP_FOR_CANCEL\x10\x06\x12\x0c\n\x08\x43\x41NCELED\x10\x07\x12\x08\n\x04LOST\x10\x08\x12\x0b\n\x07SKIPPED\x10\tB\x08Z\x06proto/b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntask.proto\x12\x17hyrex.performanceserver\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfc\x04\n\x07TaskRun\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\ndurable_id\x18\x02 \x01(\t\x12\x0f\n\x07root_id\x18\x03 \x01(\t\x12\x11\n\tparent_id\x18\x04 \x01(\t\x12\x11\n\ttask_name\x18\x05 \x01(\t\x12\x33\n\x06status\x18\x06 \x01(\x0e\x32#.hyrex.performanceserver.TaskStatus\x12\x0c\n\x04\x61rgs\x18\x07 \x01(\x0c\x12\r\n\x05queue\x18\x08 \x01(\t\x12\x33\n\x08priority\x18\t \x01(\x0e\x32!.hyrex.performanceserver.Priority\x12\x1c\n\x0ftimeout_seconds\x18\n \x01(\x05H\x00\x88\x01\x01\x12\x38\n\x0fscheduled_start\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x12*\n\x06queued\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\r \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x1c\n\x0fworkflow_run_id\x18\x0f \x01(\tH\x02\x88\x01\x01\x12\x1d\n\x15workflow_dependencies\x18\x10 \x03(\t\x12\x16\n\x0e\x61ttempt_number\x18\x11 \x01(\x05\x12\x13\n\x0bmax_retries\x18\x12 \x01(\x05\x12\x0e\n\x06result\x18\x13 \x01(\tB\x12\n\x10_timeout_secondsB\x12\n\x10_scheduled_startB\x12\n\x10_workflow_run_id*n\n\x08Priority\x12\x11\n\rP_UNSPECIFIED\x10\x00\x12\x06\n\x02P1\x10\x01\x12\x06\n\x02P2\x10\x02\x12\x06\n\x02P3\x10\x03\x12\x06\n\x02P4\x10\x04\x12\x06\n\x02P5\x10\x05\x12\x06\n\x02P6\x10\x06\x12\x06\n\x02P7\x10\x07\x12\x06\n\x02P8\x10\x08\x12\x06\n\x02P9\x10\t\x12\x07\n\x03P10\x10\n*\x94\x01\n\nTaskStatus\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\n\n\x06QUEUED\x10\x01\x12\x0b\n\x07WAITING\x10\x02\x12\x0b\n\x07RUNNING\x10\x03\x12\x0b\n\x07SUCCESS\x10\x04\x12\n\n\x06\x46\x41ILED\x10\x05\x12\x11\n\rUP_FOR_CANCEL\x10\x06\x12\x0c\n\x08\x43\x41NCELED\x10\x07\x12\x08\n\x04LOST\x10\x08\x12\x0b\n\x07SKIPPED\x10\tB\x08Z\x06proto/b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,42 +33,10 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'task_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z\006proto/'
-  _globals['_PRIORITY']._serialized_start=2144
-  _globals['_PRIORITY']._serialized_end=2254
-  _globals['_TASKSTATUS']._serialized_start=2257
-  _globals['_TASKSTATUS']._serialized_end=2405
-  _globals['_ENQUEUETASKREQUEST']._serialized_start=73
-  _globals['_ENQUEUETASKREQUEST']._serialized_end=614
-  _globals['_ENQUEUETASKRESPONSE']._serialized_start=616
-  _globals['_ENQUEUETASKRESPONSE']._serialized_end=654
-  _globals['_DEQUEUETASKREQUEST']._serialized_start=656
-  _globals['_DEQUEUETASKREQUEST']._serialized_end=712
-  _globals['_TASKRUN']._serialized_start=715
-  _globals['_TASKRUN']._serialized_end=1351
-  _globals['_DEQUEUETASKRESPONSE']._serialized_start=1353
-  _globals['_DEQUEUETASKRESPONSE']._serialized_end=1439
-  _globals['_GETQUEUESREQUEST']._serialized_start=1441
-  _globals['_GETQUEUESREQUEST']._serialized_end=1500
-  _globals['_GETQUEUESRESPONSE']._serialized_start=1502
-  _globals['_GETQUEUESRESPONSE']._serialized_end=1554
-  _globals['_GETTASKSTATUSREQUEST']._serialized_start=1556
-  _globals['_GETTASKSTATUSREQUEST']._serialized_end=1595
-  _globals['_GETTASKSTATUSRESPONSE']._serialized_start=1597
-  _globals['_GETTASKSTATUSRESPONSE']._serialized_end=1690
-  _globals['_MARKSUCCESSREQUEST']._serialized_start=1692
-  _globals['_MARKSUCCESSREQUEST']._serialized_end=1761
-  _globals['_MARKSUCCESSRESPONSE']._serialized_start=1763
-  _globals['_MARKSUCCESSRESPONSE']._serialized_end=1801
-  _globals['_MARKFAILEDREQUEST']._serialized_start=1803
-  _globals['_MARKFAILEDREQUEST']._serialized_end=1839
-  _globals['_MARKFAILEDRESPONSE']._serialized_start=1841
-  _globals['_MARKFAILEDRESPONSE']._serialized_end=1878
-  _globals['_GETTASKREQUEST']._serialized_start=1880
-  _globals['_GETTASKREQUEST']._serialized_end=1913
-  _globals['_GETTASKRESPONSE']._serialized_start=1915
-  _globals['_GETTASKRESPONSE']._serialized_end=1997
-  _globals['_GETDURABLERUNTASKSREQUEST']._serialized_start=1999
-  _globals['_GETDURABLERUNTASKSREQUEST']._serialized_end=2046
-  _globals['_GETDURABLERUNTASKSRESPONSE']._serialized_start=2048
-  _globals['_GETDURABLERUNTASKSRESPONSE']._serialized_end=2142
+  _globals['_PRIORITY']._serialized_start=711
+  _globals['_PRIORITY']._serialized_end=821
+  _globals['_TASKSTATUS']._serialized_start=824
+  _globals['_TASKSTATUS']._serialized_end=972
+  _globals['_TASKRUN']._serialized_start=73
+  _globals['_TASKRUN']._serialized_end=709
 # @@protoc_insertion_point(module_scope)

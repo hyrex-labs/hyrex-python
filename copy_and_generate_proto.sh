@@ -24,6 +24,8 @@ touch ${LOCAL_PROTO_DIR}/__init__.py # Ensure it's a package
 # Copy required performanceserver protos into local proto dir
 cp ${proto_source}/performanceserver/task.proto ${LOCAL_PROTO_DIR}/
 cp ${proto_source}/performanceserver/gateway.proto ${LOCAL_PROTO_DIR}/
+cp ${proto_source}/performanceserver/postgres.proto ${LOCAL_PROTO_DIR}/
+cp ${proto_source}/performanceserver/valkey.proto ${LOCAL_PROTO_DIR}/
 
 echo "Running protoc..."
 python -m grpc_tools.protoc \

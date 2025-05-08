@@ -35,34 +35,6 @@ enum TaskStatus {
   SKIPPED = 9;
 }
 
-message EnqueueTaskRequest {
-  string id = 1;
-  string durable_id = 2;
-  string root_id = 3;
-  optional string workflow_run_id = 4;
-  repeated string workflow_dependencies = 5;
-  optional string parent_id = 6;
-  TaskStatus status = 7;
-  string task_name = 8;
-  bytes args = 9; // JSON serialized as bytes
-  string queue = 10;
-  int32 max_retries = 11;
-  Priority priority = 12;
-  optional int32 timeout_seconds = 13;
-  optional string idempotency_key = 14;
-  optional google.protobuf.Timestamp scheduled_start = 15;
-}
-
-// Response for Enqueue operation
-message EnqueueTaskResponse {
-  string message = 1;
-}
-
-message DequeueTaskRequest {
-  string executor_id = 1;
-  string queue = 2;
-}
-
 message TaskRun {
   string id = 1;
   string durable_id = 2;
@@ -87,63 +59,4 @@ message TaskRun {
   int32 max_retries = 18;
 
   string result = 19;
-}
-
-message DequeueTaskResponse {
-  string message = 1;
-  TaskRun task = 2;
-}
-
-message GetQueuesRequest {
-  int32 max_num_queues = 1;
-  string pattern = 2;
-}
-
-message GetQueuesResponse {
-  string message = 1;
-  repeated string queues = 2;
-}
-
-message GetTaskStatusRequest {
-  string task_id = 1;
-}
-
-message GetTaskStatusResponse {
-  string message = 1;
-  TaskStatus status = 2;
-}
-
-message MarkSuccessRequest {
-  string task_id = 1;
-  optional string result = 2;
-}
-
-message MarkSuccessResponse {
-  string message = 1;
-}
-
-message MarkFailedRequest {
-  string task_id = 1;
-}
-
-message MarkFailedResponse {
-  string message = 1;
-}
-
-message GetTaskRequest {
-  string task_id = 1;
-}
-
-message GetTaskResponse {
-  string message = 1;
-  TaskRun task = 2;
-}
-
-message GetDurableRunTasksRequest {
-  string durable_id = 1;
-}
-
-message GetDurableRunTasksResponse {
-  string message = 1;
-  repeated TaskRun tasks = 2;
 }
