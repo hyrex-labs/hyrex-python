@@ -426,6 +426,12 @@ GET_TASK_STATUS = """
     SELECT status FROM hyrex_task_run WHERE id = $1
 """
 
+SET_LOG_LINK = """
+    UPDATE hyrex_task_run
+    SET log_link = $2
+    WHERE id = $1
+"""
+
 TASK_HEARTBEAT = """
     UPDATE hyrex_task_run 
     SET last_heartbeat = $1 

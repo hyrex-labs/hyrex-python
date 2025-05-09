@@ -68,6 +68,10 @@ class PostgresDispatcher(Dispatcher):
         with self.transaction() as cur:
             cur.execute(sql.MARK_TASK_FAILED, [task_id])
 
+    def set_log_link(self, task_id: UUID, log_link: str):
+        with self.transaction() as cur:
+            cur.execute(sql.SET_LOG_LINK, [task_id, log_link])
+
     def retry_task(self, task_id: UUID, backoff_seconds: int):
         if backoff_seconds > 0:
             scheduled_start = datetime.now(timezone.utc) + timedelta(

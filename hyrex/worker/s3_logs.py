@@ -43,10 +43,16 @@ class TeeIO:
         self.original_stream.flush()
 
 
+def get_s3_key(task_id: str):
+    return f"hyrex-logs/{task_id}.log"
+
+
 async def _upload_to_s3_async(task_id: str, bucket_name: str, content: str):
-    """Upload content to S3 asynchronously"""
+    """
+    Upload content to S3 asynchronously
+    """
     try:
-        key = f"{task_id}.log"
+        key = get_s3_key(task_id=task_id)
         s3_client = get_s3_client()
         s3_client.put_object(Bucket=bucket_name, Key=key, Body=content.encode("utf-8"))
     except Exception as e:
@@ -66,10 +72,15 @@ async def write_task_logs_to_s3(
         task_id: Unique identifier for the task
         bucket_name: S3 bucket to store logs
         write_to_console: If True, also write output to console
+
+    Yields:
+        str: The S3 URL of the uploaded log file
     """
     log_capture = LogCapture()
     original_stdout = sys.stdout
     original_stderr = sys.stderr
+
+    log_url = f"s3://{bucket_name}/{get_s3_key(task_id=task_id)}"
 
     try:
         if write_to_console:
@@ -78,7 +89,7 @@ async def write_task_logs_to_s3(
         else:
             sys.stdout = log_capture
             sys.stderr = log_capture
-        yield
+        yield log_url
     finally:
         # Restore original streams
         sys.stdout = original_stdout

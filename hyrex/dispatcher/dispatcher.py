@@ -10,9 +10,16 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, QueuePattern, TaskRun,
-                           TaskStatus, WorkflowRunRequest)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    QueuePattern,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class Dispatcher(ABC):
@@ -77,6 +84,10 @@ class Dispatcher(ABC):
 
     @abstractmethod
     def mark_failed(self, task_id: UUID):
+        pass
+
+    @abstractmethod
+    def set_log_link(self, task_id: UUID, log_link: str):
         pass
 
     @abstractmethod

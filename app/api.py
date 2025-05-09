@@ -9,9 +9,16 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from .tasks import (EmptyContext, SleepContext, empty_task, error_task,
-                    print_random_number, root_level_task, sleepy_task,
-                    spawn_empty_tasks)
+from .tasks import (
+    EmptyContext,
+    SleepContext,
+    empty_task,
+    error_task,
+    print_random_number,
+    root_level_task,
+    sleepy_task,
+    spawn_empty_tasks,
+)
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()

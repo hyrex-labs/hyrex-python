@@ -23,18 +23,18 @@ from hyrex.dispatcher import DequeuedTask, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
-from hyrex.hyrex_context import (HyrexContext, clear_hyrex_context,
-                                 set_hyrex_context)
+from hyrex.hyrex_context import HyrexContext, clear_hyrex_context, set_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.schemas import QueuePattern
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.root_messages import (SetExecutorTaskMessage,
-                                                 TaskRegistrationComplete)
+from hyrex.worker.messages.root_messages import (
+    SetExecutorTaskMessage,
+    TaskRegistrationComplete,
+)
 from hyrex.worker.s3_logs import write_task_logs_to_s3
-from hyrex.worker.utils import (glob_to_postgres_regex, is_glob_pattern,
-                                is_process_alive)
+from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 
 
 def generate_executor_name():
@@ -137,8 +137,14 @@ class WorkerExecutor(Process):
 
         # Execute task with unpacked arguments
         if self.logs_s3_bucket:
-            async with write_task_logs_to_s3(task.id, self.logs_s3_bucket):
-                result = await task_wrapper.async_call(**task.args)
+            try:
+                async with write_task_logs_to_s3(
+                    task.id, self.logs_s3_bucket
+                ) as s3_log_link:
+                    result = await task_wrapper.async_call(**task.args)
+            finally:
+                self.dispatcher.set_log_link(task.id, s3_log_link)
+
         else:
             result = await task_wrapper.async_call(**task.args)
 

@@ -11,9 +11,16 @@ from pydantic import BaseModel
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, QueuePattern, TaskRun,
-                           TaskStatus, WorkflowRunRequest)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    QueuePattern,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 
 class PlatformDispatcher(Dispatcher):
@@ -169,6 +176,9 @@ class PlatformDispatcher(Dispatcher):
 
     def mark_failed(self, task_id: UUID):
         self._update_task_status(task_id, TaskStatus.failed)
+
+    def set_log_link(self, task_id: UUID, log_link: str):
+        pass
 
     def retry_task(self, task_id: UUID, backoff_seconds: int):
         raise NotImplementedError("Retries not yet implemented on Hyrex platform")
