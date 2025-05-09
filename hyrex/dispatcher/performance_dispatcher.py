@@ -16,9 +16,16 @@ from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.postgres_lite_dispatcher import PostgresLiteDispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.proto import gateway_pb2_grpc, task_pb2
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, QueuePattern, TaskRun,
-                           TaskStatus, WorkflowRunRequest)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    QueuePattern,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+)
 
 # Define the epoch zero timestamp for comparison
 EPOCH_ZERO = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -35,8 +42,7 @@ def pydantic_aware_default(obj):
 
 
 class PerformanceDispatcher(Dispatcher):
-    # TODO: Hardcode
-    PERFORMANCE_SERVER_HOST = os.environ.get("HYREX_PERFORMANCE_SERVER")
+    PERFORMANCE_SERVER_HOST = "api.hyrex.io"
     PERFORMANCE_SERVER_PORT = "443"
 
     # Status mapping between Python TaskStatus enum and proto TaskStatus enum
