@@ -97,7 +97,7 @@ class PerformanceDispatcher(Dispatcher):
 
     def enqueue(self, tasks: list[EnqueueTaskRequest]):
         for task in tasks:
-            proto_task = task_pb2.EnqueueTaskRequest()
+            proto_task = requests_pb2.EnqueueTaskRequest()
             proto_task.id = str(task.id)
             proto_task.durable_id = str(task.id)
             proto_task.root_id = str(task.root_id)
@@ -154,7 +154,7 @@ class PerformanceDispatcher(Dispatcher):
         queue: str = constants.ANY_QUEUE,
         concurrency_limit: int = 0,
     ) -> DequeuedTask:
-        request_proto = task_pb2.DequeueTaskRequest()
+        request_proto = requests_pb2.DequeueTaskRequest()
         request_proto.queue = queue
 
         try:
@@ -294,7 +294,7 @@ class PerformanceDispatcher(Dispatcher):
         self.logger.debug("Dispatcher stopped successfully!")
 
     def _update_task_status(self, task_id: UUID, new_status: TaskStatus):
-        request_proto = task_pb2.SetTaskStatusRequest()
+        request_proto = requests_pb2.SetTaskStatusRequest()
         request_proto.task_id = str(task_id)
         request_proto.status = self._PY_TO_PROTO_STATUS[new_status]
 
@@ -314,7 +314,7 @@ class PerformanceDispatcher(Dispatcher):
             )
 
     def mark_success(self, task_id: UUID, result: str):
-        request_proto = task_pb2.MarkSuccessRequest()
+        request_proto = requests_pb2.MarkSuccessRequest()
         request_proto.task_id = str(task_id)
         if result:
             request_proto.result = result
@@ -329,7 +329,7 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def mark_failed(self, task_id: UUID):
-        request_proto = task_pb2.MarkFailedRequest()
+        request_proto = requests_pb2.MarkFailedRequest()
         request_proto.task_id = str(task_id)
 
         try:
@@ -354,7 +354,7 @@ class PerformanceDispatcher(Dispatcher):
         raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
 
     def get_task_status(self, task_id: UUID) -> TaskStatus:
-        request_proto = task_pb2.GetTaskStatusRequest()
+        request_proto = requests_pb2.GetTaskStatusRequest()
         request_proto.task_id = str(task_id)
 
         try:
@@ -397,7 +397,9 @@ class PerformanceDispatcher(Dispatcher):
                 response = self.gateway_stub.RegisterExecutor(
                     request_proto, metadata=self.api_key_metadata
                 )
-                print(f"gRPC RegisterExecutor call successful, response: {response.message}")
+                print(
+                    f"gRPC RegisterExecutor call successful, response: {response.message}"
+                )
             except grpc.RpcError as e:
                 print(f"gRPC RegisterExecutor call failed: {e.code()} - {e.details()}")
                 raise
@@ -428,7 +430,7 @@ class PerformanceDispatcher(Dispatcher):
         return []
 
     def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
-        request_proto = task_pb2.GetQueuesRequest()
+        request_proto = requests_pb2.GetQueuesRequest()
         request_proto.max_num_queues = 10000
         request_proto.pattern = pattern.glob_pattern
 
@@ -519,7 +521,7 @@ class PerformanceDispatcher(Dispatcher):
         pass
 
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
-        request_proto = task_pb2.GetDurableRunTasksRequest()
+        request_proto = requests_pb2.GetDurableRunTasksRequest()
         request_proto.durable_id = str(durable_id)
 
         try:
@@ -596,7 +598,7 @@ class PerformanceDispatcher(Dispatcher):
         pass
 
     def save_result(self, task_id: UUID, result: str):
-        request_proto = task_pb2.SaveTaskResultRequest()
+        request_proto = requests_pb2.SaveTaskResultRequest()
         request_proto.task_id = str(task_id)
         request_proto.result = result
 
@@ -610,7 +612,7 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def get_result(self, task_id: UUID) -> dict:
-        request_proto = task_pb2.GetTaskResultRequest()
+        request_proto = requests_pb2.GetTaskResultRequest()
         request_proto.task_id = str(task_id)
 
         try:
@@ -622,3 +624,6 @@ class PerformanceDispatcher(Dispatcher):
         except grpc.RpcError as e:
             print(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
+
+    def set_log_link(self, task_id: UUID, log_link: str):
+        pass
