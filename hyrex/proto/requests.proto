@@ -7,6 +7,8 @@ option go_package = "proto/";
 import "google/protobuf/timestamp.proto";
 import "task.proto";
 
+
+// VALKEY REQUESTS
 message EnqueueTaskRequest {
   string id = 1;
   string durable_id = 2;
@@ -25,7 +27,6 @@ message EnqueueTaskRequest {
   optional google.protobuf.Timestamp scheduled_start = 15;
 }
 
-// Response for Enqueue operation
 message EnqueueTaskResponse {
   string message = 1;
 }
@@ -93,3 +94,26 @@ message DequeueTaskResponse {
     string message = 1;
     repeated TaskRun tasks = 2;
   }
+
+
+// POSTGRES REQUESTS
+message RegisterExecutorRequest {
+  string executor_id = 1;
+  string executor_name = 2;
+  string queue_pattern = 3;
+  repeated string queues = 4;
+  string worker_name = 5;
+}
+
+message RegisterExecutorResponse {
+  string message = 1;
+}
+
+message UpdateExecutorQueuesRequest {
+  string executor_id = 1;
+  repeated string queues = 2;
+}
+
+message UpdateExecutorQueuesResponse {
+  string message = 1;
+}

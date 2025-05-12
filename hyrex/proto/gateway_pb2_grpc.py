@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import valkey_pb2 as valkey__pb2
+from . import requests_pb2 as requests__pb2
 
 GRPC_GENERATED_VERSION = '1.71.0'
 GRPC_VERSION = grpc.__version__
@@ -36,43 +36,43 @@ class GatewayServiceStub(object):
         """
         self.Enqueue = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/Enqueue',
-                request_serializer=valkey__pb2.EnqueueTaskRequest.SerializeToString,
-                response_deserializer=valkey__pb2.EnqueueTaskResponse.FromString,
+                request_serializer=requests__pb2.EnqueueTaskRequest.SerializeToString,
+                response_deserializer=requests__pb2.EnqueueTaskResponse.FromString,
                 _registered_method=True)
         self.Dequeue = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/Dequeue',
-                request_serializer=valkey__pb2.DequeueTaskRequest.SerializeToString,
-                response_deserializer=valkey__pb2.DequeueTaskResponse.FromString,
+                request_serializer=requests__pb2.DequeueTaskRequest.SerializeToString,
+                response_deserializer=requests__pb2.DequeueTaskResponse.FromString,
                 _registered_method=True)
         self.GetQueues = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetQueues',
-                request_serializer=valkey__pb2.GetQueuesRequest.SerializeToString,
-                response_deserializer=valkey__pb2.GetQueuesResponse.FromString,
+                request_serializer=requests__pb2.GetQueuesRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetQueuesResponse.FromString,
                 _registered_method=True)
         self.GetTaskStatus = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetTaskStatus',
-                request_serializer=valkey__pb2.GetTaskStatusRequest.SerializeToString,
-                response_deserializer=valkey__pb2.GetTaskStatusResponse.FromString,
+                request_serializer=requests__pb2.GetTaskStatusRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetTaskStatusResponse.FromString,
                 _registered_method=True)
         self.MarkSuccess = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/MarkSuccess',
-                request_serializer=valkey__pb2.MarkSuccessRequest.SerializeToString,
-                response_deserializer=valkey__pb2.MarkSuccessResponse.FromString,
+                request_serializer=requests__pb2.MarkSuccessRequest.SerializeToString,
+                response_deserializer=requests__pb2.MarkSuccessResponse.FromString,
                 _registered_method=True)
         self.MarkFailed = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/MarkFailed',
-                request_serializer=valkey__pb2.MarkFailedRequest.SerializeToString,
-                response_deserializer=valkey__pb2.MarkFailedResponse.FromString,
+                request_serializer=requests__pb2.MarkFailedRequest.SerializeToString,
+                response_deserializer=requests__pb2.MarkFailedResponse.FromString,
                 _registered_method=True)
         self.GetTask = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetTask',
-                request_serializer=valkey__pb2.GetTaskRequest.SerializeToString,
-                response_deserializer=valkey__pb2.GetTaskResponse.FromString,
+                request_serializer=requests__pb2.GetTaskRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetTaskResponse.FromString,
                 _registered_method=True)
         self.GetDurableTasks = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetDurableTasks',
-                request_serializer=valkey__pb2.GetDurableRunTasksRequest.SerializeToString,
-                response_deserializer=valkey__pb2.GetDurableRunTasksResponse.FromString,
+                request_serializer=requests__pb2.GetDurableRunTasksRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetDurableRunTasksResponse.FromString,
                 _registered_method=True)
 
 
@@ -132,43 +132,43 @@ def add_GatewayServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Enqueue': grpc.unary_unary_rpc_method_handler(
                     servicer.Enqueue,
-                    request_deserializer=valkey__pb2.EnqueueTaskRequest.FromString,
-                    response_serializer=valkey__pb2.EnqueueTaskResponse.SerializeToString,
+                    request_deserializer=requests__pb2.EnqueueTaskRequest.FromString,
+                    response_serializer=requests__pb2.EnqueueTaskResponse.SerializeToString,
             ),
             'Dequeue': grpc.unary_unary_rpc_method_handler(
                     servicer.Dequeue,
-                    request_deserializer=valkey__pb2.DequeueTaskRequest.FromString,
-                    response_serializer=valkey__pb2.DequeueTaskResponse.SerializeToString,
+                    request_deserializer=requests__pb2.DequeueTaskRequest.FromString,
+                    response_serializer=requests__pb2.DequeueTaskResponse.SerializeToString,
             ),
             'GetQueues': grpc.unary_unary_rpc_method_handler(
                     servicer.GetQueues,
-                    request_deserializer=valkey__pb2.GetQueuesRequest.FromString,
-                    response_serializer=valkey__pb2.GetQueuesResponse.SerializeToString,
+                    request_deserializer=requests__pb2.GetQueuesRequest.FromString,
+                    response_serializer=requests__pb2.GetQueuesResponse.SerializeToString,
             ),
             'GetTaskStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTaskStatus,
-                    request_deserializer=valkey__pb2.GetTaskStatusRequest.FromString,
-                    response_serializer=valkey__pb2.GetTaskStatusResponse.SerializeToString,
+                    request_deserializer=requests__pb2.GetTaskStatusRequest.FromString,
+                    response_serializer=requests__pb2.GetTaskStatusResponse.SerializeToString,
             ),
             'MarkSuccess': grpc.unary_unary_rpc_method_handler(
                     servicer.MarkSuccess,
-                    request_deserializer=valkey__pb2.MarkSuccessRequest.FromString,
-                    response_serializer=valkey__pb2.MarkSuccessResponse.SerializeToString,
+                    request_deserializer=requests__pb2.MarkSuccessRequest.FromString,
+                    response_serializer=requests__pb2.MarkSuccessResponse.SerializeToString,
             ),
             'MarkFailed': grpc.unary_unary_rpc_method_handler(
                     servicer.MarkFailed,
-                    request_deserializer=valkey__pb2.MarkFailedRequest.FromString,
-                    response_serializer=valkey__pb2.MarkFailedResponse.SerializeToString,
+                    request_deserializer=requests__pb2.MarkFailedRequest.FromString,
+                    response_serializer=requests__pb2.MarkFailedResponse.SerializeToString,
             ),
             'GetTask': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTask,
-                    request_deserializer=valkey__pb2.GetTaskRequest.FromString,
-                    response_serializer=valkey__pb2.GetTaskResponse.SerializeToString,
+                    request_deserializer=requests__pb2.GetTaskRequest.FromString,
+                    response_serializer=requests__pb2.GetTaskResponse.SerializeToString,
             ),
             'GetDurableTasks': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDurableTasks,
-                    request_deserializer=valkey__pb2.GetDurableRunTasksRequest.FromString,
-                    response_serializer=valkey__pb2.GetDurableRunTasksResponse.SerializeToString,
+                    request_deserializer=requests__pb2.GetDurableRunTasksRequest.FromString,
+                    response_serializer=requests__pb2.GetDurableRunTasksResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -196,8 +196,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/Enqueue',
-            valkey__pb2.EnqueueTaskRequest.SerializeToString,
-            valkey__pb2.EnqueueTaskResponse.FromString,
+            requests__pb2.EnqueueTaskRequest.SerializeToString,
+            requests__pb2.EnqueueTaskResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -223,8 +223,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/Dequeue',
-            valkey__pb2.DequeueTaskRequest.SerializeToString,
-            valkey__pb2.DequeueTaskResponse.FromString,
+            requests__pb2.DequeueTaskRequest.SerializeToString,
+            requests__pb2.DequeueTaskResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -250,8 +250,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/GetQueues',
-            valkey__pb2.GetQueuesRequest.SerializeToString,
-            valkey__pb2.GetQueuesResponse.FromString,
+            requests__pb2.GetQueuesRequest.SerializeToString,
+            requests__pb2.GetQueuesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -277,8 +277,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/GetTaskStatus',
-            valkey__pb2.GetTaskStatusRequest.SerializeToString,
-            valkey__pb2.GetTaskStatusResponse.FromString,
+            requests__pb2.GetTaskStatusRequest.SerializeToString,
+            requests__pb2.GetTaskStatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -304,8 +304,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/MarkSuccess',
-            valkey__pb2.MarkSuccessRequest.SerializeToString,
-            valkey__pb2.MarkSuccessResponse.FromString,
+            requests__pb2.MarkSuccessRequest.SerializeToString,
+            requests__pb2.MarkSuccessResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -331,8 +331,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/MarkFailed',
-            valkey__pb2.MarkFailedRequest.SerializeToString,
-            valkey__pb2.MarkFailedResponse.FromString,
+            requests__pb2.MarkFailedRequest.SerializeToString,
+            requests__pb2.MarkFailedResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -358,8 +358,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/GetTask',
-            valkey__pb2.GetTaskRequest.SerializeToString,
-            valkey__pb2.GetTaskResponse.FromString,
+            requests__pb2.GetTaskRequest.SerializeToString,
+            requests__pb2.GetTaskResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -385,8 +385,8 @@ class GatewayService(object):
             request,
             target,
             '/hyrex.performanceserver.GatewayService/GetDurableTasks',
-            valkey__pb2.GetDurableRunTasksRequest.SerializeToString,
-            valkey__pb2.GetDurableRunTasksResponse.FromString,
+            requests__pb2.GetDurableRunTasksRequest.SerializeToString,
+            requests__pb2.GetDurableRunTasksResponse.FromString,
             options,
             channel_credentials,
             insecure,

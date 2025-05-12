@@ -22,11 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from . import postgres_pb2 as postgres__pb2
-from . import valkey_pb2 as valkey__pb2
+from . import requests_pb2 as requests__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rgateway.proto\x12\x17hyrex.performanceserver\x1a\x0epostgres.proto\x1a\x0cvalkey.proto2\xdb\x06\n\x0eGatewayService\x12\x64\n\x07\x45nqueue\x12+.hyrex.performanceserver.EnqueueTaskRequest\x1a,.hyrex.performanceserver.EnqueueTaskResponse\x12\x64\n\x07\x44\x65queue\x12+.hyrex.performanceserver.DequeueTaskRequest\x1a,.hyrex.performanceserver.DequeueTaskResponse\x12\x62\n\tGetQueues\x12).hyrex.performanceserver.GetQueuesRequest\x1a*.hyrex.performanceserver.GetQueuesResponse\x12n\n\rGetTaskStatus\x12-.hyrex.performanceserver.GetTaskStatusRequest\x1a..hyrex.performanceserver.GetTaskStatusResponse\x12h\n\x0bMarkSuccess\x12+.hyrex.performanceserver.MarkSuccessRequest\x1a,.hyrex.performanceserver.MarkSuccessResponse\x12\x65\n\nMarkFailed\x12*.hyrex.performanceserver.MarkFailedRequest\x1a+.hyrex.performanceserver.MarkFailedResponse\x12\\\n\x07GetTask\x12\'.hyrex.performanceserver.GetTaskRequest\x1a(.hyrex.performanceserver.GetTaskResponse\x12z\n\x0fGetDurableTasks\x12\x32.hyrex.performanceserver.GetDurableRunTasksRequest\x1a\x33.hyrex.performanceserver.GetDurableRunTasksResponseB\x08Z\x06proto/b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rgateway.proto\x12\x17hyrex.performanceserver\x1a\x0erequests.proto2\xdb\x06\n\x0eGatewayService\x12\x64\n\x07\x45nqueue\x12+.hyrex.performanceserver.EnqueueTaskRequest\x1a,.hyrex.performanceserver.EnqueueTaskResponse\x12\x64\n\x07\x44\x65queue\x12+.hyrex.performanceserver.DequeueTaskRequest\x1a,.hyrex.performanceserver.DequeueTaskResponse\x12\x62\n\tGetQueues\x12).hyrex.performanceserver.GetQueuesRequest\x1a*.hyrex.performanceserver.GetQueuesResponse\x12n\n\rGetTaskStatus\x12-.hyrex.performanceserver.GetTaskStatusRequest\x1a..hyrex.performanceserver.GetTaskStatusResponse\x12h\n\x0bMarkSuccess\x12+.hyrex.performanceserver.MarkSuccessRequest\x1a,.hyrex.performanceserver.MarkSuccessResponse\x12\x65\n\nMarkFailed\x12*.hyrex.performanceserver.MarkFailedRequest\x1a+.hyrex.performanceserver.MarkFailedResponse\x12\\\n\x07GetTask\x12\'.hyrex.performanceserver.GetTaskRequest\x1a(.hyrex.performanceserver.GetTaskResponse\x12z\n\x0fGetDurableTasks\x12\x32.hyrex.performanceserver.GetDurableRunTasksRequest\x1a\x33.hyrex.performanceserver.GetDurableRunTasksResponseB\x08Z\x06proto/b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,6 +33,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'gateway_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z\006proto/'
-  _globals['_GATEWAYSERVICE']._serialized_start=73
-  _globals['_GATEWAYSERVICE']._serialized_end=932
+  _globals['_GATEWAYSERVICE']._serialized_start=59
+  _globals['_GATEWAYSERVICE']._serialized_end=918
 # @@protoc_insertion_point(module_scope)

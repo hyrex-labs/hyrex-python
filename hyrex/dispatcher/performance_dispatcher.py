@@ -15,7 +15,7 @@ from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.postgres_lite_dispatcher import PostgresLiteDispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.proto import gateway_pb2_grpc, task_pb2
+from hyrex.proto import gateway_pb2_grpc, task_pb2, requests_pb2
 from hyrex.schemas import (
     CronJob,
     CronJobRun,
@@ -382,50 +382,42 @@ class PerformanceDispatcher(Dispatcher):
         queues: list[HyrexQueue],
         worker_name: str,
     ):
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.register_executor(
-                executor_id=executor_id,
-                executor_name=executor_name,
-                queue_pattern=queue_pattern,
-                queues=queues,
-                worker_name=worker_name,
-            )
-        else:
-            self.logger.error(
-                "Tried to register executor without a Postgres connection."
+        from hyrex.proto import requests_pb2
+
+        request_proto = requests_pb2.RegisterExecutorRequest()
+        request_proto.executor_id = str(executor_id)
+        request_proto.executor_name = executor_name
+        request_proto.queue_pattern = queue_pattern
+        request_proto.queues.extend([queue.name for queue in queues])
+        request_proto.worker_name = worker_name
+
+        try:
+            start_time = time.perf_counter()
+            try:
+                response = self.gateway_stub.RegisterExecutor(
+                    request_proto, metadata=self.api_key_metadata
+                )
+                print(f"gRPC RegisterExecutor call successful, response: {response.message}")
+            except grpc.RpcError as e:
+                print(f"gRPC RegisterExecutor call failed: {e.code()} - {e.details()}")
+                raise
+        finally:
+            print(
+                f"RegisterExecutor request round-trip duration: {time.perf_counter() - start_time} seconds"
             )
 
     def disconnect_executor(self, executor_id: UUID):
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.disconnect_executor(executor_id=executor_id)
-        else:
-            self.logger.error(
-                "Tried to disconnect executor without a Postgres connection."
-            )
+        pass
 
     def mark_running_tasks_lost(self, executor_id: UUID):
         # TODO: Implement
         pass
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.executor_heartbeat(
-                executor_ids=executor_ids, timestamp=timestamp
-            )
-        else:
-            self.logger.error(
-                "Tried to send executor heartbeat without a Postgres connection."
-            )
+        pass
 
     def update_executor_stats(self, executor_id: UUID, stats: dict):
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.update_executor_stats(
-                executor_id=executor_id, stats=stats
-            )
-        else:
-            self.logger.error(
-                "Tried to update executor stats without a Postgres connection."
-            )
+        pass
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         # TODO: Implement

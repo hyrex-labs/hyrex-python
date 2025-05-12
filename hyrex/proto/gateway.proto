@@ -4,8 +4,7 @@ package hyrex.performanceserver;
 
 option go_package = "proto/";
 
-import "postgres.proto";
-import "valkey.proto";
+import "requests.proto";
 
 service GatewayService {
   rpc Enqueue(EnqueueTaskRequest) returns (EnqueueTaskResponse);
