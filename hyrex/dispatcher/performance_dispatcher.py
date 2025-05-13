@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.postgres_lite_dispatcher import PostgresLiteDispatcher
+from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.proto import gateway_pb2_grpc, task_pb2, requests_pb2
 from hyrex.schemas import (
@@ -42,8 +43,8 @@ def pydantic_aware_default(obj):
 
 
 class PerformanceDispatcher(Dispatcher):
-    PERFORMANCE_SERVER_HOST = "api.hyrex.io"
-    PERFORMANCE_SERVER_PORT = "443"
+    PERFORMANCE_SERVER_HOST = os.getenv(EnvVars.PERF_SERVER_HOST, "api.hyrex.io")
+    PERFORMANCE_SERVER_PORT = os.getenv(EnvVars.PERF_SERVER_PORT, "443")
 
     # Status mapping between Python TaskStatus enum and proto TaskStatus enum
     _PY_TO_PROTO_STATUS = {
@@ -71,15 +72,14 @@ class PerformanceDispatcher(Dispatcher):
         server_address = (
             f"{self.PERFORMANCE_SERVER_HOST}:{self.PERFORMANCE_SERVER_PORT}"
         )
-        channel_credentials = grpc.ssl_channel_credentials()
-        self.channel = grpc.secure_channel(server_address, channel_credentials)
-        self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
-        # TODO: Integrate PostgresLiteDispatcher instance
-        if conn_string:
-            self.postgres_lite_dispatcher = PostgresLiteDispatcher(conn_string)
+        if os.getenv(EnvVars.LOCAL_TESTING):
+            self.logger.info("Testing locally.")
+            self.channel = grpc.insecure_channel(server_address)
         else:
-            self.postgres_lite_dispatcher = None
+            channel_credentials = grpc.ssl_channel_credentials()
+            self.channel = grpc.secure_channel(server_address, channel_credentials)
+        self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
         # TODO: Bring these back if we switch to batching of enqueues
         # self.local_queue = Queue()
@@ -287,11 +287,10 @@ class PerformanceDispatcher(Dispatcher):
         """
         Stops the batching process and flushes remaining tasks.
         """
-        self.logger.debug("Stopping dispatcher...")
+        self.logger.info("Stopping dispatcher...")
         self.running = False
         self.channel.close()
-        # self.thread.join()
-        self.logger.debug("Dispatcher stopped successfully!")
+        self.logger.info("Dispatcher stopped successfully!")
 
     def _update_task_status(self, task_id: UUID, new_status: TaskStatus):
         request_proto = requests_pb2.SetTaskStatusRequest()
@@ -382,8 +381,6 @@ class PerformanceDispatcher(Dispatcher):
         queues: list[HyrexQueue],
         worker_name: str,
     ):
-        from hyrex.proto import requests_pb2
-
         request_proto = requests_pb2.RegisterExecutorRequest()
         request_proto.executor_id = str(executor_id)
         request_proto.executor_name = executor_name
@@ -459,26 +456,10 @@ class PerformanceDispatcher(Dispatcher):
         cron: str = None,
         source_code: str = None,
     ):
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.register_task(
-                task_name=task_name,
-                arg_schema=arg_schema,
-                default_config=default_config,
-                cron=cron,
-                source_code=source_code,
-            )
-        else:
-            self.logger.error("Tried to register task without a Postgres connection.")
+        pass
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        if self.postgres_lite_dispatcher:
-            self.postgres_lite_dispatcher.acquire_scheduler_lock(
-                worker_name=worker_name
-            )
-        else:
-            self.logger.error(
-                "Tried to acquire scheduler lock without a Postgres connection."
-            )
+        pass
 
     def pull_cron_job_expressions(self) -> list[CronJob]:
         pass

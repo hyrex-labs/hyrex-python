@@ -377,38 +377,41 @@ class WorkerExecutor(Process):
                 f"Converted queue glob to Postgres regex syntax: {self.queue_pattern.glob_pattern} -> {self.queue_pattern.postgres_pattern}"
             )
 
-        self.dispatcher = get_dispatcher(worker=True)
-        self.dispatcher.register_executor(
-            executor_id=self.executor_id,
-            executor_name=self.name,
-            queue_pattern=self.queue,
-            queues=self.queues,
-            worker_name=self.worker_name,
-        )
-
-        # Ignore termination signals, let main process manage shutdown.
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        if self.register_app:
-            self.logger.info(
-                f"{self.name}: Registering app, tasks, and workflows to the DB."
-            )
-            self.registry.register_all_with_db()
-            self.register_hyrex_app()
-            # Notify root process that cron scheduler can start
-            self.root_message_queue.put(TaskRegistrationComplete())
-
-        # Set up to throw HyrexTaskTimeout and then end process on task timeout.
-        def timeout_handler(signum, frame):
-            self._stop_event.set()
-            raise HyrexTaskTimeout()
-
-        signal.signal(signal.SIGALRM, timeout_handler)
-
-        self.logger.info(f"Executor process {self.name} started - checking for tasks.")
-
         try:
+            self.dispatcher = get_dispatcher(worker=True)
+            self.dispatcher.register_executor(
+                executor_id=self.executor_id,
+                executor_name=self.name,
+                queue_pattern=self.queue,
+                queues=self.queues,
+                worker_name=self.worker_name,
+            )
+
+            # Ignore termination signals, let main process manage shutdown.
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+            if self.register_app:
+                self.logger.info(
+                    f"{self.name}: Registering app, tasks, and workflows to the DB."
+                )
+                self.registry.register_all_with_db()
+                self.register_hyrex_app()
+                # Notify root process that cron scheduler can start
+                self.root_message_queue.put(TaskRegistrationComplete())
+
+            # Set up to throw HyrexTaskTimeout and then end process on task timeout.
+            def timeout_handler(signum, frame):
+                self._stop_event.set()
+                raise HyrexTaskTimeout()
+
+            signal.signal(signal.SIGALRM, timeout_handler)
+
+            self.logger.info(
+                f"Executor process {self.name} started - checking for tasks."
+            )
+
+            # Run the main loop
             if self.queue_pattern:
                 self.run_round_robin_loop()
             else:
@@ -423,3 +426,4 @@ class WorkerExecutor(Process):
             self.dispatcher.stop()
         # Clean up any cached resources
         HyrexCacheManager.cleanup()
+        self.logger.info(f"{self.name} stopped successfully!")

@@ -114,9 +114,9 @@ def run_worker(
     Run a Hyrex worker for the specified app module path
     """
 
-    if not os.environ.get(EnvVars.DATABASE_URL):
+    if not os.environ.get(EnvVars.DATABASE_URL) and not os.environ.get(EnvVars.API_KEY):
         raise EnvironmentError(
-            f"{EnvVars.DATABASE_URL} must be set to run Hyrex worker."
+            f"Either {EnvVars.DATABASE_URL} (local) or {EnvVars.API_KEY} (Hyrex Cloud) must be set to run Hyrex worker."
         )
 
     # Prevents HyrexRegistry instances from creating their own dispatchers
