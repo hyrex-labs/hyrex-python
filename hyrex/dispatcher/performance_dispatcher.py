@@ -13,7 +13,6 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
-from hyrex.dispatcher.postgres_lite_dispatcher import PostgresLiteDispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.proto import gateway_pb2_grpc, task_pb2, requests_pb2
