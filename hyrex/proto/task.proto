@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package hyrex.performanceserver;
+
+option go_package = "proto/";
+
+import "google/protobuf/timestamp.proto";
+
+// Top-level Priority enum
+enum Priority {
+  P_UNSPECIFIED = 0; // Will be treated as default (P5)
+  P1 = 1;  // Lowest priority
+  P2 = 2;
+  P3 = 3;
+  P4 = 4;
+  P5 = 5;  // Default/normal priority
+  P6 = 6;
+  P7 = 7;
+  P8 = 8;
+  P9 = 9;
+  P10 = 10; // Highest priority
+}
+
+
+enum TaskStatus {
+  UNSPECIFIED = 0;
+  QUEUED = 1;
+  WAITING = 2;
+  RUNNING = 3;
+  SUCCESS = 4;
+  FAILED = 5;
+  UP_FOR_CANCEL = 6;
+  CANCELED = 7;
+  LOST = 8;
+  SKIPPED = 9;
+}
+
+message TaskRun {
+  string id = 1;
+  string durable_id = 2;
+  string root_id = 3;
+  string parent_id = 4;
+  string task_name = 5;
+
+  TaskStatus status = 6;
+
+  bytes args = 7; // JSON serialized as bytes
+  string queue = 8;
+  Priority priority = 9;
+  optional int32 timeout_seconds = 10;
+  optional google.protobuf.Timestamp scheduled_start = 11;
+  google.protobuf.Timestamp queued = 12;
+  google.protobuf.Timestamp started = 13;
+  google.protobuf.Timestamp finished = 14;
+  
+  optional string workflow_run_id = 15;
+  repeated string workflow_dependencies = 16;
+  int32 attempt_number = 17;
+  int32 max_retries = 18;
+
+  string result = 19;
+}

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package hyrex.performanceserver;
+
+option go_package = "proto/";
+
+import "requests.proto";
+
+service GatewayService {
+  // Valkey requests
+  rpc Enqueue(EnqueueTaskRequest) returns (EnqueueTaskResponse);
+  rpc Dequeue(DequeueTaskRequest) returns (DequeueTaskResponse);
+  rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
+  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+  rpc MarkSuccess(MarkSuccessRequest) returns (MarkSuccessResponse);
+  rpc MarkFailed(MarkFailedRequest) returns (MarkFailedResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc GetDurableTasks(GetDurableRunTasksRequest) returns (GetDurableRunTasksResponse);
+
+  // Postgres requests
+  rpc RegisterExecutor(RegisterExecutorRequest) returns (RegisterExecutorResponse);
+  }

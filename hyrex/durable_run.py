@@ -50,9 +50,8 @@ class DurableTaskRun(BaseModel):
     def get_result(self):
         self.refresh()
         for task in self.task_runs:
-            if task.status == TaskStatus.success and task.task_result is not None:
-                # Return only the result dict, not the whole object
-                return task.task_result.result
+            if task.status == TaskStatus.success and task.result is not None:
+                return task.result
         self._logger.warning(f"No result found for durable run {self.durable_id}.")
         return None
 
@@ -64,7 +63,7 @@ class DurableTaskRun(BaseModel):
 
     def refresh(self):
         self.task_runs = self._dispatcher.get_durable_run_tasks(self.durable_id)
-        
+
         # Update task_name from the first task run
         if self.task_runs and len(self.task_runs) > 0:
             self.task_name = self.task_runs[0].task_name

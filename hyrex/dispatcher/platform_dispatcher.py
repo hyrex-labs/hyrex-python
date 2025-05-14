@@ -16,6 +16,7 @@ from hyrex.schemas import (
     CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
+    QueuePattern,
     TaskRun,
     TaskStatus,
     WorkflowRunRequest,
@@ -238,7 +239,7 @@ class PlatformDispatcher(Dispatcher):
     def get_tasks_up_for_cancel(self) -> list[UUID]:
         pass
 
-    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+    def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         pass
 
     def register_task(

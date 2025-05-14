@@ -5,6 +5,11 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+class QueuePattern(BaseModel):
+    glob_pattern: str
+    postgres_pattern: str
+
+
 class TaskStatus(StrEnum):
     success = "success"
     failed = "failed"
@@ -52,12 +57,6 @@ class DequeuedTask(BaseModel):
     max_retries: int
 
 
-class TaskResult(BaseModel):
-    task_run_id: UUID
-    created_at: datetime
-    result: dict
-
-
 # For tracking durable runs:
 class TaskRun(BaseModel):
     id: UUID
@@ -68,7 +67,7 @@ class TaskRun(BaseModel):
     queued: datetime
     started: datetime | None
     finished: datetime | None
-    task_result: TaskResult | None
+    result: dict | None
 
 
 class WorkflowStatus(StrEnum):

@@ -15,6 +15,7 @@ from hyrex.schemas import (
     CronJobRun,
     DequeuedTask,
     EnqueueTaskRequest,
+    QueuePattern,
     TaskRun,
     TaskStatus,
     WorkflowRunRequest,
@@ -76,8 +77,9 @@ class Dispatcher(ABC):
     ) -> DequeuedTask:
         pass
 
+    # Result must be a JSON string)
     @abstractmethod
-    def mark_success(self, task_id: UUID):
+    def mark_success(self, task_id: UUID, result: str):
         pass
 
     @abstractmethod
@@ -104,11 +106,7 @@ class Dispatcher(ABC):
     def task_canceled(self, task_id: UUID):
         pass
 
-    # Result must be a JSON string
-    @abstractmethod
-    def save_result(self, task_id: UUID, result: str):
-        pass
-
+    # TODO: Remove?
     @abstractmethod
     def get_result(self, task_id: UUID) -> dict:
         pass
@@ -160,7 +158,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def get_queues_for_pattern(self, pattern: str) -> list[str]:
+    def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         pass
 
     @abstractmethod
