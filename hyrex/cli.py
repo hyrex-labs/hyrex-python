@@ -39,6 +39,10 @@ def init_db(
     """
     Creates the tables for hyrex tasks/workers in the given Postgres database
     """
+    if os.getenv(EnvVars.API_KEY) is not None:
+        typer.echo(f"{EnvVars.API_KEY} is set. Skipping database initialization.")
+        return
+
     if database_string:
         init_postgres_db(database_string)
         typer.echo("Hyrex tables initialized.")
