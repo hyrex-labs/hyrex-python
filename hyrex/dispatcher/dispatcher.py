@@ -178,6 +178,10 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
+    def execute_queued_cron_job_run(self) -> str | None:
+        pass
+
+    @abstractmethod
     def release_scheduler_lock(self, worker_name: str) -> None:
         pass
 

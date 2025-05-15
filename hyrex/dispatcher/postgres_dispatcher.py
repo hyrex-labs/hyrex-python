@@ -56,7 +56,7 @@ class PostgresDispatcher(Dispatcher):
 
     def register_app(self, app_info: dict):
         with self.transaction() as cur:
-            cur.execute(sql.REGISTER_APP_INFO_SQL, [1, app_info])
+            cur.execute(sql.REGISTER_APP_INFO_SQL, [1, json.dumps(app_info)])
 
     def mark_success(self, task_id: UUID, result: str):
         with self.transaction() as cur:

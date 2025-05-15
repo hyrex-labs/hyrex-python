@@ -14,9 +14,13 @@ service GatewayService {
   rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
   rpc MarkSuccess(MarkSuccessRequest) returns (MarkSuccessResponse);
   rpc MarkFailed(MarkFailedRequest) returns (MarkFailedResponse);
-  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
   rpc GetDurableTasks(GetDurableRunTasksRequest) returns (GetDurableRunTasksResponse);
 
   // Postgres requests
   rpc RegisterExecutor(RegisterExecutorRequest) returns (RegisterExecutorResponse);
+  rpc UpdateExecutorQueues(UpdateExecutorQueuesRequest) returns (UpdateExecutorQueuesResponse);
+  rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
+  rpc SetLogLink(SetLogLinkRequest) returns (SetLogLinkResponse);
+  rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
   }

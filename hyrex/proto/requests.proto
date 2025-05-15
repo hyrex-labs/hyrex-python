@@ -5,6 +5,7 @@ package hyrex.performanceserver;
 option go_package = "proto/";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 import "task.proto";
 
 
@@ -77,15 +78,6 @@ message DequeueTaskResponse {
     string message = 1;
   }
   
-  message GetTaskRequest {
-    string task_id = 1;
-  }
-  
-  message GetTaskResponse {
-    string message = 1;
-    TaskRun task = 2;
-  }
-  
   message GetDurableRunTasksRequest {
     string durable_id = 1;
   }
@@ -95,6 +87,14 @@ message DequeueTaskResponse {
     repeated TaskRun tasks = 2;
   }
 
+  message SetLogLinkRequest {
+    string task_id = 1;
+    string log_link = 2;
+  }
+
+  message SetLogLinkResponse {
+    string message = 1;
+  }
 
 // POSTGRES REQUESTS
 message RegisterExecutorRequest {
@@ -115,5 +115,50 @@ message UpdateExecutorQueuesRequest {
 }
 
 message UpdateExecutorQueuesResponse {
+  string message = 1;
+}
+
+message RegisterAppRequest {
+  google.protobuf.Struct app_info = 1;
+}
+
+message RegisterAppResponse {
+  string message = 1;
+}
+
+message AcquireSchedulerLockRequest {
+  string worker_name = 1;
+  string duration = 2;
+}
+
+message AcquireSchedulerLockResponse {
+  string message = 1;
+  optional int32 lock_id = 2;
+}
+
+// Hyrex studio
+message GetTaskRunRequest {
+  string task_id = 1;
+}
+
+message GetTaskRunResponse {
+  string message = 1;
+  TaskRun task = 2;
+}
+
+message GetRecentTasksByStatusRequest {
+
+}
+
+message GetRecentTasksByStatusResponse {
+
+}
+
+// Internal connection test
+message TestConnectionRequest {
+  string message = 1;
+}
+
+message TestConnectionResponse {
   string message = 1;
 }

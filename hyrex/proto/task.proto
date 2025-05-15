@@ -59,4 +59,5 @@ message TaskRun {
   int32 max_retries = 18;
 
   string result = 19;
+  string log_link = 20;
 }

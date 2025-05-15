@@ -9,13 +9,14 @@ from uuid import UUID
 
 import grpc
 import requests
+from google.protobuf.struct_pb2 import Struct
 from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.proto import gateway_pb2_grpc, task_pb2, requests_pb2
+from hyrex.proto import gateway_pb2_grpc, requests_pb2, task_pb2
 from hyrex.schemas import (
     CronJob,
     CronJobRun,
@@ -92,7 +93,20 @@ class PerformanceDispatcher(Dispatcher):
         self.register_shutdown_handlers()
 
     def register_app(self, app_info: dict):
-        pass
+        app_info_struct = Struct()
+        app_info_struct.update(app_info)
+
+        request_proto = requests_pb2.RegisterAppRequest()
+        request_proto.app_info = app_info_struct
+
+        try:
+            response = self.gateway_stub.RegisterApp(
+                request_proto, metadata=self.api_key_metadata
+            )
+            print("gRPC call successful, response:", response)
+        except grpc.RpcError as e:
+            print(f"gRPC call failed: {e.code()} - {e.details()}")
+            raise
 
     def enqueue(self, tasks: list[EnqueueTaskRequest]):
         for task in tasks:
@@ -291,26 +305,6 @@ class PerformanceDispatcher(Dispatcher):
         self.channel.close()
         self.logger.info("Dispatcher stopped successfully!")
 
-    def _update_task_status(self, task_id: UUID, new_status: TaskStatus):
-        request_proto = requests_pb2.SetTaskStatusRequest()
-        request_proto.task_id = str(task_id)
-        request_proto.status = self._PY_TO_PROTO_STATUS[new_status]
-
-        try:
-            start_time = time.perf_counter()
-            try:
-                response = self.gateway_stub.SetTaskStatus(
-                    request_proto, metadata=self.api_key_metadata
-                )
-                print(f"gRPC SetTaskStatus call successful, response: {response}")
-            except grpc.RpcError as e:
-                print(f"gRPC SetTaskStatus call failed: {e.code()} - {e.details()}")
-                raise
-        finally:
-            print(
-                f"SetTaskStatus request round-trip duration: {time.perf_counter() - start_time} seconds"
-            )
-
     def mark_success(self, task_id: UUID, result: str):
         request_proto = requests_pb2.MarkSuccessRequest()
         request_proto.task_id = str(task_id)
@@ -431,19 +425,13 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.pattern = pattern.glob_pattern
 
         try:
-            start_time = time.perf_counter()
-            try:
-                response = self.gateway_stub.GetQueues(
-                    request_proto, metadata=self.api_key_metadata
-                )
-                print("gRPC call successful, response:", response)
-            except grpc.RpcError as e:
-                print(f"gRPC call failed: {e.code()} - {e.details()}")
-                raise
-        finally:
-            print(
-                f"Get queue list request round-trip duration: {time.perf_counter() - start_time} seconds"
+            response = self.gateway_stub.GetQueues(
+                request_proto, metadata=self.api_key_metadata
             )
+            self.logger.debug(response)
+        except grpc.RpcError as e:
+            print(f"gRPC call failed: {e.code()} - {e.details()}")
+            raise
 
         return response.queues
 
@@ -458,10 +446,21 @@ class PerformanceDispatcher(Dispatcher):
         pass
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        pass
+        request_proto = requests_pb2.AcquireSchedulerLockRequest()
+        request_proto.worker_name = worker_name
+
+        try:
+            response = self.gateway_stub.AcquireSchedulerLock(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug(response)
+            return response.lock_id
+        except grpc.RpcError as e:
+            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
+            raise
 
     def pull_cron_job_expressions(self) -> list[CronJob]:
-        pass
+        return []
 
     def update_cron_job_confirmation_timestamp(self, jobid: int):
         pass
@@ -476,6 +475,9 @@ class PerformanceDispatcher(Dispatcher):
         cron_expr: str,
         should_backfill: bool,
     ) -> None:
+        pass
+
+    def execute_queued_cron_job_run(self) -> str | None:
         pass
 
     def release_scheduler_lock(self, worker_name: str) -> None:
@@ -575,7 +577,18 @@ class PerformanceDispatcher(Dispatcher):
         pass
 
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
-        pass
+        request_proto = requests_pb2.UpdateExecutorQueuesRequest()
+        request_proto.executor_id = str(executor_id)
+        request_proto.queues.extend(queues)  # Use extend for repeated field instead of direct assignment
+
+        try:
+            response = self.gateway_stub.UpdateExecutorQueues(
+                request_proto, metadata=self.api_key_metadata
+            )
+            print("gRPC call successful, response:", response.message)
+        except grpc.RpcError as e:
+            print(f"gRPC call failed: {e.code()} - {e.details()}")
+            raise
 
     def save_result(self, task_id: UUID, result: str):
         request_proto = requests_pb2.SaveTaskResultRequest()
@@ -606,4 +619,15 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def set_log_link(self, task_id: UUID, log_link: str):
-        pass
+        request_proto = requests_pb2.SetLogLinkRequest()
+        request_proto.task_id = str(task_id)
+        request_proto.log_link = log_link
+
+        try:
+            response = self.gateway_stub.SetLogLink(
+                request_proto, metadata=self.api_key_metadata
+            )
+            print("gRPC call successful, response:", response.message)
+        except grpc.RpcError as e:
+            print(f"gRPC call failed: {e.code()} - {e.details()}")
+            raise
