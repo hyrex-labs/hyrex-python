@@ -15,15 +15,19 @@ from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
 from hyrex.worker.logging import LogLevel, init_logging
-from hyrex.worker.messages.admin_messages import (ExecutorHeartbeatMessage,
-                                                  ExecutorStoppedMessage,
-                                                  NewExecutorMessage,
-                                                  TaskCanceledMessage,
-                                                  TaskHeartbeatMessage)
-from hyrex.worker.messages.root_messages import (CancelTaskMessage,
-                                                 HeartbeatRequestMessage,
-                                                 SetExecutorTaskMessage,
-                                                 TaskRegistrationComplete)
+from hyrex.worker.messages.admin_messages import (
+    ExecutorHeartbeatMessage,
+    ExecutorStoppedMessage,
+    NewExecutorMessage,
+    TaskCanceledMessage,
+    TaskHeartbeatMessage,
+)
+from hyrex.worker.messages.root_messages import (
+    CancelTaskMessage,
+    HeartbeatRequestMessage,
+    SetExecutorTaskMessage,
+    TaskRegistrationComplete,
+)
 
 
 def generate_worker_name():
@@ -234,7 +238,7 @@ class WorkerRootProcess:
             self._spawn_executor()
 
         self.logger.info("Waiting for executor to complete task registration.")
-        while not self.task_registration_complete:
+        while not self.task_registration_complete and not self._stop_event.is_set():
             time.sleep(0.5)
 
         self.logger.info("Spawning cron scheduler process.")
