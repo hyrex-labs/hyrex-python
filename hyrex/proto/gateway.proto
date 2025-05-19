@@ -5,6 +5,7 @@ package hyrex.performanceserver;
 option go_package = "proto/";
 
 import "requests.proto";
+import "google/protobuf/empty.proto";
 
 service GatewayService {
   // Valkey requests
@@ -18,9 +19,16 @@ service GatewayService {
   rpc GetDurableTasks(GetDurableRunTasksRequest) returns (GetDurableRunTasksResponse);
 
   // Postgres requests
+  rpc RegisterTask(RegisterTaskRequest) returns (RegisterTaskResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc GetAllTasks(GetAllTasksRequest) returns (GetAllTasksResponse);
   rpc RegisterExecutor(RegisterExecutorRequest) returns (RegisterExecutorResponse);
   rpc UpdateExecutorQueues(UpdateExecutorQueuesRequest) returns (UpdateExecutorQueuesResponse);
   rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
   rpc SetLogLink(SetLogLinkRequest) returns (SetLogLinkResponse);
   rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
+
+  // Crons
+  rpc PostTaskStatusCounts(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc QueueWaitingTasks(google.protobuf.Empty) returns (google.protobuf.Empty);
   }

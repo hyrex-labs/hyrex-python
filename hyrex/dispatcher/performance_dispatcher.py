@@ -443,7 +443,45 @@ class PerformanceDispatcher(Dispatcher):
         cron: str = None,
         source_code: str = None,
     ):
-        pass
+        # The proto structure has changed to use a Task message
+        request_proto = requests_pb2.RegisterTaskRequest()
+        
+        # Create the Task message
+        task = task_pb2.Task()
+        task.task_name = task_name
+        
+        # Handle arg_schema
+        if arg_schema:
+            arg_schema_struct = Struct()
+            arg_schema_struct.update(arg_schema)
+            task.arg_schema.CopyFrom(arg_schema_struct)
+        
+        # Handle default_config
+        if default_config:
+            default_config_struct = Struct()
+            default_config_struct.update(default_config)
+            task.default_config.CopyFrom(default_config_struct)
+        
+        # Set optional fields
+        if cron:
+            task.cron = cron
+            
+        if source_code:
+            task.source_code = source_code
+        
+        # Set the task in the request proto
+        request_proto.task.CopyFrom(task)
+            
+        try:
+            response = self.gateway_stub.RegisterTask(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC RegisterTask call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC RegisterTask call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
         request_proto = requests_pb2.AcquireSchedulerLockRequest()
@@ -579,7 +617,9 @@ class PerformanceDispatcher(Dispatcher):
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
         request_proto = requests_pb2.UpdateExecutorQueuesRequest()
         request_proto.executor_id = str(executor_id)
-        request_proto.queues.extend(queues)  # Use extend for repeated field instead of direct assignment
+        request_proto.queues.extend(
+            queues
+        )  # Use extend for repeated field instead of direct assignment
 
         try:
             response = self.gateway_stub.UpdateExecutorQueues(

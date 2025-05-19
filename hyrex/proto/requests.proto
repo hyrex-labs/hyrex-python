@@ -42,61 +42,96 @@ message DequeueTaskResponse {
     TaskRun task = 2;
   }
   
-  message GetQueuesRequest {
-    int32 max_num_queues = 1;
-    string pattern = 2;
-  }
-  
-  message GetQueuesResponse {
-    string message = 1;
-    repeated string queues = 2;
-  }
-  
-  message GetTaskStatusRequest {
-    string task_id = 1;
-  }
-  
-  message GetTaskStatusResponse {
-    string message = 1;
-    TaskStatus status = 2;
-  }
-  
-  message MarkSuccessRequest {
-    string task_id = 1;
-    optional string result = 2;
-  }
-  
-  message MarkSuccessResponse {
-    string message = 1;
-  }
-  
-  message MarkFailedRequest {
-    string task_id = 1;
-  }
-  
-  message MarkFailedResponse {
-    string message = 1;
-  }
-  
-  message GetDurableRunTasksRequest {
-    string durable_id = 1;
-  }
-  
-  message GetDurableRunTasksResponse {
-    string message = 1;
-    repeated TaskRun tasks = 2;
-  }
+message GetQueuesRequest {
+  int32 max_num_queues = 1;
+  string pattern = 2;
+}
 
-  message SetLogLinkRequest {
-    string task_id = 1;
-    string log_link = 2;
-  }
+message GetQueuesResponse {
+  string message = 1;
+  repeated string queues = 2;
+}
 
-  message SetLogLinkResponse {
-    string message = 1;
-  }
+message GetTaskRunRequest {
+  string task_id = 1;
+}
+
+message GetTaskRunResponse {
+  string message = 1;
+  TaskRun task = 2;
+}
+
+message GetTaskStatusRequest {
+  string task_id = 1;
+}
+
+message GetTaskStatusResponse {
+  string message = 1;
+  TaskStatus status = 2;
+}
+
+message MarkSuccessRequest {
+  string task_id = 1;
+  optional string result = 2;
+}
+
+message MarkSuccessResponse {
+  string message = 1;
+}
+
+message MarkFailedRequest {
+  string task_id = 1;
+}
+
+message MarkFailedResponse {
+  string message = 1;
+}
+
+message GetDurableRunTasksRequest {
+  string durable_id = 1;
+}
+
+message GetDurableRunTasksResponse {
+  string message = 1;
+  repeated TaskRun tasks = 2;
+}
+
+message SetLogLinkRequest {
+  string task_id = 1;
+  string log_link = 2;
+}
+
+message SetLogLinkResponse {
+  string message = 1;
+}
 
 // POSTGRES REQUESTS
+message RegisterTaskRequest {
+  Task task = 1;
+}
+
+message RegisterTaskResponse {}
+
+message GetTaskRequest {
+  string task_name = 1;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
+message GetAllTasksRequest {}
+
+message GetAllTasksResponse {
+  repeated Task tasks = 1;
+}
+
+message RegisterCronRequest {
+  // TODO
+}
+
+message RegisterCronResponse {}
+
 message RegisterExecutorRequest {
   string executor_id = 1;
   string executor_name = 2;
@@ -134,24 +169,6 @@ message AcquireSchedulerLockRequest {
 message AcquireSchedulerLockResponse {
   string message = 1;
   optional int32 lock_id = 2;
-}
-
-// Hyrex studio
-message GetTaskRunRequest {
-  string task_id = 1;
-}
-
-message GetTaskRunResponse {
-  string message = 1;
-  TaskRun task = 2;
-}
-
-message GetRecentTasksByStatusRequest {
-
-}
-
-message GetRecentTasksByStatusResponse {
-
 }
 
 // Internal connection test

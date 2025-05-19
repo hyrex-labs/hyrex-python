@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from . import requests_pb2 as requests__pb2
 
 GRPC_GENERATED_VERSION = '1.71.0'
@@ -74,6 +75,21 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.GetDurableRunTasksRequest.SerializeToString,
                 response_deserializer=requests__pb2.GetDurableRunTasksResponse.FromString,
                 _registered_method=True)
+        self.RegisterTask = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/RegisterTask',
+                request_serializer=requests__pb2.RegisterTaskRequest.SerializeToString,
+                response_deserializer=requests__pb2.RegisterTaskResponse.FromString,
+                _registered_method=True)
+        self.GetTask = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetTask',
+                request_serializer=requests__pb2.GetTaskRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetTaskResponse.FromString,
+                _registered_method=True)
+        self.GetAllTasks = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetAllTasks',
+                request_serializer=requests__pb2.GetAllTasksRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetAllTasksResponse.FromString,
+                _registered_method=True)
         self.RegisterExecutor = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterExecutor',
                 request_serializer=requests__pb2.RegisterExecutorRequest.SerializeToString,
@@ -98,6 +114,16 @@ class GatewayServiceStub(object):
                 '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
                 request_serializer=requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
                 response_deserializer=requests__pb2.AcquireSchedulerLockResponse.FromString,
+                _registered_method=True)
+        self.PostTaskStatusCounts = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/PostTaskStatusCounts',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.QueueWaitingTasks = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/QueueWaitingTasks',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
 
 
@@ -153,9 +179,27 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RegisterExecutor(self, request, context):
+    def RegisterTask(self, request, context):
         """Postgres requests
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTask(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetAllTasks(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RegisterExecutor(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -179,6 +223,19 @@ class GatewayServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def AcquireSchedulerLock(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PostTaskStatusCounts(self, request, context):
+        """Crons
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def QueueWaitingTasks(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -227,6 +284,21 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.GetDurableRunTasksRequest.FromString,
                     response_serializer=requests__pb2.GetDurableRunTasksResponse.SerializeToString,
             ),
+            'RegisterTask': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterTask,
+                    request_deserializer=requests__pb2.RegisterTaskRequest.FromString,
+                    response_serializer=requests__pb2.RegisterTaskResponse.SerializeToString,
+            ),
+            'GetTask': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTask,
+                    request_deserializer=requests__pb2.GetTaskRequest.FromString,
+                    response_serializer=requests__pb2.GetTaskResponse.SerializeToString,
+            ),
+            'GetAllTasks': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAllTasks,
+                    request_deserializer=requests__pb2.GetAllTasksRequest.FromString,
+                    response_serializer=requests__pb2.GetAllTasksResponse.SerializeToString,
+            ),
             'RegisterExecutor': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterExecutor,
                     request_deserializer=requests__pb2.RegisterExecutorRequest.FromString,
@@ -251,6 +323,16 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     servicer.AcquireSchedulerLock,
                     request_deserializer=requests__pb2.AcquireSchedulerLockRequest.FromString,
                     response_serializer=requests__pb2.AcquireSchedulerLockResponse.SerializeToString,
+            ),
+            'PostTaskStatusCounts': grpc.unary_unary_rpc_method_handler(
+                    servicer.PostTaskStatusCounts,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'QueueWaitingTasks': grpc.unary_unary_rpc_method_handler(
+                    servicer.QueueWaitingTasks,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -480,6 +562,87 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
+    def RegisterTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/RegisterTask',
+            requests__pb2.RegisterTaskRequest.SerializeToString,
+            requests__pb2.RegisterTaskResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/GetTask',
+            requests__pb2.GetTaskRequest.SerializeToString,
+            requests__pb2.GetTaskResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetAllTasks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/GetAllTasks',
+            requests__pb2.GetAllTasksRequest.SerializeToString,
+            requests__pb2.GetAllTasksResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def RegisterExecutor(request,
             target,
             options=(),
@@ -604,6 +767,60 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
             requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
             requests__pb2.AcquireSchedulerLockResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PostTaskStatusCounts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/PostTaskStatusCounts',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def QueueWaitingTasks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/QueueWaitingTasks',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
