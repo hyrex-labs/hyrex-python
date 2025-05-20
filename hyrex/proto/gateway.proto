@@ -7,16 +7,23 @@ option go_package = "proto/";
 import "requests.proto";
 
 service GatewayService {
-  // Valkey requests
-  rpc Enqueue(EnqueueTaskRequest) returns (EnqueueTaskResponse);
-  rpc Dequeue(DequeueTaskRequest) returns (DequeueTaskResponse);
+  // ---- Valkey requests ----
+  rpc Enqueue(EnqueueRequest) returns (EnqueueResponse);
+  rpc Dequeue(DequeueRequest) returns (DequeueResponse);
   rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
-  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+  rpc GetTaskRunStatus(GetTaskRunStatusRequest) returns (GetTaskRunStatusResponse);
   rpc MarkSuccess(MarkSuccessRequest) returns (MarkSuccessResponse);
   rpc MarkFailed(MarkFailedRequest) returns (MarkFailedResponse);
-  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
-  rpc GetDurableTasks(GetDurableRunTasksRequest) returns (GetDurableRunTasksResponse);
+  rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
+  rpc GetDurableTaskRuns(GetDurableTaskRunsRequest) returns (GetDurableTaskRunsResponse);
 
-  // Postgres requests
+  // ---- Postgres requests ----
+  rpc RegisterTaskDef(RegisterTaskDefRequest) returns (RegisterTaskDefResponse);
+  rpc GetTaskDef(GetTaskDefRequest) returns (GetTaskDefResponse);
+  rpc GetAllTaskDefs(GetAllTaskDefsRequest) returns (GetAllTaskDefsResponse);
   rpc RegisterExecutor(RegisterExecutorRequest) returns (RegisterExecutorResponse);
+  rpc UpdateExecutorQueues(UpdateExecutorQueuesRequest) returns (UpdateExecutorQueuesResponse);
+  rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
+  rpc SetLogLink(SetLogLinkRequest) returns (SetLogLinkResponse);
+  rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
   }

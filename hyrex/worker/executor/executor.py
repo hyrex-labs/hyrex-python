@@ -359,7 +359,7 @@ class WorkerExecutor(Process):
                     break
 
     def register_hyrex_app(self):
-        self.dispatcher.register_app(self.app_info.model_dump_json())
+        self.dispatcher.register_app(self.app_info.model_dump())
 
     def run(self):
         init_logging(self.log_level)

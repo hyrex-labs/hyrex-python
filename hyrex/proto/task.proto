@@ -5,6 +5,7 @@ package hyrex.performanceserver;
 option go_package = "proto/";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 
 // Top-level Priority enum
 enum Priority {
@@ -59,4 +60,14 @@ message TaskRun {
   int32 max_retries = 18;
 
   string result = 19;
+  string log_link = 20;
+}
+
+message TaskDef {
+  string task_name = 1;
+  google.protobuf.Struct arg_schema = 2;
+  google.protobuf.Struct default_config = 3;
+  optional string cron = 4;
+  optional string source_code = 5;
+  optional google.protobuf.Timestamp last_updated = 6;
 }

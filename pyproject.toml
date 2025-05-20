@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=80.8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.9.7"
+version = "0.9.11"
 description = "Hyrex is the open-source COLD task orchestration framework built on Postgres."
 readme = "README.md"
 license = "Apache-2.0"
@@ -34,7 +34,7 @@ dependencies = [
     "sqlmodel>=0.0.21",
     "typer==0.15.3",
     "typing_extensions>=4.12.2",
-    "uuid7>=0.1.0"
+    "uuid6==2024.7.10"
 ]
 
 [project.optional-dependencies]

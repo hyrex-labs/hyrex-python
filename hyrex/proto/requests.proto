@@ -5,11 +5,12 @@ package hyrex.performanceserver;
 option go_package = "proto/";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 import "task.proto";
 
 
 // VALKEY REQUESTS
-message EnqueueTaskRequest {
+message EnqueueRequest {
   string id = 1;
   string durable_id = 2;
   string root_id = 3;
@@ -27,76 +28,98 @@ message EnqueueTaskRequest {
   optional google.protobuf.Timestamp scheduled_start = 15;
 }
 
-message EnqueueTaskResponse {
-  string message = 1;
-}
+message EnqueueResponse {}
 
-message DequeueTaskRequest {
+message DequeueRequest {
   string executor_id = 1;
   string queue = 2;
 }
 
-message DequeueTaskResponse {
-    string message = 1;
-    TaskRun task = 2;
+message DequeueResponse {
+    TaskRun task_run = 1;
   }
   
-  message GetQueuesRequest {
-    int32 max_num_queues = 1;
-    string pattern = 2;
-  }
-  
-  message GetQueuesResponse {
-    string message = 1;
-    repeated string queues = 2;
-  }
-  
-  message GetTaskStatusRequest {
-    string task_id = 1;
-  }
-  
-  message GetTaskStatusResponse {
-    string message = 1;
-    TaskStatus status = 2;
-  }
-  
-  message MarkSuccessRequest {
-    string task_id = 1;
-    optional string result = 2;
-  }
-  
-  message MarkSuccessResponse {
-    string message = 1;
-  }
-  
-  message MarkFailedRequest {
-    string task_id = 1;
-  }
-  
-  message MarkFailedResponse {
-    string message = 1;
-  }
-  
-  message GetTaskRequest {
-    string task_id = 1;
-  }
-  
-  message GetTaskResponse {
-    string message = 1;
-    TaskRun task = 2;
-  }
-  
-  message GetDurableRunTasksRequest {
-    string durable_id = 1;
-  }
-  
-  message GetDurableRunTasksResponse {
-    string message = 1;
-    repeated TaskRun tasks = 2;
-  }
+message GetQueuesRequest {
+  int32 max_num_queues = 1;
+  string pattern = 2;
+}
 
+message GetQueuesResponse {
+  string message = 1;
+  repeated string queues = 2;
+}
+
+message GetTaskRunRequest {
+  string task_id = 1;
+}
+
+message GetTaskRunResponse {
+  TaskRun task_run = 1;
+}
+
+message GetTaskRunStatusRequest {
+  string task_id = 1;
+}
+
+message GetTaskRunStatusResponse {
+  TaskStatus status = 1;
+}
+
+message MarkSuccessRequest {
+  string task_id = 1;
+  optional string result = 2;
+}
+
+message MarkSuccessResponse {}
+
+message MarkFailedRequest {
+  string task_id = 1;
+}
+
+message MarkFailedResponse {}
+
+message GetDurableTaskRunsRequest {
+  string durable_id = 1;
+}
+
+message GetDurableTaskRunsResponse {
+  repeated TaskRun task_runs = 2;
+}
+
+message SetLogLinkRequest {
+  string task_id = 1;
+  string log_link = 2;
+}
+
+message SetLogLinkResponse {}
 
 // POSTGRES REQUESTS
+message RegisterTaskDefRequest {
+  TaskDef task_def = 1;
+}
+
+message RegisterTaskDefResponse {}
+
+message GetTaskDefRequest {
+  string task_name = 1;
+}
+
+message GetTaskDefResponse {
+  TaskDef task_def = 1;
+}
+
+message GetAllTaskDefsRequest {}
+
+message GetAllTaskDefsResponse {
+  repeated TaskDef task_defs = 1;
+}
+
+message RegisterCronRequest {
+  // TODO
+}
+
+message RegisterCronResponse {}
+
 message RegisterExecutorRequest {
   string executor_id = 1;
   string executor_name = 2;
@@ -105,15 +128,31 @@ message RegisterExecutorRequest {
   string worker_name = 5;
 }
 
-message RegisterExecutorResponse {
-  string message = 1;
-}
+message RegisterExecutorResponse {}
 
 message UpdateExecutorQueuesRequest {
   string executor_id = 1;
   repeated string queues = 2;
 }
 
-message UpdateExecutorQueuesResponse {
-  string message = 1;
+message UpdateExecutorQueuesResponse {}
+
+message RegisterAppRequest {
+  google.protobuf.Struct app_info = 1;
 }
+
+message RegisterAppResponse {}
+
+message AcquireSchedulerLockRequest {
+  string worker_name = 1;
+  string duration = 2;
+}
+
+message AcquireSchedulerLockResponse {
+  optional int32 lock_id = 1;
+}
+
+// Internal connection test
+message TestConnectionRequest {}
+
+message TestConnectionResponse {}
