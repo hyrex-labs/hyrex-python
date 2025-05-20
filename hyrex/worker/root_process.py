@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from multiprocessing import Process, Queue
 from uuid import UUID
 
-from uuid_extensions import uuid7
+from uuid6 import uuid7
 
 from hyrex import constants
 from hyrex.worker.admin import WorkerAdmin

@@ -2,7 +2,7 @@ from typing import Type
 from uuid import UUID
 
 from pydantic import BaseModel
-from uuid_extensions import uuid7
+from uuid6 import uuid7
 
 from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.dispatcher.dispatcher import Dispatcher

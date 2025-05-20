@@ -12,14 +12,22 @@ from psycopg import RawCursor
 from psycopg.types.json import Json
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel
-from uuid_extensions import uuid7
+from uuid6 import uuid7
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
-from hyrex.schemas import (CronJob, CronJobRun, DequeuedTask,
-                           EnqueueTaskRequest, QueuePattern, TaskRun,
-                           TaskStatus, WorkflowRunRequest, WorkflowStatus)
+from hyrex.schemas import (
+    CronJob,
+    CronJobRun,
+    DequeuedTask,
+    EnqueueTaskRequest,
+    QueuePattern,
+    TaskRun,
+    TaskStatus,
+    WorkflowRunRequest,
+    WorkflowStatus,
+)
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 

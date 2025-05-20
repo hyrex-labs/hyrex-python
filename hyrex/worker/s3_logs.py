@@ -56,6 +56,7 @@ async def _upload_to_s3_async(task_id: str, bucket_name: str, content: str):
         s3_client = get_s3_client()
         s3_client.put_object(Bucket=bucket_name, Key=key, Body=content.encode("utf-8"))
     except Exception as e:
+        # TODO: Pass this up the chain
         print(f"Failed to upload logs to S3: {e}", file=sys.__stderr__)
 
 
@@ -97,5 +98,4 @@ async def write_task_logs_to_s3(
 
         # Upload logs if we captured anything
         content = log_capture.getvalue()
-        if content:
-            await _upload_to_s3_async(task_id, bucket_name, content)
+        await _upload_to_s3_async(task_id, bucket_name, content)

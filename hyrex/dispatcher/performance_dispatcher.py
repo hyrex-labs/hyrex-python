@@ -103,7 +103,6 @@ class PerformanceDispatcher(Dispatcher):
             response = self.gateway_stub.RegisterApp(
                 request_proto, metadata=self.api_key_metadata
             )
-            self.logger.debug("gRPC call successful, response:", response)
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
@@ -149,7 +148,6 @@ class PerformanceDispatcher(Dispatcher):
                 response = self.gateway_stub.Enqueue(
                     proto_task, metadata=self.api_key_metadata
                 )
-                self.logger.debug("gRPC call successful, response:", response)
             except grpc.RpcError as e:
                 self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
                 raise
@@ -168,7 +166,7 @@ class PerformanceDispatcher(Dispatcher):
             response = self.gateway_stub.Dequeue(
                 request_proto, metadata=self.api_key_metadata
             )
-            self.logger.debug("gRPC call successful, response:", response)
+            self.logger.debug(f"gRPC call successful, response {response}")
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
@@ -408,7 +406,7 @@ class PerformanceDispatcher(Dispatcher):
             response = self.gateway_stub.GetQueues(
                 request_proto, metadata=self.api_key_metadata
             )
-            self.logger.debug(response)
+            self.logger.debug(f"GetQueues gRPC call successful. response: {response}")
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
@@ -528,7 +526,7 @@ class PerformanceDispatcher(Dispatcher):
             response = self.gateway_stub.GetDurableTasks(
                 request_proto, metadata=self.api_key_metadata
             )
-            self.logger.debug("gRPC call successful, response:", response.message)
+            self.logger.debug(f"gRPC call successful, response: {response}")
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
