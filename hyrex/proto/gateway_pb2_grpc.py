@@ -75,20 +75,20 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.GetDurableRunTasksRequest.SerializeToString,
                 response_deserializer=requests__pb2.GetDurableRunTasksResponse.FromString,
                 _registered_method=True)
-        self.RegisterTask = channel.unary_unary(
-                '/hyrex.performanceserver.GatewayService/RegisterTask',
-                request_serializer=requests__pb2.RegisterTaskRequest.SerializeToString,
-                response_deserializer=requests__pb2.RegisterTaskResponse.FromString,
+        self.RegisterTaskDef = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
+                request_serializer=requests__pb2.RegisterTaskDefRequest.SerializeToString,
+                response_deserializer=requests__pb2.RegisterTaskDefResponse.FromString,
                 _registered_method=True)
-        self.GetTask = channel.unary_unary(
-                '/hyrex.performanceserver.GatewayService/GetTask',
-                request_serializer=requests__pb2.GetTaskRequest.SerializeToString,
-                response_deserializer=requests__pb2.GetTaskResponse.FromString,
+        self.GetTaskDef = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetTaskDef',
+                request_serializer=requests__pb2.GetTaskDefRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetTaskDefResponse.FromString,
                 _registered_method=True)
-        self.GetAllTasks = channel.unary_unary(
-                '/hyrex.performanceserver.GatewayService/GetAllTasks',
-                request_serializer=requests__pb2.GetAllTasksRequest.SerializeToString,
-                response_deserializer=requests__pb2.GetAllTasksResponse.FromString,
+        self.GetAllTaskDefs = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetAllTaskDefs',
+                request_serializer=requests__pb2.GetAllTaskDefsRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetAllTaskDefsResponse.FromString,
                 _registered_method=True)
         self.RegisterExecutor = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterExecutor',
@@ -179,20 +179,20 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RegisterTask(self, request, context):
+    def RegisterTaskDef(self, request, context):
         """Postgres requests
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetTask(self, request, context):
+    def GetTaskDef(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetAllTasks(self, request, context):
+    def GetAllTaskDefs(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -284,20 +284,20 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.GetDurableRunTasksRequest.FromString,
                     response_serializer=requests__pb2.GetDurableRunTasksResponse.SerializeToString,
             ),
-            'RegisterTask': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterTask,
-                    request_deserializer=requests__pb2.RegisterTaskRequest.FromString,
-                    response_serializer=requests__pb2.RegisterTaskResponse.SerializeToString,
+            'RegisterTaskDef': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterTaskDef,
+                    request_deserializer=requests__pb2.RegisterTaskDefRequest.FromString,
+                    response_serializer=requests__pb2.RegisterTaskDefResponse.SerializeToString,
             ),
-            'GetTask': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetTask,
-                    request_deserializer=requests__pb2.GetTaskRequest.FromString,
-                    response_serializer=requests__pb2.GetTaskResponse.SerializeToString,
+            'GetTaskDef': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTaskDef,
+                    request_deserializer=requests__pb2.GetTaskDefRequest.FromString,
+                    response_serializer=requests__pb2.GetTaskDefResponse.SerializeToString,
             ),
-            'GetAllTasks': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetAllTasks,
-                    request_deserializer=requests__pb2.GetAllTasksRequest.FromString,
-                    response_serializer=requests__pb2.GetAllTasksResponse.SerializeToString,
+            'GetAllTaskDefs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAllTaskDefs,
+                    request_deserializer=requests__pb2.GetAllTaskDefsRequest.FromString,
+                    response_serializer=requests__pb2.GetAllTaskDefsResponse.SerializeToString,
             ),
             'RegisterExecutor': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterExecutor,
@@ -562,7 +562,7 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
-    def RegisterTask(request,
+    def RegisterTaskDef(request,
             target,
             options=(),
             channel_credentials=None,
@@ -575,9 +575,9 @@ class GatewayService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/hyrex.performanceserver.GatewayService/RegisterTask',
-            requests__pb2.RegisterTaskRequest.SerializeToString,
-            requests__pb2.RegisterTaskResponse.FromString,
+            '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
+            requests__pb2.RegisterTaskDefRequest.SerializeToString,
+            requests__pb2.RegisterTaskDefResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -589,7 +589,7 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
-    def GetTask(request,
+    def GetTaskDef(request,
             target,
             options=(),
             channel_credentials=None,
@@ -602,9 +602,9 @@ class GatewayService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/hyrex.performanceserver.GatewayService/GetTask',
-            requests__pb2.GetTaskRequest.SerializeToString,
-            requests__pb2.GetTaskResponse.FromString,
+            '/hyrex.performanceserver.GatewayService/GetTaskDef',
+            requests__pb2.GetTaskDefRequest.SerializeToString,
+            requests__pb2.GetTaskDefResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -616,7 +616,7 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
-    def GetAllTasks(request,
+    def GetAllTaskDefs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -629,9 +629,9 @@ class GatewayService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/hyrex.performanceserver.GatewayService/GetAllTasks',
-            requests__pb2.GetAllTasksRequest.SerializeToString,
-            requests__pb2.GetAllTasksResponse.FromString,
+            '/hyrex.performanceserver.GatewayService/GetAllTaskDefs',
+            requests__pb2.GetAllTaskDefsRequest.SerializeToString,
+            requests__pb2.GetAllTaskDefsResponse.FromString,
             options,
             channel_credentials,
             insecure,

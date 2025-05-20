@@ -106,23 +106,23 @@ message SetLogLinkResponse {
 }
 
 // POSTGRES REQUESTS
-message RegisterTaskRequest {
+message RegisterTaskDefRequest {
   Task task = 1;
 }
 
-message RegisterTaskResponse {}
+message RegisterTaskDefResponse {}
 
-message GetTaskRequest {
+message GetTaskDefRequest {
   string task_name = 1;
 }
 
-message GetTaskResponse {
+message GetTaskDefResponse {
   Task task = 1;
 }
 
-message GetAllTasksRequest {}
+message GetAllTaskDefsRequest {}
 
-message GetAllTasksResponse {
+message GetAllTaskDefsResponse {
   repeated Task tasks = 1;
 }
 
