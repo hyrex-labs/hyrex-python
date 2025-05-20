@@ -5,20 +5,19 @@ package hyrex.performanceserver;
 option go_package = "proto/";
 
 import "requests.proto";
-import "google/protobuf/empty.proto";
 
 service GatewayService {
-  // Valkey requests
-  rpc Enqueue(EnqueueTaskRequest) returns (EnqueueTaskResponse);
-  rpc Dequeue(DequeueTaskRequest) returns (DequeueTaskResponse);
+  // ---- Valkey requests ----
+  rpc Enqueue(EnqueueRequest) returns (EnqueueResponse);
+  rpc Dequeue(DequeueRequest) returns (DequeueResponse);
   rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
-  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+  rpc GetTaskRunStatus(GetTaskRunStatusRequest) returns (GetTaskRunStatusResponse);
   rpc MarkSuccess(MarkSuccessRequest) returns (MarkSuccessResponse);
   rpc MarkFailed(MarkFailedRequest) returns (MarkFailedResponse);
   rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
-  rpc GetDurableTasks(GetDurableRunTasksRequest) returns (GetDurableRunTasksResponse);
+  rpc GetDurableTaskRuns(GetDurableTaskRunsRequest) returns (GetDurableTaskRunsResponse);
 
-  // Postgres requests
+  // ---- Postgres requests ----
   rpc RegisterTaskDef(RegisterTaskDefRequest) returns (RegisterTaskDefResponse);
   rpc GetTaskDef(GetTaskDefRequest) returns (GetTaskDefResponse);
   rpc GetAllTaskDefs(GetAllTaskDefsRequest) returns (GetAllTaskDefsResponse);
@@ -27,8 +26,4 @@ service GatewayService {
   rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
   rpc SetLogLink(SetLogLinkRequest) returns (SetLogLinkResponse);
   rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
-
-  // Crons
-  rpc PostTaskStatusCounts(google.protobuf.Empty) returns (google.protobuf.Empty);
-  rpc QueueWaitingTasks(google.protobuf.Empty) returns (google.protobuf.Empty);
   }
