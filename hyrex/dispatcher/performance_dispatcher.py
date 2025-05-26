@@ -156,7 +156,7 @@ class PerformanceDispatcher(Dispatcher):
         ),  # Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
         retry=retry_if_exception_type(grpc.RpcError),
     )
-    def _send_grpc_request(self, proto_task: requests_pb2.EnqueueRequest):
+    def _send_grpc_enqueue_request(self, proto_task: requests_pb2.EnqueueRequest):
         """
         Send a single gRPC enqueue request synchronously with automatic retry.
         This method is designed to be called from within the ThreadPoolExecutor.
@@ -188,7 +188,7 @@ class PerformanceDispatcher(Dispatcher):
             )
             raise  # This will be retried by tenacity
 
-    def _send_grpc_callback(self, future):
+    def _send_grpc_enqueue_callback(self, future):
         """
         Callback function to handle the result of an async gRPC request.
         """
@@ -204,9 +204,11 @@ class PerformanceDispatcher(Dispatcher):
         for task in tasks:
             proto_task = self._convert_enqueue_request_to_proto(task)
             # Submit the gRPC request to the thread pool for async execution
-            future = self.enqueue_executor.submit(self._send_grpc_request, proto_task)
+            future = self.enqueue_executor.submit(
+                self._send_grpc_enqueue_request, proto_task
+            )
             # Add callback to handle the result
-            future.add_done_callback(self._send_grpc_callback)
+            future.add_done_callback(self._send_grpc_enqueue_callback)
 
     def dequeue(
         self,
