@@ -53,18 +53,25 @@ hyrex run-worker my_app.tasks:hy
 ## Logging
 
 Hyrex uses Python's `logging` module for logging info about task queueing, worker status, etc.
-By default, no logs are displayed. To turn on logs, configure this in your application. For example:
+By default, logs are displayed at the INFO level. To adjust the logging level or disable logs, configure this in your application. For example:
 
 ```
 import logging
-logging.basicConfig(level=logging.INFO)
+# To change to DEBUG level
+logging.basicConfig(level=logging.DEBUG)
+
+# To disable logs
+logging.getLogger("hyrex").setLevel(logging.CRITICAL)
 ```
 
 To configure Hyrex logs only:
 
 ```
 logger = logging.getLogger("hyrex")
-logger.setLevel(logging.INFO)
+# Change log level
+logger.setLevel(logging.DEBUG)
+# Or disable logs
+logger.setLevel(logging.CRITICAL)
 ```
 
 Handlers and formatting options from the `logging` module are also supported.
