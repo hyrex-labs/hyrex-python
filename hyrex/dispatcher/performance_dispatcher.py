@@ -70,7 +70,7 @@ class PerformanceDispatcher(Dispatcher):
     # Reverse mapping for proto to Python conversion
     _PROTO_TO_PY_STATUS = {v: k for k, v in _PY_TO_PROTO_STATUS.items()}
 
-    def __init__(self, api_key: str, conn_string: str, max_workers: int = 10):
+    def __init__(self, api_key: str, conn_string: str):
         # def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
         super().__init__()
 
@@ -89,7 +89,8 @@ class PerformanceDispatcher(Dispatcher):
             self.channel = grpc.secure_channel(server_address, channel_credentials)
         self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
-        self.enqueue_executor = ThreadPoolExecutor(max_workers=max_workers)
+        # TODO: Consider setting max workers specifically here.
+        self.enqueue_executor = ThreadPoolExecutor()
         self.running = True
 
         self.register_shutdown_handlers()
