@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import threading
@@ -11,6 +12,13 @@ import grpc
 import requests
 from google.protobuf.struct_pb2 import Struct
 from pydantic import BaseModel
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 from hyrex import constants
 from hyrex.dispatcher.dispatcher import Dispatcher
@@ -81,14 +89,9 @@ class PerformanceDispatcher(Dispatcher):
             self.channel = grpc.secure_channel(server_address, channel_credentials)
         self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
-        # TODO: Bring these back if we switch to batching of enqueues
-        # self.local_queue = Queue()
+        # TODO: Consider setting max workers specifically here.
+        self.enqueue_executor = ThreadPoolExecutor()
         self.running = True
-        # self.batch_size = batch_size
-        # self.flush_interval = flush_interval
-
-        # self.thread = threading.Thread(target=self._batch_enqueue, daemon=True)
-        # self.thread.start()
 
         self.register_shutdown_handlers()
 
@@ -107,50 +110,106 @@ class PerformanceDispatcher(Dispatcher):
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
 
+    def _convert_enqueue_request_to_proto(
+        self, task: EnqueueTaskRequest
+    ) -> requests_pb2.EnqueueRequest:
+        """
+        Convert an EnqueueTaskRequest to a proto EnqueueRequest message.
+        """
+        proto_task = requests_pb2.EnqueueRequest()
+        proto_task.id = str(task.id)
+        proto_task.durable_id = str(task.id)
+        proto_task.root_id = str(task.root_id)
+        if task.parent_id:
+            proto_task.parent_id = str(task.parent_id)
+        if task.workflow_run_id:
+            proto_task.workflow_run_id = str(task.workflow_run_id)
+        if task.workflow_dependencies:
+            proto_task.workflow_dependencies.extend(
+                [str(dep) for dep in task.workflow_dependencies]
+            )
+        proto_task.task_name = task.task_name
+        proto_task.queue = task.queue
+        proto_task.max_retries = task.max_retries
+        proto_task.priority = task.priority
+        if task.timeout_seconds is not None:
+            proto_task.timeout_seconds = task.timeout_seconds
+        if task.idempotency_key:
+            proto_task.idempotency_key = task.idempotency_key
+
+        try:
+            # json.dumps will handle dicts, lists, strings, numbers etc. directly.
+            # If it encounters a Pydantic model (either as task.args itself or nested),
+            # it will call our pydantic_aware_default function.
+            json_string = json.dumps(task.args, default=pydantic_aware_default)
+            proto_task.args = json_string.encode("utf-8")
+        except TypeError as e:
+            self.logger.error(f"Task {task.id}: Failed to serialize args to JSON: {e}")
+            raise
+
+        proto_task.status = task_pb2.TaskStatus.QUEUED
+        return proto_task
+
+    @retry(
+        stop=stop_after_attempt(4),  # Try up to 4 times (initial + 3 retries)
+        wait=wait_exponential(
+            multiplier=1, min=1, max=30
+        ),  # Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
+        retry=retry_if_exception_type(grpc.RpcError),
+    )
+    def _send_grpc_enqueue_request(self, proto_task: requests_pb2.EnqueueRequest):
+        """
+        Send a single gRPC enqueue request synchronously with automatic retry.
+        This method is designed to be called from within the ThreadPoolExecutor.
+        Tenacity handles the retry logic with exponential backoff.
+        """
+        try:
+            response = self.gateway_stub.Enqueue(
+                proto_task, metadata=self.api_key_metadata
+            )
+            return response
+        except grpc.RpcError as e:
+            # Only retry on certain error codes
+            retryable_codes = [
+                grpc.StatusCode.UNAVAILABLE,
+                grpc.StatusCode.DEADLINE_EXCEEDED,
+                grpc.StatusCode.RESOURCE_EXHAUSTED,
+                grpc.StatusCode.ABORTED,
+                grpc.StatusCode.INTERNAL,
+            ]
+
+            if e.code() not in retryable_codes:
+                self.logger.error(
+                    f"Non-retryable gRPC error: {e.code()} - {e.details()}"
+                )
+                raise  # This won't be retried by tenacity
+
+            self.logger.warning(
+                f"Retryable gRPC error: {e.code()} - {e.details()}. Retrying..."
+            )
+            raise  # This will be retried by tenacity
+
+    def _send_grpc_enqueue_callback(self, future):
+        """
+        Callback function to handle the result of an async gRPC request.
+        """
+        try:
+            result = future.result()
+            # Log success or process result as needed
+            self.logger.debug(f"Enqueue request completed successfully")
+        except Exception as e:
+            # Log the error but don't re-raise to avoid crashing the executor
+            self.logger.error(f"Enqueue request failed: {e}")
+
     def enqueue(self, tasks: list[EnqueueTaskRequest]):
         for task in tasks:
-            proto_task = requests_pb2.EnqueueRequest()
-            proto_task.id = str(task.id)
-            proto_task.durable_id = str(task.id)
-            proto_task.root_id = str(task.root_id)
-            if task.parent_id:
-                proto_task.parent_id = str(task.parent_id)
-            if task.workflow_run_id:
-                proto_task.workflow_run_id = str(task.workflow_run_id)
-            if task.workflow_dependencies:
-                proto_task.workflow_dependencies.extend(
-                    [str(dep) for dep in task.workflow_dependencies]
-                )
-            proto_task.task_name = task.task_name
-            proto_task.queue = task.queue
-            proto_task.max_retries = task.max_retries
-            proto_task.priority = task.priority
-            if task.timeout_seconds is not None:
-                proto_task.timeout_seconds = task.timeout_seconds
-            if task.idempotency_key:
-                proto_task.idempotency_key = task.idempotency_key
-
-            try:
-                # json.dumps will handle dicts, lists, strings, numbers etc. directly.
-                # If it encounters a Pydantic model (either as task.args itself or nested),
-                # it will call our pydantic_aware_default function.
-                json_string = json.dumps(task.args, default=pydantic_aware_default)
-                proto_task.args = json_string.encode("utf-8")
-            except TypeError as e:
-                self.logger.error(
-                    f"Task {task.id}: Failed to serialize args to JSON: {e}"
-                )
-                raise
-
-            proto_task.status = task_pb2.TaskStatus.QUEUED
-
-            try:
-                response = self.gateway_stub.Enqueue(
-                    proto_task, metadata=self.api_key_metadata
-                )
-            except grpc.RpcError as e:
-                self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-                raise
+            proto_task = self._convert_enqueue_request_to_proto(task)
+            # Submit the gRPC request to the thread pool for async execution
+            future = self.enqueue_executor.submit(
+                self._send_grpc_enqueue_request, proto_task
+            )
+            # Add callback to handle the result
+            future.add_done_callback(self._send_grpc_enqueue_callback)
 
     def dequeue(
         self,
@@ -287,7 +346,9 @@ class PerformanceDispatcher(Dispatcher):
         """
         self.logger.info("Stopping dispatcher...")
         self.running = False
-        self.channel.close()
+        self.enqueue_executor.shutdown(wait=True)
+        if self.channel:
+            self.channel.close()
         self.logger.info("Dispatcher stopped successfully!")
 
     def mark_success(self, task_id: UUID, result: str):
