@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from queue import Empty, Queue
-from typing import Type
+from typing import Type, Union, List, Dict, Any, Optional
 from uuid import UUID
 
 import grpc
@@ -477,7 +477,7 @@ class PerformanceDispatcher(Dispatcher):
     def register_task(
         self,
         task_name: str,
-        arg_schema: Type[BaseModel] | None,
+        arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
         cron: str = None,
         source_code: str = None,
@@ -522,7 +522,7 @@ class PerformanceDispatcher(Dispatcher):
             )
             raise
 
-    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+    def acquire_scheduler_lock(self, worker_name: str) -> Union[int, None]:
         request_proto = requests_pb2.AcquireSchedulerLockRequest()
         request_proto.worker_name = worker_name
 
@@ -554,7 +554,7 @@ class PerformanceDispatcher(Dispatcher):
     ) -> None:
         pass
 
-    def execute_queued_cron_job_run(self) -> str | None:
+    def execute_queued_cron_job_run(self) -> Union[str, None]:
         pass
 
     def release_scheduler_lock(self, worker_name: str) -> None:
@@ -565,7 +565,7 @@ class PerformanceDispatcher(Dispatcher):
         name: str,
         source_code: str,
         workflow_dag_json: str,
-        workflow_arg_schema: Type[BaseModel] | None,
+        workflow_arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
     ):
         pass

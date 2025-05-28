@@ -3,7 +3,11 @@ import logging
 import re
 import time
 from inspect import signature
-from typing import Any, Callable, Generic, ParamSpec, TypeVar, get_type_hints, overload
+from typing import Any, Callable, Generic, TypeVar, get_type_hints, overload, Union, Dict
+try:
+    from typing import ParamSpec
+except ImportError:
+    from typing_extensions import ParamSpec
 
 import psycopg
 from pydantic import BaseModel, ValidationError
@@ -66,10 +70,10 @@ class TaskWrapper(Generic[P, R]):
         task_identifier: str,
         func: Callable[P, R],
         dispatcher: Dispatcher,
-        cron: str | None,
+        cron: Union[str, None],
         task_config: TaskConfig,
         on_error: Callable = None,
-        retry_backoff: int | Callable[[int], int] | None = None,
+        retry_backoff: Union[int, Callable[[int], int], None] = None,
     ):
         self.logger = logging.getLogger(__name__)
 
@@ -120,7 +124,7 @@ class TaskWrapper(Generic[P, R]):
 
     def with_config(
         self,
-        queue: str | HyrexQueue = None,
+        queue: Union[str, HyrexQueue] = None,
         priority: int = None,
         max_retries: int = None,
         timeout_seconds: int = None,
@@ -145,7 +149,7 @@ class TaskWrapper(Generic[P, R]):
         )
         return new_wrapper
 
-    def get_queue(self) -> HyrexQueue | str:
+    def get_queue(self) -> Union[HyrexQueue, str]:
         return self.task_config.queue
 
     def get_retry_backoff(self, attempt_number: int) -> int:

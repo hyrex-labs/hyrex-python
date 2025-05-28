@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from queue import Empty, Queue
-from typing import List, Type
+from typing import List, Type, Union, Dict, Any
 from uuid import UUID
 
 from psycopg import RawCursor
@@ -388,7 +388,7 @@ class PostgresDispatcher(Dispatcher):
         name: str,
         source_code: str,
         workflow_dag_json: dict,
-        workflow_arg_schema: Type[BaseModel] | None,
+        workflow_arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
     ):
         with self.transaction() as cur:
@@ -458,7 +458,7 @@ class PostgresDispatcher(Dispatcher):
             result = cur.fetchone()
             return result[0] if result else None
 
-    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+    def acquire_scheduler_lock(self, worker_name: str) -> Union[int, None]:
         lock_duration = "2 minutes"
         with self.transaction() as cur:
             cur.execute(cron_sql.ACQUIRE_SCHEDULER_LOCK, [worker_name, lock_duration])
@@ -511,7 +511,7 @@ class PostgresDispatcher(Dispatcher):
         # Update confirmation timestamp
         self.update_cron_job_confirmation_timestamp(cron_job_runs[0].jobid)
 
-    def execute_queued_cron_job_run(self) -> str | None:
+    def execute_queued_cron_job_run(self) -> Union[str, None]:
         with self.transaction() as cur:
             cur.execute("SELECT execute_queued_command();")
             rows = cur.fetchall()

@@ -1,7 +1,7 @@
 import inspect
 import logging
 import os
-from typing import Callable, overload
+from typing import Callable, overload, Union, Dict, Type
 
 from hyrex import constants
 from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
@@ -16,7 +16,7 @@ from hyrex.workflow.workflow_builder import WorkflowBuilder
 class HyrexRegistry:
     def __init__(
         self,
-        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
+        queue: Union[str, HyrexQueue] = constants.DEFAULT_QUEUE,
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
     ):
@@ -77,7 +77,7 @@ class HyrexRegistry:
         else:
             self.register_queue(queue)
 
-    def register_queue(self, queue: HyrexQueue | str):
+    def register_queue(self, queue: Union[HyrexQueue, str]):
         if self._queue_registry.get(queue.name) and not queue.equals(
             self._queue_registry[queue.name]
         ):
@@ -111,7 +111,7 @@ class HyrexRegistry:
         else:
             return 0
 
-    def get_on_error_handler(self, task_name: str) -> Callable | None:
+    def get_on_error_handler(self, task_name: str) -> Union[Callable, None]:
         task_wrapper = self._task_registry[task_name]
         return task_wrapper.on_error
 
@@ -145,27 +145,27 @@ class HyrexRegistry:
         self,
         func: None = None,
         *,
-        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-        cron: str | None = None,
+        queue: Union[str, HyrexQueue] = constants.DEFAULT_QUEUE,
+        cron: Union[str, None] = None,
         max_retries: int = 0,
-        timeout_seconds: int | None = None,
+        timeout_seconds: Union[int, None] = None,
         priority: int = constants.DEFAULT_PRIORITY,
-        on_error: Callable | None = None,
-        retry_backoff: int | Callable[[int], int] | None = None,
+        on_error: Union[Callable, None] = None,
+        retry_backoff: Union[int, Callable[[int], int], None] = None,
     ) -> Callable[[Callable[P, R]], TaskWrapper[P, R]]: ...
 
     def task(
         self,
-        func: Callable[P, R] | None = None,
+        func: Union[Callable[P, R], None] = None,
         *,
-        queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
-        cron: str | None = None,
+        queue: Union[str, HyrexQueue] = constants.DEFAULT_QUEUE,
+        cron: Union[str, None] = None,
         max_retries: int = 0,
-        timeout_seconds: int | None = None,
+        timeout_seconds: Union[int, None] = None,
         priority: int = constants.DEFAULT_PRIORITY,
-        on_error: Callable | None = None,
-        retry_backoff: int | Callable[[int], int] | None = None,
-    ) -> TaskWrapper[P, R] | Callable[[Callable[P, R]], TaskWrapper[P, R]]:
+        on_error: Union[Callable, None] = None,
+        retry_backoff: Union[int, Callable[[int], int], None] = None,
+    ) -> Union[TaskWrapper[P, R], Callable[[Callable[P, R]], TaskWrapper[P, R]]]:
         """
         Create task decorator
         """
@@ -199,8 +199,8 @@ class HyrexRegistry:
 
     def workflow(
         self,
-        queue: str | HyrexQueue = None,
-        timeout_seconds: int | None = None,
+        queue: Union[str, HyrexQueue] = None,
+        timeout_seconds: Union[int, None] = None,
         priority: int = None,
         cron: str = None,
         workflow_arg_schema=None,

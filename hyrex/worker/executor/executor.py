@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from inspect import signature
 from multiprocessing import Event, Process, Queue
 from pathlib import Path
+from typing import Union, Dict, List, Any
 from uuid import UUID
 
 from psycopg.types.json import Json
@@ -150,7 +151,7 @@ class WorkerExecutor(Process):
 
         return result
 
-    def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask | None:
+    def fetch_task(self, queue: str, concurrency_limit: int = 0) -> Union[DequeuedTask, None]:
         start = time.perf_counter()
         dequeued_task = self.dispatcher.dequeue(
             executor_id=self.executor_id,
@@ -181,7 +182,7 @@ class WorkerExecutor(Process):
 
     def process(self, queue: HyrexQueue) -> bool:
         """Returns True if a task is found and attempted, False otherwise"""
-        task: DequeuedTask | None = self.fetch_task(
+        task: Union[DequeuedTask, None] = self.fetch_task(
             queue=queue.name, concurrency_limit=queue.concurrency_limit
         )
         if not task:

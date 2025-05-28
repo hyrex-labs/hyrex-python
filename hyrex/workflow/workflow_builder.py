@@ -1,6 +1,6 @@
 import collections
 import json
-from typing import Sequence
+from typing import Sequence, Union, List, Dict
 
 from hyrex.task_wrapper import TaskWrapper
 from hyrex.workflow.workflow_builder_context import (
@@ -37,7 +37,7 @@ class DagNode:
     def get_children(self) -> list["DagNode"]:
         return self.children
 
-    def __rshift__(self, other: TaskWrapper | Sequence[TaskWrapper] | "DagNode"):
+    def __rshift__(self, other: Union[TaskWrapper, Sequence[TaskWrapper], "DagNode"]):
         if isinstance(other, TaskWrapper):
             node = self.workflow_builder.get_or_create_node(other)
             self.add_child(node)
@@ -60,7 +60,7 @@ class DagNode:
         else:
             raise TypeError(f"Unknown type of {other}, {type(other)}")
 
-    def __rrshift__(self, other: Sequence["TaskWrapper | DagNode"]) -> "DagNode":
+    def __rrshift__(self, other: Sequence[Union["TaskWrapper", "DagNode"]]) -> "DagNode":
         if not isinstance(other, collections.abc.Sequence):
             raise TypeError(f"Unknown type of {other}, {type(other)}")
 

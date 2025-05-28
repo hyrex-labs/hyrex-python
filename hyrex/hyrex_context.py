@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Union, Dict
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -10,28 +11,28 @@ from hyrex.durable_run import DurableTaskRun
 
 class HyrexWorkflowContext(BaseModel):
     workflow_run_id: UUID
-    workflow_args: dict | None = None
-    durable_runs: dict[str, DurableTaskRun] = {}
+    workflow_args: Union[dict, None] = None
+    durable_runs: Dict[str, DurableTaskRun] = {}
 
 
 class HyrexContext(BaseModel):
     task_id: UUID
     durable_id: UUID
     root_id: UUID
-    parent_id: UUID | None
+    parent_id: Union[UUID, None]
     task_name: str
     queue: str
     priority: int
-    timeout_seconds: int | None
-    scheduled_start: datetime | None
+    timeout_seconds: Union[int, None]
+    scheduled_start: Union[datetime, None]
     queued: datetime
     started: datetime
     executor_id: UUID
     attempt_number: int
     max_retries: int
-    workflow_run_id: UUID | None
+    workflow_run_id: Union[UUID, None]
 
-    workflow_context: HyrexWorkflowContext | None = None
+    workflow_context: Union[HyrexWorkflowContext, None] = None
 
     def update_workflow_context(self):
         if self.workflow_run_id:
@@ -73,15 +74,15 @@ class HyrexContext(BaseModel):
 
 
 # Simple global context
-_current_context: HyrexContext | None = None
+_current_context: Union[HyrexContext, None] = None
 
 
-def get_hyrex_context() -> HyrexContext | None:
+def get_hyrex_context() -> Union[HyrexContext, None]:
     """Get the current Hyrex context."""
     return _current_context
 
 
-def get_hyrex_workflow_context() -> HyrexWorkflowContext | None:
+def get_hyrex_workflow_context() -> Union[HyrexWorkflowContext, None]:
     """Get the workflow context for the current task execution."""
     if _current_context:
         return _current_context.workflow_context

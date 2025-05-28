@@ -3,6 +3,7 @@ import os
 import signal
 from datetime import datetime, timezone
 from multiprocessing import Event, Process
+from typing import Union
 
 from croniter import croniter
 
@@ -33,7 +34,7 @@ class WorkerCronScheduler(Process):
             self.logger.warning("Root process died unexpectedly. Shutting down.")
             self._stop_event.set()
 
-    def acquire_scheduler_lock(self) -> int | None:
+    def acquire_scheduler_lock(self) -> Union[int, None]:
         self.logger.info("Acquiring cron scheduler lock...")
         result = self.dispatcher.acquire_scheduler_lock(self.worker_name)
         return result

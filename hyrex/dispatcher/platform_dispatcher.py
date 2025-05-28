@@ -2,7 +2,7 @@ import threading
 import time
 from datetime import datetime
 from queue import Empty, Queue
-from typing import Type
+from typing import Type, Union, List, Dict, Any
 from uuid import UUID
 
 import requests
@@ -238,14 +238,14 @@ class PlatformDispatcher(Dispatcher):
     def register_task(
         self,
         task_name: str,
-        arg_schema: Type[BaseModel] | None,
+        arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
         cron: str = None,
         source_code: str = None,
     ):
         pass
 
-    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+    def acquire_scheduler_lock(self, worker_name: str) -> Union[int, None]:
         pass
 
     def pull_cron_job_expressions(self) -> list[CronJob]:
@@ -274,7 +274,7 @@ class PlatformDispatcher(Dispatcher):
         name: str,
         source_code: str,
         workflow_dag_json: str,
-        workflow_arg_schema: Type[BaseModel] | None,
+        workflow_arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
     ):
         pass

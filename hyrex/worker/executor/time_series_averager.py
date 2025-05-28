@@ -1,4 +1,5 @@
 import time
+from typing import Union, List
 
 from pydantic import BaseModel
 
@@ -15,7 +16,7 @@ class MinuteAverage(BaseModel):
 
 class TimeSeriesAverager:
     def __init__(self):
-        self.data_points: list[DataPoint] = []
+        self.data_points: List[DataPoint] = []
 
     def _get_minute_timestamp(self, timestamp: int) -> int:
         # Round down to nearest minute
@@ -51,7 +52,7 @@ class TimeSeriesAverager:
 
         return result
 
-    def get_average_for_minute(self, timestamp: int) -> MinuteAverage | None:
+    def get_average_for_minute(self, timestamp: int) -> Union[MinuteAverage, None]:
         minute = self._get_minute_timestamp(timestamp)
         grouped_data = self._group_by_minute()
 

@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type, Union, List, Dict
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ class HyrexWorkflow:
         self,
         name: str,
         workflow_config: WorkflowConfig,
-        workflow_arg_schema: Type[BaseModel] | None,
+        workflow_arg_schema: Union[Type[BaseModel], None],
         workflow_builder: WorkflowBuilder,
         dispatcher: Dispatcher,
         source_code: str,
@@ -28,11 +28,11 @@ class HyrexWorkflow:
         self.dispatcher = dispatcher
         self.source_code = source_code
 
-    def get_queue(self) -> HyrexQueue | str | None:
+    def get_queue(self) -> Union[HyrexQueue, str, None]:
         return self.workflow_config.queue
 
     def with_config(
-        self, queue: str | HyrexQueue = None, priority: int = None
+        self, queue: Union[str, HyrexQueue] = None, priority: int = None
     ) -> "HyrexWorkflow":
         new_workflow_config = WorkflowConfig(
             config_phase=ConfigPhase.send, queue=queue, priority=priority

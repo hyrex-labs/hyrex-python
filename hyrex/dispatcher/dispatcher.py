@@ -3,7 +3,7 @@ import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Type
+from typing import Type, Union, List, Dict, Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -119,7 +119,7 @@ class Dispatcher(ABC):
     def register_task(
         self,
         task_name: str,
-        arg_schema: Type[BaseModel] | None,
+        arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
         cron: str = None,
         source_code: str = None,
@@ -162,7 +162,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def acquire_scheduler_lock(self, worker_name: str) -> int | None:
+    def acquire_scheduler_lock(self, worker_name: str) -> Union[int, None]:
         pass
 
     @abstractmethod
@@ -178,7 +178,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def execute_queued_cron_job_run(self) -> str | None:
+    def execute_queued_cron_job_run(self) -> Union[str, None]:
         pass
 
     @abstractmethod
@@ -195,7 +195,7 @@ class Dispatcher(ABC):
         name: str,
         source_code: str,
         workflow_dag_json: str,
-        workflow_arg_schema: Type[BaseModel] | None,
+        workflow_arg_schema: Union[Type[BaseModel], None],
         default_config: dict,
     ):
         pass

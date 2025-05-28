@@ -1,4 +1,14 @@
-from enum import StrEnum
+import sys
+from enum import Enum
+from typing import Union
+
+# Python 3.9 compatibility - StrEnum was introduced in Python 3.11
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    class StrEnum(str, Enum):
+        """Compatibility shim for Python < 3.11"""
+        pass
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,11 +27,11 @@ class ConfigPhase(StrEnum):
 class WorkflowConfig(BaseModel):
     config_phase: ConfigPhase
 
-    queue: str | HyrexQueue | None = None  # Overrides task queue
-    priority: int | None = Field(default=None, ge=1, le=10)  # Overrides task priority
+    queue: Union[str, HyrexQueue, None] = None  # Overrides task queue
+    priority: Union[int, None] = Field(default=None, ge=1, le=10)  # Overrides task priority
 
-    timeout_seconds: int | None = Field(default=None, gt=0)  # For workflow
-    idempotency_key: str | None = None  # For workflow
+    timeout_seconds: Union[int, None] = Field(default=None, gt=0)  # For workflow
+    idempotency_key: Union[str, None] = None  # For workflow
 
     @field_validator("config_phase")
     @classmethod  # This is optional in Pydantic v2
@@ -69,11 +79,11 @@ class WorkflowConfig(BaseModel):
 class TaskConfig(BaseModel):
     config_phase: ConfigPhase
 
-    queue: str | HyrexQueue | None = None
-    priority: int | None = Field(default=None, ge=1, le=10)
-    max_retries: int | None = Field(default=None, ge=0)
-    timeout_seconds: int | None = Field(default=None, gt=0)
-    idempotency_key: str | None = None
+    queue: Union[str, HyrexQueue, None] = None
+    priority: Union[int, None] = Field(default=None, ge=1, le=10)
+    max_retries: Union[int, None] = Field(default=None, ge=0)
+    timeout_seconds: Union[int, None] = Field(default=None, gt=0)
+    idempotency_key: Union[str, None] = None
 
     def get_default_config(self):
         assert (

@@ -18,7 +18,6 @@ frozenlist==1.4.1
 grpcio==1.71.0
 grpcio-tools==1.71.0
 h11==0.16.0
--e git+ssh://git@github.com/hyrex-labs/hyrex-python.git@440b3da80cba5886bd36f41f6932c676a998819c#egg=hyrex
 id==1.5.0
 idna==3.10
 importlib_metadata==8.5.0
