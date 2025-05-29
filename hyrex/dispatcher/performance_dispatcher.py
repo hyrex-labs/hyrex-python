@@ -147,7 +147,6 @@ class PerformanceDispatcher(Dispatcher):
             self.logger.error(f"Task {task.id}: Failed to serialize args to JSON: {e}")
             raise
 
-        proto_task.status = task_pb2.TaskStatus.QUEUED
         return proto_task
 
     @retry(
@@ -344,23 +343,25 @@ class PerformanceDispatcher(Dispatcher):
         """
         Stops the batching process and flushes remaining tasks.
         """
-        self.logger.info("Stopping dispatcher...")
+        # Check if already stopping/stopped
+        if not self.running:
+            return
+
+        self.logger.debug("Stopping dispatcher...")
         self.running = False
         self.enqueue_executor.shutdown(wait=True)
         if self.channel:
             self.channel.close()
-        self.logger.info("Dispatcher stopped successfully!")
+        self.logger.debug("Dispatcher stopped successfully!")
 
     def mark_success(self, task_id: UUID, result: str):
         request_proto = requests_pb2.MarkSuccessRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
         if result:
             request_proto.result = result
 
         try:
-            response = self.gateway_stub.MarkSuccess(
-                request_proto, metadata=self.api_key_metadata
-            )
+            self.gateway_stub.MarkSuccess(request_proto, metadata=self.api_key_metadata)
         except grpc.RpcError as e:
             self.logger.error(
                 f"gRPC MarkSuccess call failed: {e.code()} - {e.details()}"
@@ -369,12 +370,10 @@ class PerformanceDispatcher(Dispatcher):
 
     def mark_failed(self, task_id: UUID):
         request_proto = requests_pb2.MarkFailedRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
 
         try:
-            response = self.gateway_stub.MarkFailed(
-                request_proto, metadata=self.api_key_metadata
-            )
+            self.gateway_stub.MarkFailed(request_proto, metadata=self.api_key_metadata)
         except grpc.RpcError as e:
             self.logger.error(
                 f"gRPC MarkFailed call failed: {e.code()} - {e.details()}"
@@ -382,9 +381,19 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def retry_task(self, task_id: UUID, backoff_seconds: int):
-        # TODO: Implement
-        self.logger.info("WOULD HAVE RETRIED!")
-        pass
+        request_proto = requests_pb2.RetryTaskRunRequest()
+        request_proto.task_run_id = str(task_id)
+        request_proto.backoff_seconds = backoff_seconds
+
+        try:
+            self.gateway_stub.RetryTaskRun(
+                request_proto, metadata=self.api_key_metadata
+            )
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC RetryTaskRun call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     # TODO: Implement
     def try_to_cancel_task(self, task_id: UUID):
@@ -395,7 +404,7 @@ class PerformanceDispatcher(Dispatcher):
 
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         request_proto = requests_pb2.GetTaskRunStatusRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
 
         try:
             response = self.gateway_stub.GetTaskStatus(
@@ -428,7 +437,7 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.worker_name = worker_name
 
         try:
-            response = self.gateway_stub.RegisterExecutor(
+            self.gateway_stub.RegisterExecutor(
                 request_proto, metadata=self.api_key_metadata
             )
         except grpc.RpcError as e:
@@ -512,7 +521,7 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.task_def.CopyFrom(task_def)
 
         try:
-            response = self.gateway_stub.RegisterTaskDef(
+            self.gateway_stub.RegisterTaskDef(
                 request_proto, metadata=self.api_key_metadata
             )
             self.logger.debug("gRPC RegisterTaskDef call successful")
@@ -584,7 +593,7 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.durable_id = str(durable_id)
 
         try:
-            response = self.gateway_stub.GetDurableTasks(
+            response = self.gateway_stub.GetDurableTaskRuns(
                 request_proto, metadata=self.api_key_metadata
             )
             self.logger.debug(f"gRPC call successful, response: {response}")
@@ -660,7 +669,7 @@ class PerformanceDispatcher(Dispatcher):
         )  # Use extend for repeated field instead of direct assignment
 
         try:
-            response = self.gateway_stub.UpdateExecutorQueues(
+            self.gateway_stub.UpdateExecutorQueues(
                 request_proto, metadata=self.api_key_metadata
             )
         except grpc.RpcError as e:
@@ -669,11 +678,11 @@ class PerformanceDispatcher(Dispatcher):
 
     def save_result(self, task_id: UUID, result: str):
         request_proto = requests_pb2.SaveTaskRunResultRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
         request_proto.result = result
 
         try:
-            response = self.gateway_stub.SaveTaskResult(
+            self.gateway_stub.SaveTaskResult(
                 request_proto, metadata=self.api_key_metadata
             )
         except grpc.RpcError as e:
@@ -682,7 +691,7 @@ class PerformanceDispatcher(Dispatcher):
 
     def get_result(self, task_id: UUID) -> dict:
         request_proto = requests_pb2.GetTaskRunResultRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
 
         try:
             response = self.gateway_stub.GetTaskResult(
@@ -695,13 +704,11 @@ class PerformanceDispatcher(Dispatcher):
 
     def set_log_link(self, task_id: UUID, log_link: str):
         request_proto = requests_pb2.SetLogLinkRequest()
-        request_proto.task_id = str(task_id)
+        request_proto.task_run_id = str(task_id)
         request_proto.log_link = log_link
 
         try:
-            response = self.gateway_stub.SetLogLink(
-                request_proto, metadata=self.api_key_metadata
-            )
+            self.gateway_stub.SetLogLink(request_proto, metadata=self.api_key_metadata)
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise

@@ -11,6 +11,7 @@ from uuid import UUID
 from uuid6 import uuid7
 
 from hyrex import constants
+from hyrex.env_vars import EnvVars
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
@@ -45,9 +46,9 @@ class WorkerRootProcess:
         queue_pattern: str = None,
         num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
-        self.logger = logging.getLogger(__name__)
         self.log_level = log_level
         init_logging(log_level=log_level)
+        self.logger = logging.getLogger(__name__)
 
         self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
@@ -61,6 +62,8 @@ class WorkerRootProcess:
         self._register_app = True
 
         self.heartbeat_requested = False
+
+        self.running_on_platform: bool = os.environ.get(EnvVars.API_KEY) is not None
 
         self._stop_event = threading.Event()
         self.task_id_to_executor_id: dict[str, str] = {}
@@ -241,8 +244,10 @@ class WorkerRootProcess:
         while not self.task_registration_complete and not self._stop_event.is_set():
             time.sleep(0.5)
 
-        self.logger.info("Spawning cron scheduler process.")
-        self._spawn_cron_scheduler()
+        # Hyrex Cloud handles cron scheduling
+        if not self.running_on_platform:
+            self.logger.info("Spawning cron scheduler process.")
+            self._spawn_cron_scheduler()
 
         last_heartbeat = time.monotonic()
 
@@ -251,8 +256,10 @@ class WorkerRootProcess:
                 # Check admin and restart if it has died
                 self.check_admin_process()
 
-                # Check cron scheduler and restart if it has died
-                self.check_cron_scheduler_process()
+                # Hyrex Cloud handles cron scheduling
+                if not self.running_on_platform:
+                    # Check cron scheduler and restart if it has died
+                    self.check_cron_scheduler_process()
 
                 # Check all executors and restart any that have died
                 self.check_executor_processes()
@@ -290,20 +297,22 @@ class WorkerRootProcess:
         except Exception as e:
             print(f"Error during executor shutdown: {e}")
 
-        try:
-            self.logger.info("Stopping cron scheduler process.")
-            self.cron_scheduler_process._stop_event.set()
-            self.cron_scheduler_process.join(
-                timeout=constants.WORKER_CRON_SCHEDULER_PROCESS_TIMEOUT
-            )
-            if self.cron_scheduler_process.is_alive():
-                self.logger.warning(
-                    "Cron scheduler process did not exit cleanly, force killing."
+        # Hyrex Cloud handles cron scheduling
+        if not self.running_on_platform:
+            try:
+                self.logger.info("Stopping cron scheduler process.")
+                self.cron_scheduler_process._stop_event.set()
+                self.cron_scheduler_process.join(
+                    timeout=constants.WORKER_CRON_SCHEDULER_PROCESS_TIMEOUT
                 )
-                self.cron_scheduler_process.kill()
-                self.cron_scheduler_process.join(timeout=1.0)
-        except Exception as e:
-            print(f"Error during cron scheduler shutdown: {e}")
+                if self.cron_scheduler_process.is_alive():
+                    self.logger.warning(
+                        "Cron scheduler process did not exit cleanly, force killing."
+                    )
+                    self.cron_scheduler_process.kill()
+                    self.cron_scheduler_process.join(timeout=1.0)
+            except Exception as e:
+                print(f"Error during cron scheduler shutdown: {e}")
 
         try:
             # Stop admin

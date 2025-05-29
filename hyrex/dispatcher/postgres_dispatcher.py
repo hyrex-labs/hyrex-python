@@ -242,6 +242,10 @@ class PostgresDispatcher(Dispatcher):
             )
 
     def stop(self, timeout: float = 5.0) -> bool:
+        # Check if already stopping/stopped
+        if self.stopping:
+            return True
+            
         self.logger.debug("Stopping dispatcher...")
         self.stopping = True
 
