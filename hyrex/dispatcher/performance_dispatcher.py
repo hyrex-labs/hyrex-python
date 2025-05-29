@@ -447,21 +447,80 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def disconnect_executor(self, executor_id: UUID):
-        pass
+        request_proto = requests_pb2.DisconnectExecutorRequest()
+        request_proto.executor_id = str(executor_id)
+
+        try:
+            self.gateway_stub.DisconnectExecutor(
+                request_proto, metadata=self.api_key_metadata
+            )
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC DisconnectExecutor call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def mark_running_tasks_lost(self, executor_id: UUID):
         # TODO: Implement
         pass
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
-        pass
+        request_proto = requests_pb2.ExecutorHeartbeatRequest()
+        request_proto.executor_ids.extend(
+            [str(executor_id) for executor_id in executor_ids]
+        )
+
+        # Convert datetime to protobuf timestamp
+        request_proto.timestamp.FromDatetime(timestamp)
+
+        try:
+            self.gateway_stub.ExecutorHeartbeat(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("ExecutorHeartbeat gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC ExecutorHeartbeat call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def update_executor_stats(self, executor_id: UUID, stats: dict):
-        pass
+        request_proto = requests_pb2.UpdateExecutorStatsRequest()
+        request_proto.executor_id = str(executor_id)
+
+        # Convert dict to protobuf Struct
+        stats_struct = Struct()
+        stats_struct.update(stats)
+        request_proto.executor_stats.CopyFrom(stats_struct)
+
+        try:
+            self.gateway_stub.UpdateExecutorStats(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("UpdateExecutorStats gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC UpdateExecutorStats call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
-        # TODO: Implement
-        pass
+        request_proto = requests_pb2.TaskRunHeartbeatRequest()
+        request_proto.task_run_ids.extend([str(task_id) for task_id in task_ids])
+
+        # Convert datetime to protobuf timestamp
+        request_proto.timestamp.FromDatetime(timestamp)
+
+        try:
+            self.gateway_stub.TaskRunHeartbeat(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("TaskRunHeartbeat gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC TaskRunHeartbeat call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def get_tasks_up_for_cancel(self) -> list[UUID]:
         # TODO: Implement

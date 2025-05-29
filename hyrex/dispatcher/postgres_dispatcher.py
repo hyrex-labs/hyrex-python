@@ -245,7 +245,7 @@ class PostgresDispatcher(Dispatcher):
         # Check if already stopping/stopped
         if self.stopping:
             return True
-            
+
         self.logger.debug("Stopping dispatcher...")
         self.stopping = True
 
@@ -302,7 +302,7 @@ class PostgresDispatcher(Dispatcher):
 
     def update_executor_stats(self, executor_id: UUID, stats: dict):
         with self.transaction() as cur:
-            cur.execute(sql.UPDATE_EXECUTOR_STATS, [executor_id, stats])
+            cur.execute(sql.UPDATE_EXECUTOR_STATS, [executor_id, Json(stats)])
 
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         with self.transaction() as cur:

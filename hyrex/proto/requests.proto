@@ -70,7 +70,7 @@ message GetTaskRunStatusResponse {
 
 message TaskRunHeartbeatRequest {
   repeated string task_run_ids = 1;
-  optional google.protobuf.Timestamp timestamp = 2;
+  google.protobuf.Timestamp timestamp = 2;
 }
 
 message MarkSuccessRequest {
@@ -138,7 +138,7 @@ message UpdateExecutorStatsRequest {
 
 message ExecutorHeartbeatRequest {
   repeated string executor_ids = 1;
-  optional google.protobuf.Timestamp timestamp = 2;
+  google.protobuf.Timestamp timestamp = 2;
 }
 
 message DisconnectExecutorRequest {
