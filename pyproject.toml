@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.9.12"
+version = "0.9.13"
 description = "Hyrex is the open-source COLD task orchestration framework built on Postgres."
 readme = "README.md"
 license = "Apache-2.0"
