@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from . import requests_pb2 as requests__pb2
 
 GRPC_GENERATED_VERSION = '1.71.0'
@@ -34,10 +35,15 @@ class GatewayServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.TestConnection = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/TestConnection',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.Enqueue = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/Enqueue',
                 request_serializer=requests__pb2.EnqueueRequest.SerializeToString,
-                response_deserializer=requests__pb2.EnqueueResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.Dequeue = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/Dequeue',
@@ -57,12 +63,12 @@ class GatewayServiceStub(object):
         self.MarkSuccess = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/MarkSuccess',
                 request_serializer=requests__pb2.MarkSuccessRequest.SerializeToString,
-                response_deserializer=requests__pb2.MarkSuccessResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.MarkFailed = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/MarkFailed',
                 request_serializer=requests__pb2.MarkFailedRequest.SerializeToString,
-                response_deserializer=requests__pb2.MarkFailedResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetTaskRun = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetTaskRun',
@@ -74,10 +80,20 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.GetDurableTaskRunsRequest.SerializeToString,
                 response_deserializer=requests__pb2.GetDurableTaskRunsResponse.FromString,
                 _registered_method=True)
+        self.RetryTaskRun = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/RetryTaskRun',
+                request_serializer=requests__pb2.RetryTaskRunRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.TaskRunHeartbeat = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/TaskRunHeartbeat',
+                request_serializer=requests__pb2.TaskRunHeartbeatRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.RegisterTaskDef = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
                 request_serializer=requests__pb2.RegisterTaskDefRequest.SerializeToString,
-                response_deserializer=requests__pb2.RegisterTaskDefResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetTaskDef = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetTaskDef',
@@ -92,22 +108,37 @@ class GatewayServiceStub(object):
         self.RegisterExecutor = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterExecutor',
                 request_serializer=requests__pb2.RegisterExecutorRequest.SerializeToString,
-                response_deserializer=requests__pb2.RegisterExecutorResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.ExecutorHeartbeat = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/ExecutorHeartbeat',
+                request_serializer=requests__pb2.ExecutorHeartbeatRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.UpdateExecutorStats = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/UpdateExecutorStats',
+                request_serializer=requests__pb2.UpdateExecutorStatsRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.UpdateExecutorQueues = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/UpdateExecutorQueues',
                 request_serializer=requests__pb2.UpdateExecutorQueuesRequest.SerializeToString,
-                response_deserializer=requests__pb2.UpdateExecutorQueuesResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.DisconnectExecutor = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/DisconnectExecutor',
+                request_serializer=requests__pb2.DisconnectExecutorRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.RegisterApp = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterApp',
                 request_serializer=requests__pb2.RegisterAppRequest.SerializeToString,
-                response_deserializer=requests__pb2.RegisterAppResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.SetLogLink = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/SetLogLink',
                 request_serializer=requests__pb2.SetLogLinkRequest.SerializeToString,
-                response_deserializer=requests__pb2.SetLogLinkResponse.FromString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.AcquireSchedulerLock = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
@@ -118,6 +149,12 @@ class GatewayServiceStub(object):
 
 class GatewayServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def TestConnection(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Enqueue(self, request, context):
         """---- Valkey requests ----
@@ -168,6 +205,18 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RetryTaskRun(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def TaskRunHeartbeat(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterTaskDef(self, request, context):
         """---- Postgres requests ----
         """
@@ -193,7 +242,25 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ExecutorHeartbeat(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateExecutorStats(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def UpdateExecutorQueues(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DisconnectExecutor(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -220,10 +287,15 @@ class GatewayServiceServicer(object):
 
 def add_GatewayServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'TestConnection': grpc.unary_unary_rpc_method_handler(
+                    servicer.TestConnection,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'Enqueue': grpc.unary_unary_rpc_method_handler(
                     servicer.Enqueue,
                     request_deserializer=requests__pb2.EnqueueRequest.FromString,
-                    response_serializer=requests__pb2.EnqueueResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Dequeue': grpc.unary_unary_rpc_method_handler(
                     servicer.Dequeue,
@@ -243,12 +315,12 @@ def add_GatewayServiceServicer_to_server(servicer, server):
             'MarkSuccess': grpc.unary_unary_rpc_method_handler(
                     servicer.MarkSuccess,
                     request_deserializer=requests__pb2.MarkSuccessRequest.FromString,
-                    response_serializer=requests__pb2.MarkSuccessResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'MarkFailed': grpc.unary_unary_rpc_method_handler(
                     servicer.MarkFailed,
                     request_deserializer=requests__pb2.MarkFailedRequest.FromString,
-                    response_serializer=requests__pb2.MarkFailedResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'GetTaskRun': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTaskRun,
@@ -260,10 +332,20 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.GetDurableTaskRunsRequest.FromString,
                     response_serializer=requests__pb2.GetDurableTaskRunsResponse.SerializeToString,
             ),
+            'RetryTaskRun': grpc.unary_unary_rpc_method_handler(
+                    servicer.RetryTaskRun,
+                    request_deserializer=requests__pb2.RetryTaskRunRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'TaskRunHeartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.TaskRunHeartbeat,
+                    request_deserializer=requests__pb2.TaskRunHeartbeatRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'RegisterTaskDef': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTaskDef,
                     request_deserializer=requests__pb2.RegisterTaskDefRequest.FromString,
-                    response_serializer=requests__pb2.RegisterTaskDefResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'GetTaskDef': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTaskDef,
@@ -278,22 +360,37 @@ def add_GatewayServiceServicer_to_server(servicer, server):
             'RegisterExecutor': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterExecutor,
                     request_deserializer=requests__pb2.RegisterExecutorRequest.FromString,
-                    response_serializer=requests__pb2.RegisterExecutorResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ExecutorHeartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.ExecutorHeartbeat,
+                    request_deserializer=requests__pb2.ExecutorHeartbeatRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'UpdateExecutorStats': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateExecutorStats,
+                    request_deserializer=requests__pb2.UpdateExecutorStatsRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'UpdateExecutorQueues': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateExecutorQueues,
                     request_deserializer=requests__pb2.UpdateExecutorQueuesRequest.FromString,
-                    response_serializer=requests__pb2.UpdateExecutorQueuesResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'DisconnectExecutor': grpc.unary_unary_rpc_method_handler(
+                    servicer.DisconnectExecutor,
+                    request_deserializer=requests__pb2.DisconnectExecutorRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'RegisterApp': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterApp,
                     request_deserializer=requests__pb2.RegisterAppRequest.FromString,
-                    response_serializer=requests__pb2.RegisterAppResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'SetLogLink': grpc.unary_unary_rpc_method_handler(
                     servicer.SetLogLink,
                     request_deserializer=requests__pb2.SetLogLinkRequest.FromString,
-                    response_serializer=requests__pb2.SetLogLinkResponse.SerializeToString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'AcquireSchedulerLock': grpc.unary_unary_rpc_method_handler(
                     servicer.AcquireSchedulerLock,
@@ -312,6 +409,33 @@ class GatewayService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
+    def TestConnection(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/TestConnection',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def Enqueue(request,
             target,
             options=(),
@@ -327,7 +451,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/Enqueue',
             requests__pb2.EnqueueRequest.SerializeToString,
-            requests__pb2.EnqueueResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -435,7 +559,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/MarkSuccess',
             requests__pb2.MarkSuccessRequest.SerializeToString,
-            requests__pb2.MarkSuccessResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -462,7 +586,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/MarkFailed',
             requests__pb2.MarkFailedRequest.SerializeToString,
-            requests__pb2.MarkFailedResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -528,6 +652,60 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
+    def RetryTaskRun(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/RetryTaskRun',
+            requests__pb2.RetryTaskRunRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def TaskRunHeartbeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/TaskRunHeartbeat',
+            requests__pb2.TaskRunHeartbeatRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def RegisterTaskDef(request,
             target,
             options=(),
@@ -543,7 +721,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
             requests__pb2.RegisterTaskDefRequest.SerializeToString,
-            requests__pb2.RegisterTaskDefResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -624,7 +802,61 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/RegisterExecutor',
             requests__pb2.RegisterExecutorRequest.SerializeToString,
-            requests__pb2.RegisterExecutorResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ExecutorHeartbeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/ExecutorHeartbeat',
+            requests__pb2.ExecutorHeartbeatRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateExecutorStats(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/UpdateExecutorStats',
+            requests__pb2.UpdateExecutorStatsRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -651,7 +883,34 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/UpdateExecutorQueues',
             requests__pb2.UpdateExecutorQueuesRequest.SerializeToString,
-            requests__pb2.UpdateExecutorQueuesResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DisconnectExecutor(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/DisconnectExecutor',
+            requests__pb2.DisconnectExecutorRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -678,7 +937,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/RegisterApp',
             requests__pb2.RegisterAppRequest.SerializeToString,
-            requests__pb2.RegisterAppResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -705,7 +964,7 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/SetLogLink',
             requests__pb2.SetLogLinkRequest.SerializeToString,
-            requests__pb2.SetLogLinkResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,

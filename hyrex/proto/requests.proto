@@ -17,18 +17,16 @@ message EnqueueRequest {
   optional string workflow_run_id = 4;
   repeated string workflow_dependencies = 5;
   optional string parent_id = 6;
-  TaskStatus status = 7;
-  string task_name = 8;
-  bytes args = 9; // JSON serialized as bytes
-  string queue = 10;
-  int32 max_retries = 11;
+  string task_name = 7;
+  bytes args = 8; // JSON serialized as bytes
+  string queue = 9;
+  int32 max_retries = 10;
+  optional int32 attempt_number = 11;
   Priority priority = 12;
   optional int32 timeout_seconds = 13;
   optional string idempotency_key = 14;
   optional google.protobuf.Timestamp scheduled_start = 15;
 }
-
-message EnqueueResponse {}
 
 message DequeueRequest {
   string executor_id = 1;
@@ -49,8 +47,13 @@ message GetQueuesResponse {
   repeated string queues = 2;
 }
 
+message RetryTaskRunRequest {
+  string task_run_id = 1;
+  int32 backoff_seconds = 2;
+}
+
 message GetTaskRunRequest {
-  string task_id = 1;
+  string task_run_id = 1;
 }
 
 message GetTaskRunResponse {
@@ -58,25 +61,26 @@ message GetTaskRunResponse {
 }
 
 message GetTaskRunStatusRequest {
-  string task_id = 1;
+  string task_run_id = 1;
 }
 
 message GetTaskRunStatusResponse {
   TaskStatus status = 1;
 }
 
+message TaskRunHeartbeatRequest {
+  repeated string task_run_ids = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
 message MarkSuccessRequest {
-  string task_id = 1;
+  string task_run_id = 1;
   optional string result = 2;
 }
 
-message MarkSuccessResponse {}
-
 message MarkFailedRequest {
-  string task_id = 1;
+  string task_run_id = 1;
 }
-
-message MarkFailedResponse {}
 
 message GetDurableTaskRunsRequest {
   string durable_id = 1;
@@ -87,18 +91,14 @@ message GetDurableTaskRunsResponse {
 }
 
 message SetLogLinkRequest {
-  string task_id = 1;
+  string task_run_id = 1;
   string log_link = 2;
 }
-
-message SetLogLinkResponse {}
 
 // POSTGRES REQUESTS
 message RegisterTaskDefRequest {
   TaskDef task_def = 1;
 }
-
-message RegisterTaskDefResponse {}
 
 message GetTaskDefRequest {
   string task_name = 1;
@@ -118,8 +118,6 @@ message RegisterCronRequest {
   // TODO
 }
 
-message RegisterCronResponse {}
-
 message RegisterExecutorRequest {
   string executor_id = 1;
   string executor_name = 2;
@@ -128,20 +126,28 @@ message RegisterExecutorRequest {
   string worker_name = 5;
 }
 
-message RegisterExecutorResponse {}
-
 message UpdateExecutorQueuesRequest {
   string executor_id = 1;
   repeated string queues = 2;
 }
 
-message UpdateExecutorQueuesResponse {}
+message UpdateExecutorStatsRequest {
+  string executor_id = 1;
+  google.protobuf.Struct executor_stats = 2;
+}
+
+message ExecutorHeartbeatRequest {
+  repeated string executor_ids = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message DisconnectExecutorRequest {
+  string executor_id = 1;
+}
 
 message RegisterAppRequest {
   google.protobuf.Struct app_info = 1;
 }
-
-message RegisterAppResponse {}
 
 message AcquireSchedulerLockRequest {
   string worker_name = 1;
@@ -151,8 +157,3 @@ message AcquireSchedulerLockRequest {
 message AcquireSchedulerLockResponse {
   optional int32 lock_id = 1;
 }
-
-// Internal connection test
-message TestConnectionRequest {}
-
-message TestConnectionResponse {}

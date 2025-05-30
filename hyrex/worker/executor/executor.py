@@ -303,7 +303,7 @@ class WorkerExecutor(Process):
                         for avg in self.num_distinct_queues_averager.get_time_series()
                     ],
                 }
-                self.dispatcher.update_executor_stats(self.executor_id, Json(stats))
+                self.dispatcher.update_executor_stats(self.executor_id, stats)
 
             return True
 

@@ -9,9 +9,16 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from .tasks import (EmptyContext, SleepContext, empty_task, error_task,
-                    print_random_number, root_level_task, sleepy_task,
-                    spawn_empty_tasks)
+from .tasks import (
+    EmptyContext,
+    SleepContext,
+    empty_task,
+    error_task,
+    print_random_number,
+    root_level_task,
+    sleepy_task,
+    spawn_empty_tasks,
+)
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
 app = FastAPI()
@@ -77,7 +84,7 @@ def print_hello():
 @app.get("/error-task/")
 async def run_error_task():
     # error_task.with_config(max_retries=10).send(EmptyContext())
-    error_task.with_config(max_retries=0).send(context=EmptyContext())
+    error_task.with_config(max_retries=5).send(context=EmptyContext())
 
 
 @app.get("/random-number/")

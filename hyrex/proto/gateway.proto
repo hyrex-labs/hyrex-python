@@ -4,26 +4,34 @@ package hyrex.performanceserver;
 
 option go_package = "proto/";
 
+import "google/protobuf/empty.proto";
 import "requests.proto";
 
 service GatewayService {
+  rpc TestConnection(google.protobuf.Empty) returns (google.protobuf.Empty);
+
   // ---- Valkey requests ----
-  rpc Enqueue(EnqueueRequest) returns (EnqueueResponse);
+  rpc Enqueue(EnqueueRequest) returns (google.protobuf.Empty);
   rpc Dequeue(DequeueRequest) returns (DequeueResponse);
   rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
   rpc GetTaskRunStatus(GetTaskRunStatusRequest) returns (GetTaskRunStatusResponse);
-  rpc MarkSuccess(MarkSuccessRequest) returns (MarkSuccessResponse);
-  rpc MarkFailed(MarkFailedRequest) returns (MarkFailedResponse);
+  rpc MarkSuccess(MarkSuccessRequest) returns (google.protobuf.Empty);
+  rpc MarkFailed(MarkFailedRequest) returns (google.protobuf.Empty);
   rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
   rpc GetDurableTaskRuns(GetDurableTaskRunsRequest) returns (GetDurableTaskRunsResponse);
+  rpc RetryTaskRun(RetryTaskRunRequest) returns (google.protobuf.Empty);
+  rpc TaskRunHeartbeat(TaskRunHeartbeatRequest) returns (google.protobuf.Empty);
 
   // ---- Postgres requests ----
-  rpc RegisterTaskDef(RegisterTaskDefRequest) returns (RegisterTaskDefResponse);
+  rpc RegisterTaskDef(RegisterTaskDefRequest) returns (google.protobuf.Empty);
   rpc GetTaskDef(GetTaskDefRequest) returns (GetTaskDefResponse);
   rpc GetAllTaskDefs(GetAllTaskDefsRequest) returns (GetAllTaskDefsResponse);
-  rpc RegisterExecutor(RegisterExecutorRequest) returns (RegisterExecutorResponse);
-  rpc UpdateExecutorQueues(UpdateExecutorQueuesRequest) returns (UpdateExecutorQueuesResponse);
-  rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
-  rpc SetLogLink(SetLogLinkRequest) returns (SetLogLinkResponse);
+  rpc RegisterExecutor(RegisterExecutorRequest) returns (google.protobuf.Empty);
+  rpc ExecutorHeartbeat(ExecutorHeartbeatRequest) returns (google.protobuf.Empty);
+  rpc UpdateExecutorStats(UpdateExecutorStatsRequest) returns (google.protobuf.Empty);
+  rpc UpdateExecutorQueues(UpdateExecutorQueuesRequest) returns (google.protobuf.Empty);
+  rpc DisconnectExecutor(DisconnectExecutorRequest) returns (google.protobuf.Empty);
+  rpc RegisterApp(RegisterAppRequest) returns (google.protobuf.Empty);
+  rpc SetLogLink(SetLogLinkRequest) returns (google.protobuf.Empty);
   rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
   }
