@@ -10,6 +10,9 @@ import "requests.proto";
 service GatewayService {
   rpc TestConnection(google.protobuf.Empty) returns (google.protobuf.Empty);
 
+  // ---- S3 requests ----
+  rpc WriteLogs(WriteLogsRequest) returns (google.protobuf.Empty);
+
   // ---- Valkey requests ----
   rpc Enqueue(EnqueueRequest) returns (google.protobuf.Empty);
   rpc Dequeue(DequeueRequest) returns (DequeueResponse);
@@ -34,4 +37,9 @@ service GatewayService {
   rpc RegisterApp(RegisterAppRequest) returns (google.protobuf.Empty);
   rpc SetLogLink(SetLogLinkRequest) returns (google.protobuf.Empty);
   rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
+  rpc RegisterWorkflow(RegisterWorkflowRequest) returns (google.protobuf.Empty);
+  rpc SendWorkflowRun(SendWorkflowRunRequest) returns (google.protobuf.Empty);
+  rpc GetWorkflowRunArgs(GetWorkflowRunArgsRequest) returns (GetWorkflowRunArgsResponse);
+  rpc AdvanceWorkflowRun(AdvanceWorkflowRunRequest) returns (google.protobuf.Empty);
+  rpc GetWorkflowDurableRuns(GetWorkflowDurableRunsRequest) returns (GetWorkflowDurableRunsResponse);
   }

@@ -64,7 +64,7 @@ async def _upload_to_s3_async(task_id: str, bucket_name: str, content: str):
 async def write_task_logs_to_s3(
     task_id: str,
     bucket_name: str,
-    write_to_console: bool = False,
+    write_to_console: bool = True,
 ):
     """
     Async context manager for capturing and uploading task logs to S3.
