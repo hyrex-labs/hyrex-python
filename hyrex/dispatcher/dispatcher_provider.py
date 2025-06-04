@@ -5,7 +5,6 @@ from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
 from hyrex.env_vars import EnvVars
 
 from .dispatcher import Dispatcher
-from .platform_dispatcher import PlatformDispatcher
 from .postgres_dispatcher import PostgresDispatcher
 from .postgres_lite_dispatcher import PostgresLiteDispatcher
 

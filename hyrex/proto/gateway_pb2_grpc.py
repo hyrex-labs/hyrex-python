@@ -40,6 +40,11 @@ class GatewayServiceStub(object):
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.WriteLogs = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/WriteLogs',
+                request_serializer=requests__pb2.WriteLogsRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.Enqueue = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/Enqueue',
                 request_serializer=requests__pb2.EnqueueRequest.SerializeToString,
@@ -145,6 +150,31 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
                 response_deserializer=requests__pb2.AcquireSchedulerLockResponse.FromString,
                 _registered_method=True)
+        self.RegisterWorkflow = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/RegisterWorkflow',
+                request_serializer=requests__pb2.RegisterWorkflowRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.SendWorkflowRun = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/SendWorkflowRun',
+                request_serializer=requests__pb2.SendWorkflowRunRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.GetWorkflowRunArgs = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetWorkflowRunArgs',
+                request_serializer=requests__pb2.GetWorkflowRunArgsRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetWorkflowRunArgsResponse.FromString,
+                _registered_method=True)
+        self.AdvanceWorkflowRun = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/AdvanceWorkflowRun',
+                request_serializer=requests__pb2.AdvanceWorkflowRunRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.GetWorkflowDurableRuns = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetWorkflowDurableRuns',
+                request_serializer=requests__pb2.GetWorkflowDurableRunsRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetWorkflowDurableRunsResponse.FromString,
+                _registered_method=True)
 
 
 class GatewayServiceServicer(object):
@@ -152,6 +182,13 @@ class GatewayServiceServicer(object):
 
     def TestConnection(self, request, context):
         """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WriteLogs(self, request, context):
+        """---- S3 requests ----
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -284,12 +321,47 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterWorkflow(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SendWorkflowRun(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWorkflowRunArgs(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AdvanceWorkflowRun(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWorkflowDurableRuns(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GatewayServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'TestConnection': grpc.unary_unary_rpc_method_handler(
                     servicer.TestConnection,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'WriteLogs': grpc.unary_unary_rpc_method_handler(
+                    servicer.WriteLogs,
+                    request_deserializer=requests__pb2.WriteLogsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Enqueue': grpc.unary_unary_rpc_method_handler(
@@ -397,6 +469,31 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.AcquireSchedulerLockRequest.FromString,
                     response_serializer=requests__pb2.AcquireSchedulerLockResponse.SerializeToString,
             ),
+            'RegisterWorkflow': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterWorkflow,
+                    request_deserializer=requests__pb2.RegisterWorkflowRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'SendWorkflowRun': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendWorkflowRun,
+                    request_deserializer=requests__pb2.SendWorkflowRunRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetWorkflowRunArgs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWorkflowRunArgs,
+                    request_deserializer=requests__pb2.GetWorkflowRunArgsRequest.FromString,
+                    response_serializer=requests__pb2.GetWorkflowRunArgsResponse.SerializeToString,
+            ),
+            'AdvanceWorkflowRun': grpc.unary_unary_rpc_method_handler(
+                    servicer.AdvanceWorkflowRun,
+                    request_deserializer=requests__pb2.AdvanceWorkflowRunRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetWorkflowDurableRuns': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWorkflowDurableRuns,
+                    request_deserializer=requests__pb2.GetWorkflowDurableRunsRequest.FromString,
+                    response_serializer=requests__pb2.GetWorkflowDurableRunsResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'hyrex.performanceserver.GatewayService', rpc_method_handlers)
@@ -424,6 +521,33 @@ class GatewayService(object):
             target,
             '/hyrex.performanceserver.GatewayService/TestConnection',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def WriteLogs(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/WriteLogs',
+            requests__pb2.WriteLogsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
@@ -992,6 +1116,141 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
             requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
             requests__pb2.AcquireSchedulerLockResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RegisterWorkflow(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/RegisterWorkflow',
+            requests__pb2.RegisterWorkflowRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendWorkflowRun(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/SendWorkflowRun',
+            requests__pb2.SendWorkflowRunRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetWorkflowRunArgs(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/GetWorkflowRunArgs',
+            requests__pb2.GetWorkflowRunArgsRequest.SerializeToString,
+            requests__pb2.GetWorkflowRunArgsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AdvanceWorkflowRun(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/AdvanceWorkflowRun',
+            requests__pb2.AdvanceWorkflowRunRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetWorkflowDurableRuns(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/GetWorkflowDurableRuns',
+            requests__pb2.GetWorkflowDurableRunsRequest.SerializeToString,
+            requests__pb2.GetWorkflowDurableRunsResponse.FromString,
             options,
             channel_credentials,
             insecure,
