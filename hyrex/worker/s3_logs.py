@@ -1,8 +1,11 @@
 import contextlib
 import sys
 from functools import lru_cache
+from uuid import UUID
 
 import boto3
+
+from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
 
 
 @lru_cache(maxsize=1)
@@ -99,3 +102,39 @@ async def write_task_logs_to_s3(
         # Upload logs if we captured anything
         content = log_capture.getvalue()
         await _upload_to_s3_async(task_id, bucket_name, content)
+
+
+@contextlib.asynccontextmanager
+async def write_task_logs_with_dispatcher(
+    task_id: UUID,
+    dispatcher: PerformanceDispatcher,
+    write_to_console: bool = True,
+):
+    """
+    Async context manager for capturing and uploading task logs via dispatcher.
+
+    Args:
+        task_id: Unique identifier for the task
+        dispatcher: PerformanceDispatcher instance with write_s3_logs method
+        write_to_console: If True, also write output to console
+    """
+    log_capture = LogCapture()
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+
+    try:
+        if write_to_console:
+            sys.stdout = TeeIO(original_stdout, log_capture)
+            sys.stderr = TeeIO(original_stderr, log_capture)
+        else:
+            sys.stdout = log_capture
+            sys.stderr = log_capture
+        yield
+    finally:
+        # Restore original streams
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
+        # Upload logs via dispatcher
+        content = log_capture.getvalue()
+        dispatcher.write_s3_logs(task_id, content)

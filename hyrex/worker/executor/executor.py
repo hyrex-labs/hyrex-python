@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
 from hyrex.hyrex_cache import HyrexCacheManager
@@ -33,7 +34,7 @@ from hyrex.worker.messages.root_messages import (
     SetExecutorTaskMessage,
     TaskRegistrationComplete,
 )
-from hyrex.worker.s3_logs import write_task_logs_to_s3
+from hyrex.worker.s3_logs import write_task_logs_to_s3, write_task_logs_with_dispatcher
 from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
 
 
@@ -135,8 +136,14 @@ class WorkerExecutor(Process):
     async def process_item(self, task: DequeuedTask):
         task_wrapper = self.registry.get_task(task.task_name)
 
-        # Execute task with unpacked arguments
-        if self.logs_s3_bucket:
+        # Write logs via performance server
+        if isinstance(self.dispatcher, PerformanceDispatcher):
+            async with write_task_logs_with_dispatcher(
+                task_id=task.id, dispatcher=self.dispatcher
+            ):
+                result = await task_wrapper.async_call(**task.args)
+        # Write logs directly to S3
+        elif self.logs_s3_bucket:
             try:
                 async with write_task_logs_to_s3(
                     task.id, self.logs_s3_bucket
@@ -144,7 +151,7 @@ class WorkerExecutor(Process):
                     result = await task_wrapper.async_call(**task.args)
             finally:
                 self.dispatcher.set_log_link(task.id, s3_log_link)
-
+        # No logs written to S3
         else:
             result = await task_wrapper.async_call(**task.args)
 

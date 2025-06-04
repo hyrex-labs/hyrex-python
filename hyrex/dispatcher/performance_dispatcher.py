@@ -771,3 +771,15 @@ class PerformanceDispatcher(Dispatcher):
         except grpc.RpcError as e:
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
+
+    def write_s3_logs(self, task_id: UUID, logs: str):
+        request_proto = requests_pb2.WriteLogsRequest()
+        request_proto.task_run_id = str(task_id)
+        request_proto.logs = logs
+
+        try:
+            self.gateway_stub.WriteLogs(request_proto, metadata=self.api_key_metadata)
+            self.logger.debug("WriteLogs gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(f"gRPC WriteLogs call failed: {e.code()} - {e.details()}")
+            raise
