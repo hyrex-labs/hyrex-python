@@ -170,8 +170,12 @@ class TaskWrapper(Generic[P, R]):
             f"Sending task {self.func.__name__} to queue: {self.task_config.queue}"
         )
 
-        # Validate the provided kwargs against our function signature
-        validated_kwargs = self._validate_kwargs(kwargs)
+        # Convert positional args to kwargs based on function signature
+        bound_args = self.signature.bind_partial(*args, **kwargs)
+        bound_args.apply_defaults()
+        
+        # Validate the combined args against our function signature
+        validated_kwargs = self._validate_kwargs(bound_args.arguments)
 
         current_context = get_hyrex_context()
 
