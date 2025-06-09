@@ -1,7 +1,7 @@
 from hyrex import HyrexApp
 
-from .tasks import hy as registry
-from .workflow import hy as workflow_registry
+from tasks import hy as registry
+from workflow import hy as workflow_registry
 
 app = HyrexApp("PythonTestingApp")
 
