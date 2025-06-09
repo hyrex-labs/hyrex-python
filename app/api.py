@@ -90,9 +90,9 @@ async def run_error_task():
 @app.get("/random-number/")
 async def random_number_task():
     task = print_random_number.send()
-    # task.wait()
-    # print(task.get_result())
-    # return task.get_result()
+    task.wait()
+    print(task.get_result())
+    return task.get_result()
 
 
 @app.get("/root-level-task/")

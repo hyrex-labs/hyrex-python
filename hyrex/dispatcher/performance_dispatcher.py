@@ -660,8 +660,14 @@ class PerformanceDispatcher(Dispatcher):
             self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
             raise
 
+        # This helps handle immediate `wait()` calls when task is sent, but not yet processed by performance server.
+        # TODO: Handle this better!
+        if not response.task_runs:
+            time.sleep(0.5)
+            return self.get_durable_run_tasks(durable_id=durable_id)
+
         python_task_runs = []
-        for proto_task in response.tasks:
+        for proto_task in response.task_runs:
             try:
                 # Map protobuf enum name to Python StrEnum.
                 # Assumes the enum names in proto match the values in Python's TaskStatus.
