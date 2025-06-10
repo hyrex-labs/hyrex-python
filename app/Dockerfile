@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["sh", "-c", "hyrex init-db && hyrex run-worker hyrex_app:app"]
+CMD ["hyrex", "run-worker", "hyrex_app:app"]
