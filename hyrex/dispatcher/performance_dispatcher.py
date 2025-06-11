@@ -9,8 +9,8 @@ from typing import Type
 from uuid import UUID
 
 import grpc
-import requests
 from google.protobuf.struct_pb2 import Struct
+from google.protobuf import empty_pb2
 from pydantic import BaseModel
 from tenacity import (
     retry,
@@ -400,7 +400,19 @@ class PerformanceDispatcher(Dispatcher):
         raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
 
     def task_canceled(self, task_id: UUID):
-        raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
+        request_proto = requests_pb2.MarkCanceledRequest()
+        request_proto.task_run_id = str(task_id)
+
+        try:
+            self.gateway_stub.MarkCanceled(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("MarkCanceled gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC MarkCanceled call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         request_proto = requests_pb2.GetTaskRunStatusRequest()
@@ -523,8 +535,21 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def get_tasks_up_for_cancel(self) -> list[UUID]:
-        # TODO: Implement
-        return []
+        try:
+            response = self.gateway_stub.GetTaskRunsUpForCancel(
+                empty_pb2.Empty(), metadata=self.api_key_metadata
+            )
+            self.logger.debug(
+                f"GetTaskRunsUpForCancel gRPC call successful, response: {response}"
+            )
+
+            # Convert string UUIDs to UUID objects
+            return [UUID(task_id) for task_id in response.task_run_ids]
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC GetTaskRunsUpForCancel call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         request_proto = requests_pb2.GetQueuesRequest()
@@ -724,7 +749,19 @@ class PerformanceDispatcher(Dispatcher):
         pass
 
     def try_to_cancel_durable_run(self, durable_id: UUID):
-        pass
+        request_proto = requests_pb2.TryToCancelDurableRunRequest()
+        request_proto.durable_id = str(durable_id)
+
+        try:
+            self.gateway_stub.TryToCancelDurableRun(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("TryToCancelDurableRun gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC TryToCancelDurableRun call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
         request_proto = requests_pb2.UpdateExecutorQueuesRequest()

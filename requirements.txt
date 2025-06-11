@@ -54,8 +54,6 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 pytz==2025.1
 readme_renderer==44.0
-requests==2.32.3
-requests-toolbelt==1.0.0
 rfc3986==2.0.0
 rich==13.8.1
 s3transfer==0.10.4

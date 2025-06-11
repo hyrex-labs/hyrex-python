@@ -24,6 +24,9 @@ service GatewayService {
   rpc GetDurableTaskRuns(GetDurableTaskRunsRequest) returns (GetDurableTaskRunsResponse);
   rpc RetryTaskRun(RetryTaskRunRequest) returns (google.protobuf.Empty);
   rpc TaskRunHeartbeat(TaskRunHeartbeatRequest) returns (google.protobuf.Empty);
+  rpc TryToCancelDurableRun(TryToCancelDurableRunRequest) returns (google.protobuf.Empty);
+  rpc GetTaskRunsUpForCancel(google.protobuf.Empty) returns (GetTaskRunsUpForCancelResponse);
+  rpc MarkCanceled(MarkCanceledRequest) returns (google.protobuf.Empty);
 
   // ---- Postgres requests ----
   rpc RegisterTaskDef(RegisterTaskDefRequest) returns (google.protobuf.Empty);

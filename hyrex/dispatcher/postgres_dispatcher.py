@@ -31,6 +31,16 @@ from hyrex.schemas import (
 from hyrex.sql import cron_sql, sql, workflow_sql
 
 
+def pydantic_aware_default(obj):
+    if isinstance(obj, BaseModel):
+        # If the object is a Pydantic model, call model_dump()
+        # to get its dictionary representation. json.dumps can handle dicts.
+        return obj.model_dump()
+    # If it's not a Pydantic model and json.dumps doesn't know it,
+    # let the default TypeError happen.
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 class PostgresDispatcher(Dispatcher):
     def __init__(self, conn_string: str, batch_size=1000, flush_interval=0.05):
         super().__init__()
@@ -215,14 +225,25 @@ class PostgresDispatcher(Dispatcher):
 
         :param tasks: List of tasks to insert.
         """
-        task_data = (
-            (
+        task_data = []
+        for task in tasks:
+            # Convert args to JSON, handling Pydantic models
+            try:
+                # json.dumps will handle dicts, lists, strings, numbers etc. directly.
+                # If it encounters a Pydantic model (either as task.args itself or nested),
+                # it will call our pydantic_aware_default function.
+                args_json = json.dumps(task.args, default=pydantic_aware_default)
+            except TypeError as e:
+                self.logger.error(f"Task {task.id}: Failed to serialize args to JSON: {e}")
+                raise
+            
+            task_data.append((
                 task.id,
                 task.durable_id,
                 task.root_id,
                 task.parent_id,
                 task.task_name,
-                Json(task.args),
+                args_json,  # Already a JSON string
                 task.queue,
                 task.max_retries,
                 task.priority,
@@ -231,9 +252,7 @@ class PostgresDispatcher(Dispatcher):
                 task.status,
                 task.workflow_run_id,
                 task.workflow_dependencies,
-            )
-            for task in tasks
-        )
+            ))
 
         with self.transaction() as cur:
             cur.executemany(
