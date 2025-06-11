@@ -169,6 +169,7 @@ message RegisterWorkflowRequest {
   string workflow_dag_json = 3;
   optional google.protobuf.Struct workflow_arg_schema = 4;
   google.protobuf.Struct default_config = 5;
+  optional string cron = 6;
 }
 
 message SendWorkflowRunRequest {
@@ -197,5 +198,17 @@ message GetWorkflowDurableRunsRequest {
 }
 
 message GetWorkflowDurableRunsResponse {
-  repeated string durable_run_ids = 1;
+  repeated string durable_ids = 1;
+}
+
+message TryToCancelDurableRunRequest {
+  string durable_id = 1;
+}
+
+message GetTaskRunsUpForCancelResponse {
+  repeated string task_run_ids = 1;
+}
+
+message MarkCanceledRequest {
+  string task_run_id = 1;
 }
