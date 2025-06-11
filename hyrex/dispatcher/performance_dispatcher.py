@@ -9,7 +9,6 @@ from typing import Type
 from uuid import UUID
 
 import grpc
-import requests
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf import empty_pb2
 from pydantic import BaseModel
@@ -405,7 +404,9 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.task_run_id = str(task_id)
 
         try:
-            self.gateway_stub.MarkCanceled(request_proto, metadata=self.api_key_metadata)
+            self.gateway_stub.MarkCanceled(
+                request_proto, metadata=self.api_key_metadata
+            )
             self.logger.debug("MarkCanceled gRPC call successful")
         except grpc.RpcError as e:
             self.logger.error(
@@ -538,8 +539,10 @@ class PerformanceDispatcher(Dispatcher):
             response = self.gateway_stub.GetTaskRunsUpForCancel(
                 empty_pb2.Empty(), metadata=self.api_key_metadata
             )
-            self.logger.debug(f"GetTaskRunsUpForCancel gRPC call successful, response: {response}")
-            
+            self.logger.debug(
+                f"GetTaskRunsUpForCancel gRPC call successful, response: {response}"
+            )
+
             # Convert string UUIDs to UUID objects
             return [UUID(task_id) for task_id in response.task_run_ids]
         except grpc.RpcError as e:
