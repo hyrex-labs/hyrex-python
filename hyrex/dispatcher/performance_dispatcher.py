@@ -661,16 +661,107 @@ class PerformanceDispatcher(Dispatcher):
         workflow_arg_schema: Type[BaseModel] | None,
         default_config: dict,
     ):
-        pass
+        request_proto = requests_pb2.RegisterWorkflowRequest()
+        request_proto.workflow_name = name
+        request_proto.source_code = source_code
+        
+        # Handle workflow_dag_json - convert dict to JSON string if needed
+        if isinstance(workflow_dag_json, dict):
+            request_proto.workflow_dag_json = json.dumps(workflow_dag_json)
+        else:
+            request_proto.workflow_dag_json = workflow_dag_json
+        
+        # Handle arg_schema
+        if workflow_arg_schema:
+            arg_schema_struct = Struct()
+            # Convert Pydantic BaseModel class to JSON schema dict
+            if hasattr(workflow_arg_schema, 'model_json_schema'):
+                schema_dict = workflow_arg_schema.model_json_schema()
+                arg_schema_struct.update(schema_dict)
+            else:
+                # If it's already a dict or other type, use it directly
+                arg_schema_struct.update(workflow_arg_schema)
+            request_proto.workflow_arg_schema.CopyFrom(arg_schema_struct)
+            
+        # Handle default_config
+        if default_config:
+            default_config_struct = Struct()
+            default_config_struct.update(default_config)
+            request_proto.default_config.CopyFrom(default_config_struct)
+            
+        try:
+            self.gateway_stub.RegisterWorkflow(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC RegisterWorkflow call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC RegisterWorkflow call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
-        pass
+        request_proto = requests_pb2.SendWorkflowRunRequest()
+        request_proto.workflow_run_id = str(workflow_run_request.id)
+        request_proto.workflow_name = workflow_run_request.workflow_name
+        request_proto.queue = workflow_run_request.queue
+        
+        # Convert args to protobuf Struct
+        args_struct = Struct()
+        args_struct.update(workflow_run_request.args)
+        request_proto.args.CopyFrom(args_struct)
+        
+        # Handle optional fields
+        if workflow_run_request.timeout_seconds is not None:
+            request_proto.timeout_seconds = workflow_run_request.timeout_seconds
+            
+        if workflow_run_request.idempotency_key:
+            request_proto.idempotency_key = workflow_run_request.idempotency_key
+            
+        try:
+            self.gateway_stub.SendWorkflowRun(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC SendWorkflowRun call successful")
+            return workflow_run_request.id
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC SendWorkflowRun call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def advance_workflow_run(self, workflow_run_id: UUID):
-        pass
+        request_proto = requests_pb2.AdvanceWorkflowRunRequest()
+        request_proto.workflow_run_id = str(workflow_run_id)
+        
+        try:
+            self.gateway_stub.AdvanceWorkflowRun(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC AdvanceWorkflowRun call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC AdvanceWorkflowRun call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
-        pass
+        request_proto = requests_pb2.GetWorkflowRunArgsRequest()
+        request_proto.workflow_run_id = str(workflow_run_id)
+        
+        try:
+            response = self.gateway_stub.GetWorkflowRunArgs(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC GetWorkflowRunArgs call successful")
+            
+            # Convert protobuf Struct to dict
+            return dict(response.args)
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC GetWorkflowRunArgs call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         request_proto = requests_pb2.GetDurableTaskRunsRequest()
@@ -746,7 +837,22 @@ class PerformanceDispatcher(Dispatcher):
         return python_task_runs
 
     def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
-        pass
+        request_proto = requests_pb2.GetWorkflowDurableRunsRequest()
+        request_proto.workflow_run_id = str(workflow_run_id)
+        
+        try:
+            response = self.gateway_stub.GetWorkflowDurableRuns(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("gRPC GetWorkflowDurableRuns call successful")
+            
+            # Convert string UUIDs to UUID objects
+            return [UUID(durable_id) for durable_id in response.durable_ids]
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC GetWorkflowDurableRuns call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def try_to_cancel_durable_run(self, durable_id: UUID):
         request_proto = requests_pb2.TryToCancelDurableRunRequest()
