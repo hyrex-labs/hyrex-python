@@ -7,6 +7,7 @@ from hyrex.env_vars import EnvVars
 from .dispatcher import Dispatcher
 from .postgres_dispatcher import PostgresDispatcher
 from .postgres_lite_dispatcher import PostgresLiteDispatcher
+from .sqlc_dispatcher import SqlcDispatcher
 
 # TODO: Clean up logic and decide if PostgresLiteDispatcher should be sunsetted.
 
@@ -47,7 +48,7 @@ def get_dispatcher(worker: bool = False) -> Dispatcher:
             api_key=api_key, conn_string=conn_string
         )
     elif conn_string:
-        _global_dispatcher = PostgresDispatcher(conn_string=conn_string)
+        _global_dispatcher = SqlcDispatcher(conn_string=conn_string)
         # if worker:
         #     # Single-threaded dispatcher simplifies worker
         #     _global_dispatcher = PostgresLiteDispatcher(conn_string=conn_string)

@@ -56,15 +56,17 @@ class PerformanceDispatcher(Dispatcher):
 
     # Status mapping between Python TaskStatus enum and proto TaskStatus enum
     _PY_TO_PROTO_STATUS = {
-        TaskStatus.queued: task_pb2.TaskStatus.QUEUED,
-        TaskStatus.waiting: task_pb2.TaskStatus.WAITING,
-        TaskStatus.running: task_pb2.TaskStatus.RUNNING,
         TaskStatus.success: task_pb2.TaskStatus.SUCCESS,
         TaskStatus.failed: task_pb2.TaskStatus.FAILED,
+        TaskStatus.running: task_pb2.TaskStatus.RUNNING,
+        TaskStatus.queued: task_pb2.TaskStatus.QUEUED,
         TaskStatus.up_for_cancel: task_pb2.TaskStatus.UP_FOR_CANCEL,
         TaskStatus.canceled: task_pb2.TaskStatus.CANCELED,
         TaskStatus.lost: task_pb2.TaskStatus.LOST,
+        TaskStatus.stopped: task_pb2.TaskStatus.STOPPED,
         TaskStatus.skipped: task_pb2.TaskStatus.SKIPPED,
+        TaskStatus.await_deps: task_pb2.TaskStatus.AWAIT_DEPS,
+        TaskStatus.await_start_time: task_pb2.TaskStatus.AWAIT_START_TIME,
     }
 
     # Reverse mapping for proto to Python conversion
@@ -785,19 +787,13 @@ class PerformanceDispatcher(Dispatcher):
         python_task_runs = []
         for proto_task in response.task_runs:
             try:
-                # Map protobuf enum name to Python StrEnum.
-                # Assumes the enum names in proto match the values in Python's TaskStatus.
-                # Example: If proto has TASK_STATUS_SUCCESS = 0, .Name() might return "TASK_STATUS_SUCCESS".
-                # Adjust the mapping logic if needed based on your actual enum definitions.
-                # If the proto enum names are exactly the Python values (e.g., "success"), this is simpler.
-                # Let's assume direct mapping for now:
-                status_str = task_pb2.TaskStatus.Name(
-                    proto_task.status
-                ).lower()  # Or adjust based on actual names
-                # Handle potential prefix if needed, e.g., status_str = status_str.replace('task_status_', '')
-                current_status = TaskStatus(
-                    status_str
-                )  # Convert string name to Python Enum
+                # Map protobuf enum to Python StrEnum using the mapping dict
+                current_status = self._PROTO_TO_PY_STATUS.get(proto_task.status)
+                if current_status is None:
+                    # Fallback: try to convert protobuf enum name to Python enum
+                    status_name = task_pb2.TaskStatus.Name(proto_task.status)
+                    self.logger.warning(f"Unknown proto status {proto_task.status} ({status_name})")
+                    current_status = TaskStatus(status_name)  # This will raise if not found
 
                 # Convert timestamps, checking for epoch zero (default/unset) for optional Python fields
                 queued_dt = proto_task.queued.ToDatetime(

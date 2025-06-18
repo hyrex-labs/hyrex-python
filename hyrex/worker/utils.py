@@ -30,6 +30,102 @@ def is_glob_pattern(pattern: str) -> bool:
     return False
 
 
+def glob_pattern_to_postgres_pattern(glob_pattern: str) -> str:
+    """
+    Convert a shell glob pattern to a PostgreSQL SIMILAR TO pattern.
+    
+    Supports:
+    - * -> % (matches zero or more characters)
+    - ? -> _ (matches exactly one character)
+    - [abc] -> [abc] (character class)
+    - [!abc] -> [^abc] (negated character class)
+    
+    Special characters %, _, |, *, +, ?, {, }, (, ), [ and \ in the input are escaped.
+    Backslash escaping is handled (e.g., \\* becomes a literal *)
+    
+    SIMILAR TO combines LIKE syntax with regular expression features.
+    """
+    # Characters that need to be escaped in SIMILAR TO patterns
+    # (includes both LIKE specials and regex specials that SIMILAR TO supports)
+    similar_to_specials = {'%', '_', '|', '*', '+', '?', '{', '}', '(', ')', '[', '\\'}
+    
+    i = 0
+    length = len(glob_pattern)
+    result = []
+
+    while i < length:
+        c = glob_pattern[i]
+
+        if c == "\\":
+            # Handle escape sequences
+            if i + 1 < length:
+                next_char = glob_pattern[i + 1]
+                if next_char in "*?[]":
+                    # Escaping a glob special character - output it literally
+                    if next_char in similar_to_specials:
+                        result.append("\\" + next_char)
+                    else:
+                        result.append(next_char)
+                    i += 2
+                else:
+                    # Not escaping a glob char, keep the backslash
+                    # and escape it for SIMILAR TO
+                    result.append("\\\\")
+                    i += 1
+            else:
+                # Backslash at end of string
+                result.append("\\\\")
+                i += 1
+        elif c == "*":
+            # Glob * matches zero or more chars -> SIMILAR TO %
+            result.append("%")
+            i += 1
+        elif c == "?":
+            # Glob ? matches exactly one char -> SIMILAR TO _
+            result.append("_")
+            i += 1
+        elif c == "[":
+            # Character class start
+            result.append("[")
+            i += 1
+            
+            # Check for negation
+            if i < length and glob_pattern[i] == "!":
+                # Convert glob negation ! to SQL regex negation ^
+                result.append("^")
+                i += 1
+            
+            # Copy characters until closing bracket
+            bracket_depth = 1
+            while i < length and bracket_depth > 0:
+                char = glob_pattern[i]
+                if char == "[":
+                    bracket_depth += 1
+                elif char == "]":
+                    bracket_depth -= 1
+                
+                # Inside character class, we need to be careful with escaping
+                # Most characters are literal inside [], but \ still needs escaping
+                if char == "\\":
+                    result.append("\\\\")
+                else:
+                    result.append(char)
+                i += 1
+                
+            # If we didn't find a closing bracket, the pattern is malformed
+            # but we've already added everything
+        else:
+            # Normal character
+            # If it's a SIMILAR TO special character, escape it
+            if c in similar_to_specials:
+                result.append("\\" + c)
+            else:
+                result.append(c)
+            i += 1
+
+    return "".join(result)
+
+
 def glob_to_postgres_regex(glob_pattern: str):
     # Characters that have special meaning in regex and need to be escaped
     # outside of character classes (except the ones we'll handle specially):
