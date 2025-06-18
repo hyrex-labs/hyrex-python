@@ -49,10 +49,10 @@ from .sqlc import (
     register_task_def,
     create_cron_job_for_task,
     turn_off_cron_for_task,
-    upsert_workflow,
-    trigger_workflow,
+    register_workflow,
+    create_workflow_run,
     set_workflow_run_status_based_on_task_runs,
-    advance_workflow_run,
+    advance_workflow_run_func,
     get_workflow_run_by_id,
     acquire_scheduler_lock,
     pull_active_cron_expressions,
@@ -84,10 +84,10 @@ from .sqlc import (
     register_task_def_sync,
     create_cron_job_for_task_sync,
     turn_off_cron_for_task_sync,
-    upsert_workflow_sync,
-    trigger_workflow_sync,
+    register_workflow_sync,
+    create_workflow_run_sync,
     set_workflow_run_status_based_on_task_runs_sync,
-    advance_workflow_run_sync,
+    advance_workflow_run_func_sync,
     get_workflow_run_by_id_sync,
     acquire_scheduler_lock_sync,
     pull_active_cron_expressions_sync,
@@ -557,9 +557,9 @@ class SqlcDispatcher(Dispatcher):
         default_config: dict,
     ):
         with self.transaction() as conn:
-            upsert_workflow_sync(
+            register_workflow_sync(
                 conn,
-                upsert_workflow.UpsertWorkflowParams(
+                register_workflow.RegisterWorkflowParams(
                     workflow_name=name,
                     cron_expr=None,
                     source_code=source_code,
@@ -569,9 +569,9 @@ class SqlcDispatcher(Dispatcher):
     
     def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
         with self.transaction() as conn:
-            workflow_run_id = trigger_workflow_sync(
+            workflow_run_id = create_workflow_run_sync(
                 conn,
-                trigger_workflow.TriggerWorkflowParams(
+                create_workflow_run.CreateWorkflowRunParams(
                     workflow_run_id=workflow_run_request.id,
                     workflow_name=workflow_run_request.workflow_name,
                     args=json.dumps(workflow_run_request.args, default=pydantic_aware_default),
@@ -600,10 +600,10 @@ class SqlcDispatcher(Dispatcher):
                 return None
             
             # Advance the workflow
-            advance_workflow_run_sync(
+            list(advance_workflow_run_func_sync(
                 conn,
-                advance_workflow_run.AdvanceWorkflowRunParams(workflow_run_id=workflow_run_id)
-            )
+                advance_workflow_run_func.AdvanceWorkflowRunFuncParams(workflow_run_id=workflow_run_id)
+            ))
             return None
     
     def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:

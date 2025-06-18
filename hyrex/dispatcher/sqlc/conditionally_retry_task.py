@@ -25,7 +25,7 @@ SELECT result FROM conditionally_retry_task(
 class ConditionallyRetryTaskParams:
     existing_task_id: uuid.UUID
     new_task_id: uuid.UUID
-    timeout_seconds: int
+    timeout_seconds: Optional[int]
 
 
 class Querier:

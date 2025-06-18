@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-06-18T14:16:35.953195
+Generated on: 2025-06-18T14:50:33.433215
 """
 
 # Import all models
@@ -22,16 +22,17 @@ from ._11_create_hyrex_cron_job_run_details_table import Querier as _11_create_h
 from ._12_create_hyrex_task_run_table import Querier as _12_create_hyrex_task_run_table_Querier, AsyncQuerier as _12_create_hyrex_task_run_table_AsyncQuerier
 from ._13_create_hyrex_task_run_table_indexes import Querier as _13_create_hyrex_task_run_table_indexes_Querier, AsyncQuerier as _13_create_hyrex_task_run_table_indexes_AsyncQuerier
 from ._14_create_results_table import Querier as _14_create_results_table_Querier, AsyncQuerier as _14_create_results_table_AsyncQuerier
+from ._15_create_hyrex_kv_table import Querier as _15_create_hyrex_kv_table_Querier, AsyncQuerier as _15_create_hyrex_kv_table_AsyncQuerier
 
 # Scheduler
 from .acquire_scheduler_lock import Querier as acquire_scheduler_lock_Querier, AsyncQuerier as acquire_scheduler_lock_AsyncQuerier
 from .release_scheduler_lock import Querier as release_scheduler_lock_Querier, AsyncQuerier as release_scheduler_lock_AsyncQuerier
 
 # Workflow Run
-from .advance_workflow_run import Querier as advance_workflow_run_Querier, AsyncQuerier as advance_workflow_run_AsyncQuerier
+from .advance_workflow_run_func import Querier as advance_workflow_run_func_Querier, AsyncQuerier as advance_workflow_run_func_AsyncQuerier
+from .create_workflow_run import Querier as create_workflow_run_Querier, AsyncQuerier as create_workflow_run_AsyncQuerier
 from .set_workflow_run_status_based_on_task_runs import Querier as set_workflow_run_status_based_on_task_runs_Querier, AsyncQuerier as set_workflow_run_status_based_on_task_runs_AsyncQuerier
 from .skip_waiting_task_for_workflow_run_id import Querier as skip_waiting_task_for_workflow_run_id_Querier, AsyncQuerier as skip_waiting_task_for_workflow_run_id_AsyncQuerier
-from .trigger_workflow import Querier as trigger_workflow_Querier, AsyncQuerier as trigger_workflow_AsyncQuerier
 
 # Executor
 from .batch_update_heartbeat_log import Querier as batch_update_heartbeat_log_Querier, AsyncQuerier as batch_update_heartbeat_log_AsyncQuerier
@@ -52,9 +53,11 @@ from .set_log_link import Querier as set_log_link_Querier, AsyncQuerier as set_l
 from .transition_task_state import Querier as transition_task_state_Querier, AsyncQuerier as transition_task_state_AsyncQuerier
 
 # Functions
+from .create_advance_workflow_run_func import Querier as create_advance_workflow_run_func_Querier, AsyncQuerier as create_advance_workflow_run_func_AsyncQuerier
 from .create_conditionally_retry_task_func import Querier as create_conditionally_retry_task_func_Querier, AsyncQuerier as create_conditionally_retry_task_func_AsyncQuerier
 from .create_execute_queued_cron_job_func import Querier as create_execute_queued_cron_job_func_Querier, AsyncQuerier as create_execute_queued_cron_job_func_AsyncQuerier
 from .create_schedule_cron_job_runs_func import Querier as create_schedule_cron_job_runs_func_Querier, AsyncQuerier as create_schedule_cron_job_runs_func_AsyncQuerier
+from .create_set_workflow_run_status_based_on_task_runs_func import Querier as create_set_workflow_run_status_based_on_task_runs_func_Querier, AsyncQuerier as create_set_workflow_run_status_based_on_task_runs_func_AsyncQuerier
 from .create_task_run import Querier as create_task_run_Querier, AsyncQuerier as create_task_run_AsyncQuerier
 from .create_transition_task_run_state_func import Querier as create_transition_task_run_state_func_Querier, AsyncQuerier as create_transition_task_run_state_func_AsyncQuerier
 from .create_uuid7_func import Querier as create_uuid7_func_Querier, AsyncQuerier as create_uuid7_func_AsyncQuerier
@@ -104,12 +107,12 @@ from .register_app_info import Querier as register_app_info_Querier, AsyncQuerie
 # Task Def
 from .register_task_def import Querier as register_task_def_Querier, AsyncQuerier as register_task_def_AsyncQuerier
 
+# Workflow
+from .register_workflow import Querier as register_workflow_Querier, AsyncQuerier as register_workflow_AsyncQuerier
+
 # Durability
 from .set_executor_to_lost_if_no_heartbeat import Querier as set_executor_to_lost_if_no_heartbeat_Querier, AsyncQuerier as set_executor_to_lost_if_no_heartbeat_AsyncQuerier
 from .set_orphaned_task_execution_to_lost_and_retry import Querier as set_orphaned_task_execution_to_lost_and_retry_Querier, AsyncQuerier as set_orphaned_task_execution_to_lost_and_retry_AsyncQuerier
-
-# Workflow
-from .upsert_workflow import Querier as upsert_workflow_Querier, AsyncQuerier as upsert_workflow_AsyncQuerier
 
 # Generated wrapper functions for SQLC queries
 
@@ -198,13 +201,19 @@ def create_results_table_sync(client, *args, **kwargs):
     params = CreateResultsTableParams()
     return querier.create_results_table(params)
 
+def create_hyrex_kv_table_sync(client, *args, **kwargs):
+    querier = _15_create_hyrex_kv_table_Querier(client)
+    from ._15_create_hyrex_kv_table import CreateHyrexKvTableParams
+    params = CreateHyrexKvTableParams()
+    return querier.create_hyrex_kv_table(params)
+
 def acquire_scheduler_lock_sync(client, *args, **kwargs):
     querier = acquire_scheduler_lock_Querier(client)
     return querier.acquire_scheduler_lock(*args, **kwargs)
 
-def advance_workflow_run_sync(client, *args, **kwargs):
-    querier = advance_workflow_run_Querier(client)
-    return querier.advance_workflow_run(*args, **kwargs)
+def advance_workflow_run_func_sync(client, *args, **kwargs):
+    querier = advance_workflow_run_func_Querier(client)
+    return querier.advance_workflow_run_func(*args, **kwargs)
 
 def batch_update_heartbeat_log_sync(client, *args, **kwargs):
     querier = batch_update_heartbeat_log_Querier(client)
@@ -217,6 +226,12 @@ def batch_update_heartbeat_on_executors_sync(client, *args, **kwargs):
 def conditionally_retry_task_sync(client, *args, **kwargs):
     querier = conditionally_retry_task_Querier(client)
     return querier.conditionally_retry_task(*args, **kwargs)
+
+def create_advance_workflow_run_function_sync(client, *args, **kwargs):
+    querier = create_advance_workflow_run_func_Querier(client)
+    from .create_advance_workflow_run_func import CreateAdvanceWorkflowRunFunctionParams
+    params = CreateAdvanceWorkflowRunFunctionParams()
+    return querier.create_advance_workflow_run_function(params)
 
 def create_conditionally_retry_task_func_sync(client, *args, **kwargs):
     querier = create_conditionally_retry_task_func_Querier(client)
@@ -262,6 +277,12 @@ def create_schedule_cron_job_runs_func_sync(client, *args, **kwargs):
     params = CreateScheduleCronJobRunsFuncParams()
     return querier.create_schedule_cron_job_runs_func(params)
 
+def create_set_workflow_run_status_based_on_task_runs_function_sync(client, *args, **kwargs):
+    querier = create_set_workflow_run_status_based_on_task_runs_func_Querier(client)
+    from .create_set_workflow_run_status_based_on_task_runs_func import CreateSetWorkflowRunStatusBasedOnTaskRunsFunctionParams
+    params = CreateSetWorkflowRunStatusBasedOnTaskRunsFunctionParams()
+    return querier.create_set_workflow_run_status_based_on_task_runs_function(params)
+
 def create_task_run_sync(client, *args, **kwargs):
     querier = create_task_run_Querier(client)
     return querier.create_task_run(*args, **kwargs)
@@ -289,6 +310,10 @@ def create_uuid7_function_sync(client, *args, **kwargs):
     from .create_uuid7_func import CreateUuid7FunctionParams
     params = CreateUuid7FunctionParams()
     return querier.create_uuid7_function(params)
+
+def create_workflow_run_sync(client, *args, **kwargs):
+    querier = create_workflow_run_Querier(client)
+    return querier.create_workflow_run(*args, **kwargs)
 
 def create_workflow_run_status_enum_sync(client, *args, **kwargs):
     querier = create_workflow_run_status_enum_Querier(client)
@@ -410,6 +435,10 @@ def register_task_def_sync(client, *args, **kwargs):
     querier = register_task_def_Querier(client)
     return querier.register_task_def(*args, **kwargs)
 
+def register_workflow_sync(client, *args, **kwargs):
+    querier = register_workflow_Querier(client)
+    return querier.register_workflow(*args, **kwargs)
+
 def release_scheduler_lock_sync(client, *args, **kwargs):
     querier = release_scheduler_lock_Querier(client)
     return querier.release_scheduler_lock(*args, **kwargs)
@@ -450,10 +479,6 @@ def trigger_execute_queued_cron_job_sync(client, *args, **kwargs):
     querier = trigger_execute_queued_cron_job_Querier(client)
     return querier.trigger_execute_queued_cron_job(*args, **kwargs)
 
-def trigger_workflow_sync(client, *args, **kwargs):
-    querier = trigger_workflow_Querier(client)
-    return querier.trigger_workflow(*args, **kwargs)
-
 def turn_off_cron_for_task_sync(client, *args, **kwargs):
     querier = turn_off_cron_for_task_Querier(client)
     return querier.turn_off_cron_for_task(*args, **kwargs)
@@ -469,10 +494,6 @@ def update_executor_stats_sync(client, *args, **kwargs):
 def update_queues_on_executor_sync(client, *args, **kwargs):
     querier = update_queues_on_executor_Querier(client)
     return querier.update_queues_on_executor(*args, **kwargs)
-
-def upsert_workflow_sync(client, *args, **kwargs):
-    querier = upsert_workflow_Querier(client)
-    return querier.upsert_workflow(*args, **kwargs)
 
 
 # Asynchronous functions
@@ -560,13 +581,19 @@ async def create_results_table_async(client, *args, **kwargs):
     params = CreateResultsTableParams()
     return await querier.create_results_table(params)
 
+async def create_hyrex_kv_table_async(client, *args, **kwargs):
+    querier = _15_create_hyrex_kv_table_AsyncQuerier(client)
+    from ._15_create_hyrex_kv_table import CreateHyrexKvTableParams
+    params = CreateHyrexKvTableParams()
+    return await querier.create_hyrex_kv_table(params)
+
 async def acquire_scheduler_lock_async(client, *args, **kwargs):
     querier = acquire_scheduler_lock_AsyncQuerier(client)
     return await querier.acquire_scheduler_lock(*args, **kwargs)
 
-async def advance_workflow_run_async(client, *args, **kwargs):
-    querier = advance_workflow_run_AsyncQuerier(client)
-    return await querier.advance_workflow_run(*args, **kwargs)
+async def advance_workflow_run_func_async(client, *args, **kwargs):
+    querier = advance_workflow_run_func_AsyncQuerier(client)
+    return await querier.advance_workflow_run_func(*args, **kwargs)
 
 async def batch_update_heartbeat_log_async(client, *args, **kwargs):
     querier = batch_update_heartbeat_log_AsyncQuerier(client)
@@ -579,6 +606,12 @@ async def batch_update_heartbeat_on_executors_async(client, *args, **kwargs):
 async def conditionally_retry_task_async(client, *args, **kwargs):
     querier = conditionally_retry_task_AsyncQuerier(client)
     return await querier.conditionally_retry_task(*args, **kwargs)
+
+async def create_advance_workflow_run_function_async(client, *args, **kwargs):
+    querier = create_advance_workflow_run_func_AsyncQuerier(client)
+    from .create_advance_workflow_run_func import CreateAdvanceWorkflowRunFunctionParams
+    params = CreateAdvanceWorkflowRunFunctionParams()
+    return await querier.create_advance_workflow_run_function(params)
 
 async def create_conditionally_retry_task_func_async(client, *args, **kwargs):
     querier = create_conditionally_retry_task_func_AsyncQuerier(client)
@@ -624,6 +657,12 @@ async def create_schedule_cron_job_runs_func_async(client, *args, **kwargs):
     params = CreateScheduleCronJobRunsFuncParams()
     return await querier.create_schedule_cron_job_runs_func(params)
 
+async def create_set_workflow_run_status_based_on_task_runs_function_async(client, *args, **kwargs):
+    querier = create_set_workflow_run_status_based_on_task_runs_func_AsyncQuerier(client)
+    from .create_set_workflow_run_status_based_on_task_runs_func import CreateSetWorkflowRunStatusBasedOnTaskRunsFunctionParams
+    params = CreateSetWorkflowRunStatusBasedOnTaskRunsFunctionParams()
+    return await querier.create_set_workflow_run_status_based_on_task_runs_function(params)
+
 async def create_task_run_async(client, *args, **kwargs):
     querier = create_task_run_AsyncQuerier(client)
     return await querier.create_task_run(*args, **kwargs)
@@ -651,6 +690,10 @@ async def create_uuid7_function_async(client, *args, **kwargs):
     from .create_uuid7_func import CreateUuid7FunctionParams
     params = CreateUuid7FunctionParams()
     return await querier.create_uuid7_function(params)
+
+async def create_workflow_run_async(client, *args, **kwargs):
+    querier = create_workflow_run_AsyncQuerier(client)
+    return await querier.create_workflow_run(*args, **kwargs)
 
 async def create_workflow_run_status_enum_async(client, *args, **kwargs):
     querier = create_workflow_run_status_enum_AsyncQuerier(client)
@@ -772,6 +815,10 @@ async def register_task_def_async(client, *args, **kwargs):
     querier = register_task_def_AsyncQuerier(client)
     return await querier.register_task_def(*args, **kwargs)
 
+async def register_workflow_async(client, *args, **kwargs):
+    querier = register_workflow_AsyncQuerier(client)
+    return await querier.register_workflow(*args, **kwargs)
+
 async def release_scheduler_lock_async(client, *args, **kwargs):
     querier = release_scheduler_lock_AsyncQuerier(client)
     return await querier.release_scheduler_lock(*args, **kwargs)
@@ -812,10 +859,6 @@ async def trigger_execute_queued_cron_job_async(client, *args, **kwargs):
     querier = trigger_execute_queued_cron_job_AsyncQuerier(client)
     return await querier.trigger_execute_queued_cron_job(*args, **kwargs)
 
-async def trigger_workflow_async(client, *args, **kwargs):
-    querier = trigger_workflow_AsyncQuerier(client)
-    return await querier.trigger_workflow(*args, **kwargs)
-
 async def turn_off_cron_for_task_async(client, *args, **kwargs):
     querier = turn_off_cron_for_task_AsyncQuerier(client)
     return await querier.turn_off_cron_for_task(*args, **kwargs)
@@ -831,10 +874,6 @@ async def update_executor_stats_async(client, *args, **kwargs):
 async def update_queues_on_executor_async(client, *args, **kwargs):
     querier = update_queues_on_executor_AsyncQuerier(client)
     return await querier.update_queues_on_executor(*args, **kwargs)
-
-async def upsert_workflow_async(client, *args, **kwargs):
-    querier = upsert_workflow_AsyncQuerier(client)
-    return await querier.upsert_workflow(*args, **kwargs)
 
 
 # Schema creation helpers
@@ -873,12 +912,15 @@ def create_tables_sync(client: SyncDatabaseClient) -> None:
     create_task_run_table_sync(client)
     create_task_run_table_indexes_sync(client)
     create_results_table_sync(client)
+    create_hyrex_kv_table_sync(client)
 
 def create_functions_sync(client: SyncDatabaseClient) -> None:
     """Create all database functions and triggers (synchronous)"""
+    create_advance_workflow_run_function_sync(client)
     create_conditionally_retry_task_func_sync(client)
     create_execute_queued_cron_job_function_sync(client)
     create_schedule_cron_job_runs_func_sync(client)
+    create_set_workflow_run_status_based_on_task_runs_function_sync(client)
     create_task_run_function_sync(client)
     create_transition_task_run_state_func_sync(client)
     create_uuid7_function_sync(client)
@@ -908,12 +950,15 @@ async def create_tables_async(client: DatabaseClient) -> None:
     await create_task_run_table_async(client)
     await create_task_run_table_indexes_async(client)
     await create_results_table_async(client)
+    await create_hyrex_kv_table_async(client)
 
 async def create_functions_async(client: DatabaseClient) -> None:
     """Create all database functions and triggers (asynchronous)"""
+    await create_advance_workflow_run_function_async(client)
     await create_conditionally_retry_task_func_async(client)
     await create_execute_queued_cron_job_function_async(client)
     await create_schedule_cron_job_runs_func_async(client)
+    await create_set_workflow_run_status_based_on_task_runs_function_async(client)
     await create_task_run_function_async(client)
     await create_transition_task_run_state_func_async(client)
     await create_uuid7_function_async(client)
@@ -934,14 +979,16 @@ __all__ = [
     # Query functions
     'acquire_scheduler_lock_async',
     'acquire_scheduler_lock_sync',
-    'advance_workflow_run_async',
-    'advance_workflow_run_sync',
+    'advance_workflow_run_func_async',
+    'advance_workflow_run_func_sync',
     'batch_update_heartbeat_log_async',
     'batch_update_heartbeat_log_sync',
     'batch_update_heartbeat_on_executors_async',
     'batch_update_heartbeat_on_executors_sync',
     'conditionally_retry_task_async',
     'conditionally_retry_task_sync',
+    'create_advance_workflow_run_func_async',
+    'create_advance_workflow_run_func_sync',
     'create_conditionally_retry_task_func_async',
     'create_conditionally_retry_task_func_sync',
     'create_cron_job_for_sql_query_async',
@@ -962,6 +1009,8 @@ __all__ = [
     'create_hyrex_cron_job_run_details_table_sync',
     'create_hyrex_cron_job_table_async',
     'create_hyrex_cron_job_table_sync',
+    'create_hyrex_kv_table_async',
+    'create_hyrex_kv_table_sync',
     'create_hyrex_scheduler_lock_table_async',
     'create_hyrex_scheduler_lock_table_sync',
     'create_hyrex_stats_task_status_counts_table_async',
@@ -980,6 +1029,8 @@ __all__ = [
     'create_results_table_sync',
     'create_schedule_cron_job_runs_func_async',
     'create_schedule_cron_job_runs_func_sync',
+    'create_set_workflow_run_status_based_on_task_runs_func_async',
+    'create_set_workflow_run_status_based_on_task_runs_func_sync',
     'create_system_log_table_async',
     'create_system_log_table_sync',
     'create_task_run_async',
@@ -990,8 +1041,10 @@ __all__ = [
     'create_transition_task_run_state_func_sync',
     'create_uuid7_func_async',
     'create_uuid7_func_sync',
+    'create_workflow_run_async',
     'create_workflow_run_status_enum_async',
     'create_workflow_run_status_enum_sync',
+    'create_workflow_run_sync',
     'create_workflow_run_table_async',
     'create_workflow_run_table_sync',
     'create_workflow_table_async',
@@ -1052,6 +1105,8 @@ __all__ = [
     'register_executor_sync',
     'register_task_def_async',
     'register_task_def_sync',
+    'register_workflow_async',
+    'register_workflow_sync',
     'release_scheduler_lock_async',
     'release_scheduler_lock_sync',
     'save_result_async',
@@ -1072,8 +1127,6 @@ __all__ = [
     'transition_task_state_sync',
     'trigger_execute_queued_cron_job_async',
     'trigger_execute_queued_cron_job_sync',
-    'trigger_workflow_async',
-    'trigger_workflow_sync',
     'turn_off_cron_for_task_async',
     'turn_off_cron_for_task_sync',
     'update_cron_job_confirmation_ts_async',
@@ -1082,6 +1135,4 @@ __all__ = [
     'update_executor_stats_sync',
     'update_queues_on_executor_async',
     'update_queues_on_executor_sync',
-    'upsert_workflow_async',
-    'upsert_workflow_sync',
 ]

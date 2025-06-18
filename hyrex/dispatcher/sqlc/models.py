@@ -52,6 +52,13 @@ class HyrexExecutor:
 
 
 @dataclasses.dataclass()
+class HyrexKv:
+    key: str
+    value: str
+    created_at: datetime.datetime
+
+
+@dataclasses.dataclass()
 class HyrexSchedulerLock:
     lockid: int
     worker_name: str

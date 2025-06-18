@@ -27,15 +27,15 @@ SELECT
     failed_delta,
     lost_delta
 FROM hyrex_stats_task_status_counts
-WHERE timepoint >= NOW() - INTERVAL '24 hours'
+WHERE timepoint >= NOW() - make_interval(mins => :p1\\:\\:int)
 ORDER BY timepoint DESC
 """
 
 
 @dataclasses.dataclass()
 class GetProjectStatsParams:
+    minutes: int
 
-    pass
 
 @dataclasses.dataclass()
 class GetProjectStatsRow:
@@ -58,7 +58,7 @@ class Querier:
         self._conn = conn
 
     def get_project_stats(self, arg: GetProjectStatsParams) -> Iterator[GetProjectStatsRow]:
-        result = self._conn.execute(sqlalchemy.text(GET_PROJECT_STATS))
+        result = self._conn.execute(sqlalchemy.text(GET_PROJECT_STATS), {"p1": arg.minutes})
         for row in result:
             yield GetProjectStatsRow(
                 timepoint=row[0],
@@ -81,7 +81,7 @@ class AsyncQuerier:
         self._conn = conn
 
     async def get_project_stats(self, arg: GetProjectStatsParams) -> AsyncIterator[GetProjectStatsRow]:
-        result = await self._conn.stream(sqlalchemy.text(GET_PROJECT_STATS))
+        result = await self._conn.stream(sqlalchemy.text(GET_PROJECT_STATS), {"p1": arg.minutes})
         async for row in result:
             yield GetProjectStatsRow(
                 timepoint=row[0],

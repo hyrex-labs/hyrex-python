@@ -15,7 +15,7 @@ CREATE_WORKFLOW_TRIGGER = """-- name: create_workflow_trigger \\:exec
 CREATE OR REPLACE FUNCTION trigger_workflow_run(
     p_workflow_run_id UUID,
     p_workflow_name TEXT,
-    p_args JSONB,
+    p_args JSON,
     p_queue TEXT,
     p_timeout_seconds INTEGER,
     p_idempotency_key TEXT
@@ -34,6 +34,16 @@ DECLARE
     v_dep_durable_id TEXT;
     v_node_id_map JSONB \\:= '{}'\\:\\:JSONB;
 BEGIN
+    -- Validate timeout_seconds
+    IF p_timeout_seconds IS NOT NULL AND p_timeout_seconds <= 0 THEN
+        RETURN QUERY SELECT
+            NULL\\:\\:UUID,
+            0,
+            FALSE,
+            'Invalid timeout_seconds\\: must be NULL or greater than 0';
+        RETURN;
+    END IF;
+
     -- Start transaction
     BEGIN
         -- Get workflow definition including DAG structure
@@ -117,20 +127,20 @@ BEGIN
                     v_task_id,
                     v_task_id,  -- SDK uses same UUID for id and durable_id
                     v_task_id,  -- SDK uses same UUID for root_id too
-                    NULL,  -- No parent for workflow tasks
+                    NULL\\:\\:UUID,  -- No parent for workflow tasks
                     CASE
                         WHEN array_length(v_workflow_dependencies, 1) IS NULL OR array_length(v_workflow_dependencies, 1) = 0
                         THEN 'QUEUED'\\:\\:task_run_status
                         ELSE 'AWAIT_DEPS'\\:\\:task_run_status
                     END,
                     v_node.value->>'name',
-                    p_args\\:\\:JSON,  -- Pass workflow args to each task
+                    p_args,  -- Pass workflow args to each task
                     p_queue,
-                    3,  -- Default max retries
-                    0,  -- Default priority
+                    3\\:\\:SMALLINT,  -- Default max retries
+                    0\\:\\:SMALLINT,  -- Default priority
                     p_timeout_seconds,
-                    NULL,  -- No idempotency key for individual tasks
-                    NULL,  -- No scheduled_start for workflow tasks
+                    NULL\\:\\:VARCHAR,  -- No idempotency key for individual tasks
+                    NULL\\:\\:TIMESTAMP WITH TIME ZONE,  -- No scheduled_start for workflow tasks
                     p_workflow_run_id,
                     v_workflow_dependencies
                 );
