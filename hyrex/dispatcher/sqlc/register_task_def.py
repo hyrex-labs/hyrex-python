@@ -3,7 +3,7 @@
 #   sqlc v1.29.0
 # source: register_task_def.sql
 import dataclasses
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -12,12 +12,13 @@ from . import models
 
 
 REGISTER_TASK_DEF = """-- name: register_task_def \\:exec
-INSERT INTO hyrex_task_def (task_name, cron_expr, source_code, last_updated)
-VALUES (:p1, :p2, :p3, NOW())
+INSERT INTO hyrex_task_def (task_name, cron_expr, source_code, arg_schema, last_updated)
+VALUES (:p1, :p2, :p3, :p4, NOW())
 ON CONFLICT (task_name)
 DO UPDATE SET
     cron_expr = EXCLUDED.cron_expr,
     source_code = EXCLUDED.source_code,
+    arg_schema = EXCLUDED.arg_schema,
     last_updated = NOW()
 """
 
@@ -27,6 +28,7 @@ class RegisterTaskDefParams:
     task_name: str
     cron_expr: Optional[str]
     source_code: Optional[str]
+    arg_schema: Optional[Any]
 
 
 class Querier:
@@ -34,7 +36,12 @@ class Querier:
         self._conn = conn
 
     def register_task_def(self, arg: RegisterTaskDefParams) -> None:
-        self._conn.execute(sqlalchemy.text(REGISTER_TASK_DEF), {"p1": arg.task_name, "p2": arg.cron_expr, "p3": arg.source_code})
+        self._conn.execute(sqlalchemy.text(REGISTER_TASK_DEF), {
+            "p1": arg.task_name,
+            "p2": arg.cron_expr,
+            "p3": arg.source_code,
+            "p4": arg.arg_schema,
+        })
 
 
 class AsyncQuerier:
@@ -42,4 +49,9 @@ class AsyncQuerier:
         self._conn = conn
 
     async def register_task_def(self, arg: RegisterTaskDefParams) -> None:
-        await self._conn.execute(sqlalchemy.text(REGISTER_TASK_DEF), {"p1": arg.task_name, "p2": arg.cron_expr, "p3": arg.source_code})
+        await self._conn.execute(sqlalchemy.text(REGISTER_TASK_DEF), {
+            "p1": arg.task_name,
+            "p2": arg.cron_expr,
+            "p3": arg.source_code,
+            "p4": arg.arg_schema,
+        })

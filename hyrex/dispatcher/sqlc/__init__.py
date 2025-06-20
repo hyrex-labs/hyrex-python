@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-06-18T14:50:33.433215
+Generated on: 2025-06-20T16:10:29.882778
 """
 
 # Import all models
@@ -38,6 +38,7 @@ from .skip_waiting_task_for_workflow_run_id import Querier as skip_waiting_task_
 from .batch_update_heartbeat_log import Querier as batch_update_heartbeat_log_Querier, AsyncQuerier as batch_update_heartbeat_log_AsyncQuerier
 from .batch_update_heartbeat_on_executors import Querier as batch_update_heartbeat_on_executors_Querier, AsyncQuerier as batch_update_heartbeat_on_executors_AsyncQuerier
 from .disconnect_executor import Querier as disconnect_executor_Querier, AsyncQuerier as disconnect_executor_AsyncQuerier
+from .mark_lost_executors import Querier as mark_lost_executors_Querier, AsyncQuerier as mark_lost_executors_AsyncQuerier
 from .register_executor import Querier as register_executor_Querier, AsyncQuerier as register_executor_AsyncQuerier
 from .update_executor_stats import Querier as update_executor_stats_Querier, AsyncQuerier as update_executor_stats_AsyncQuerier
 from .update_queues_on_executor import Querier as update_queues_on_executor_Querier, AsyncQuerier as update_queues_on_executor_AsyncQuerier
@@ -81,6 +82,13 @@ from .create_workflow_run_status_enum import Querier as create_workflow_run_stat
 
 # Stats
 from .fill_historical_task_status_counts_table import Querier as fill_historical_task_status_counts_table_Querier, AsyncQuerier as fill_historical_task_status_counts_table_AsyncQuerier
+from .insert_single_task_status_counts_row import Querier as insert_single_task_status_counts_row_Querier, AsyncQuerier as insert_single_task_status_counts_row_AsyncQuerier
+from .trim_task_stats import Querier as trim_task_stats_Querier, AsyncQuerier as trim_task_stats_AsyncQuerier
+
+# Task Def
+from .get_all_task_defs import Querier as get_all_task_defs_Querier, AsyncQuerier as get_all_task_defs_AsyncQuerier
+from .get_task_def import Querier as get_task_def_Querier, AsyncQuerier as get_task_def_AsyncQuerier
+from .register_task_def import Querier as register_task_def_Querier, AsyncQuerier as register_task_def_AsyncQuerier
 
 # Dashboard
 from .get_app_name import Querier as get_app_name_Querier, AsyncQuerier as get_app_name_AsyncQuerier
@@ -101,14 +109,20 @@ from .get_workflow_run_task_runs import Querier as get_workflow_run_task_runs_Qu
 from .get_workflow_runs_paginated import Querier as get_workflow_runs_paginated_Querier, AsyncQuerier as get_workflow_runs_paginated_AsyncQuerier
 from .get_workflows_paginated import Querier as get_workflows_paginated_Querier, AsyncQuerier as get_workflows_paginated_AsyncQuerier
 
+# Workflow
+from .insert_workflow_run import Querier as insert_workflow_run_Querier, AsyncQuerier as insert_workflow_run_AsyncQuerier
+from .register_workflow import Querier as register_workflow_Querier, AsyncQuerier as register_workflow_AsyncQuerier
+from .update_workflow_run_status import Querier as update_workflow_run_status_Querier, AsyncQuerier as update_workflow_run_status_AsyncQuerier
+
+# Kv
+from .kv_delete_value import Querier as kv_delete_value_Querier, AsyncQuerier as kv_delete_value_AsyncQuerier
+from .kv_flush_keys import Querier as kv_flush_keys_Querier, AsyncQuerier as kv_flush_keys_AsyncQuerier
+from .kv_get_value import Querier as kv_get_value_Querier, AsyncQuerier as kv_get_value_AsyncQuerier
+from .kv_list_keys_paginated import Querier as kv_list_keys_paginated_Querier, AsyncQuerier as kv_list_keys_paginated_AsyncQuerier
+from .kv_set_value import Querier as kv_set_value_Querier, AsyncQuerier as kv_set_value_AsyncQuerier
+
 # App
 from .register_app_info import Querier as register_app_info_Querier, AsyncQuerier as register_app_info_AsyncQuerier
-
-# Task Def
-from .register_task_def import Querier as register_task_def_Querier, AsyncQuerier as register_task_def_AsyncQuerier
-
-# Workflow
-from .register_workflow import Querier as register_workflow_Querier, AsyncQuerier as register_workflow_AsyncQuerier
 
 # Durability
 from .set_executor_to_lost_if_no_heartbeat import Querier as set_executor_to_lost_if_no_heartbeat_Querier, AsyncQuerier as set_executor_to_lost_if_no_heartbeat_AsyncQuerier
@@ -351,6 +365,10 @@ def fill_historical_task_status_counts_table_sync(client, *args, **kwargs):
     querier = fill_historical_task_status_counts_table_Querier(client)
     return querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+def get_all_task_defs_sync(client, *args, **kwargs):
+    querier = get_all_task_defs_Querier(client)
+    return querier.get_all_task_defs(*args, **kwargs)
+
 def get_app_name_sync(client, *args, **kwargs):
     querier = get_app_name_Querier(client)
     return querier.get_app_name(*args, **kwargs)
@@ -382,6 +400,10 @@ def get_task_attempts_by_durable_id_sync(client, *args, **kwargs):
 def get_task_by_name_sync(client, *args, **kwargs):
     querier = get_task_by_name_Querier(client)
     return querier.get_task_by_name(*args, **kwargs)
+
+def get_task_def_sync(client, *args, **kwargs):
+    querier = get_task_def_Querier(client)
+    return querier.get_task_def(*args, **kwargs)
 
 def get_task_run_by_id_sync(client, *args, **kwargs):
     querier = get_task_run_by_id_Querier(client)
@@ -418,6 +440,38 @@ def get_workflow_runs_paginated_sync(client, *args, **kwargs):
 def get_workflows_paginated_sync(client, *args, **kwargs):
     querier = get_workflows_paginated_Querier(client)
     return querier.get_workflows_paginated(*args, **kwargs)
+
+def insert_single_task_status_counts_row_sync(client, *args, **kwargs):
+    querier = insert_single_task_status_counts_row_Querier(client)
+    return querier.insert_single_task_status_counts_row(*args, **kwargs)
+
+def insert_workflow_run_sync(client, *args, **kwargs):
+    querier = insert_workflow_run_Querier(client)
+    return querier.insert_workflow_run(*args, **kwargs)
+
+def delete_value_sync(client, *args, **kwargs):
+    querier = kv_delete_value_Querier(client)
+    return querier.delete_value(*args, **kwargs)
+
+def flush_keys_sync(client, *args, **kwargs):
+    querier = kv_flush_keys_Querier(client)
+    return querier.flush_keys(*args, **kwargs)
+
+def get_value_sync(client, *args, **kwargs):
+    querier = kv_get_value_Querier(client)
+    return querier.get_value(*args, **kwargs)
+
+def list_keys_paginated_sync(client, *args, **kwargs):
+    querier = kv_list_keys_paginated_Querier(client)
+    return querier.list_keys_paginated(*args, **kwargs)
+
+def set_value_sync(client, *args, **kwargs):
+    querier = kv_set_value_Querier(client)
+    return querier.set_value(*args, **kwargs)
+
+def mark_lost_executors_sync(client, *args, **kwargs):
+    querier = mark_lost_executors_Querier(client)
+    return querier.mark_lost_executors(*args, **kwargs)
 
 def pull_active_cron_expressions_sync(client, *args, **kwargs):
     querier = pull_active_cron_expressions_Querier(client)
@@ -479,6 +533,10 @@ def trigger_execute_queued_cron_job_sync(client, *args, **kwargs):
     querier = trigger_execute_queued_cron_job_Querier(client)
     return querier.trigger_execute_queued_cron_job(*args, **kwargs)
 
+def trim_task_stats_sync(client, *args, **kwargs):
+    querier = trim_task_stats_Querier(client)
+    return querier.trim_task_stats(*args, **kwargs)
+
 def turn_off_cron_for_task_sync(client, *args, **kwargs):
     querier = turn_off_cron_for_task_Querier(client)
     return querier.turn_off_cron_for_task(*args, **kwargs)
@@ -494,6 +552,10 @@ def update_executor_stats_sync(client, *args, **kwargs):
 def update_queues_on_executor_sync(client, *args, **kwargs):
     querier = update_queues_on_executor_Querier(client)
     return querier.update_queues_on_executor(*args, **kwargs)
+
+def update_workflow_run_status_sync(client, *args, **kwargs):
+    querier = update_workflow_run_status_Querier(client)
+    return querier.update_workflow_run_status(*args, **kwargs)
 
 
 # Asynchronous functions
@@ -731,6 +793,10 @@ async def fill_historical_task_status_counts_table_async(client, *args, **kwargs
     querier = fill_historical_task_status_counts_table_AsyncQuerier(client)
     return await querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+async def get_all_task_defs_async(client, *args, **kwargs):
+    querier = get_all_task_defs_AsyncQuerier(client)
+    return await querier.get_all_task_defs(*args, **kwargs)
+
 async def get_app_name_async(client, *args, **kwargs):
     querier = get_app_name_AsyncQuerier(client)
     return await querier.get_app_name(*args, **kwargs)
@@ -762,6 +828,10 @@ async def get_task_attempts_by_durable_id_async(client, *args, **kwargs):
 async def get_task_by_name_async(client, *args, **kwargs):
     querier = get_task_by_name_AsyncQuerier(client)
     return await querier.get_task_by_name(*args, **kwargs)
+
+async def get_task_def_async(client, *args, **kwargs):
+    querier = get_task_def_AsyncQuerier(client)
+    return await querier.get_task_def(*args, **kwargs)
 
 async def get_task_run_by_id_async(client, *args, **kwargs):
     querier = get_task_run_by_id_AsyncQuerier(client)
@@ -798,6 +868,38 @@ async def get_workflow_runs_paginated_async(client, *args, **kwargs):
 async def get_workflows_paginated_async(client, *args, **kwargs):
     querier = get_workflows_paginated_AsyncQuerier(client)
     return await querier.get_workflows_paginated(*args, **kwargs)
+
+async def insert_single_task_status_counts_row_async(client, *args, **kwargs):
+    querier = insert_single_task_status_counts_row_AsyncQuerier(client)
+    return await querier.insert_single_task_status_counts_row(*args, **kwargs)
+
+async def insert_workflow_run_async(client, *args, **kwargs):
+    querier = insert_workflow_run_AsyncQuerier(client)
+    return await querier.insert_workflow_run(*args, **kwargs)
+
+async def delete_value_async(client, *args, **kwargs):
+    querier = kv_delete_value_AsyncQuerier(client)
+    return await querier.delete_value(*args, **kwargs)
+
+async def flush_keys_async(client, *args, **kwargs):
+    querier = kv_flush_keys_AsyncQuerier(client)
+    return await querier.flush_keys(*args, **kwargs)
+
+async def get_value_async(client, *args, **kwargs):
+    querier = kv_get_value_AsyncQuerier(client)
+    return await querier.get_value(*args, **kwargs)
+
+async def list_keys_paginated_async(client, *args, **kwargs):
+    querier = kv_list_keys_paginated_AsyncQuerier(client)
+    return await querier.list_keys_paginated(*args, **kwargs)
+
+async def set_value_async(client, *args, **kwargs):
+    querier = kv_set_value_AsyncQuerier(client)
+    return await querier.set_value(*args, **kwargs)
+
+async def mark_lost_executors_async(client, *args, **kwargs):
+    querier = mark_lost_executors_AsyncQuerier(client)
+    return await querier.mark_lost_executors(*args, **kwargs)
 
 async def pull_active_cron_expressions_async(client, *args, **kwargs):
     querier = pull_active_cron_expressions_AsyncQuerier(client)
@@ -859,6 +961,10 @@ async def trigger_execute_queued_cron_job_async(client, *args, **kwargs):
     querier = trigger_execute_queued_cron_job_AsyncQuerier(client)
     return await querier.trigger_execute_queued_cron_job(*args, **kwargs)
 
+async def trim_task_stats_async(client, *args, **kwargs):
+    querier = trim_task_stats_AsyncQuerier(client)
+    return await querier.trim_task_stats(*args, **kwargs)
+
 async def turn_off_cron_for_task_async(client, *args, **kwargs):
     querier = turn_off_cron_for_task_AsyncQuerier(client)
     return await querier.turn_off_cron_for_task(*args, **kwargs)
@@ -874,6 +980,10 @@ async def update_executor_stats_async(client, *args, **kwargs):
 async def update_queues_on_executor_async(client, *args, **kwargs):
     querier = update_queues_on_executor_AsyncQuerier(client)
     return await querier.update_queues_on_executor(*args, **kwargs)
+
+async def update_workflow_run_status_async(client, *args, **kwargs):
+    querier = update_workflow_run_status_AsyncQuerier(client)
+    return await querier.update_workflow_run_status(*args, **kwargs)
 
 
 # Schema creation helpers
@@ -1063,6 +1173,8 @@ __all__ = [
     'fetch_task_with_concurrency_limit_sync',
     'fill_historical_task_status_counts_table_async',
     'fill_historical_task_status_counts_table_sync',
+    'get_all_task_defs_async',
+    'get_all_task_defs_sync',
     'get_app_name_async',
     'get_app_name_sync',
     'get_cron_job_run_details_async',
@@ -1079,6 +1191,8 @@ __all__ = [
     'get_task_attempts_by_durable_id_sync',
     'get_task_by_name_async',
     'get_task_by_name_sync',
+    'get_task_def_async',
+    'get_task_def_sync',
     'get_task_run_by_id_async',
     'get_task_run_by_id_sync',
     'get_task_runs_by_status_paginated_async',
@@ -1097,6 +1211,22 @@ __all__ = [
     'get_workflow_runs_paginated_sync',
     'get_workflows_paginated_async',
     'get_workflows_paginated_sync',
+    'insert_single_task_status_counts_row_async',
+    'insert_single_task_status_counts_row_sync',
+    'insert_workflow_run_async',
+    'insert_workflow_run_sync',
+    'kv_delete_value_async',
+    'kv_delete_value_sync',
+    'kv_flush_keys_async',
+    'kv_flush_keys_sync',
+    'kv_get_value_async',
+    'kv_get_value_sync',
+    'kv_list_keys_paginated_async',
+    'kv_list_keys_paginated_sync',
+    'kv_set_value_async',
+    'kv_set_value_sync',
+    'mark_lost_executors_async',
+    'mark_lost_executors_sync',
     'pull_active_cron_expressions_async',
     'pull_active_cron_expressions_sync',
     'register_app_info_async',
@@ -1127,6 +1257,8 @@ __all__ = [
     'transition_task_state_sync',
     'trigger_execute_queued_cron_job_async',
     'trigger_execute_queued_cron_job_sync',
+    'trim_task_stats_async',
+    'trim_task_stats_sync',
     'turn_off_cron_for_task_async',
     'turn_off_cron_for_task_sync',
     'update_cron_job_confirmation_ts_async',
@@ -1135,4 +1267,6 @@ __all__ = [
     'update_executor_stats_sync',
     'update_queues_on_executor_async',
     'update_queues_on_executor_sync',
+    'update_workflow_run_status_async',
+    'update_workflow_run_status_sync',
 ]
