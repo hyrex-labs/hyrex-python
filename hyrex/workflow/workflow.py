@@ -131,7 +131,7 @@ class HyrexWorkflow:
                 workflow_run_id=workflow_run_id,
                 workflow_dependencies=None,
                 parent_id=None,
-                status=TaskStatus.waiting,
+                status=TaskStatus.await_deps,
                 task_name=node.task_wrapper.task_identifier,
                 args={},
                 queue=task_config.get_queue_name(),
