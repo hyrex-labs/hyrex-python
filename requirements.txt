@@ -38,7 +38,7 @@ packaging==24.1
 pkginfo==1.12.1.2
 pluggy==1.5.0
 port-for==0.7.4
-protobuf==5.29.4
+protobuf==5.29.5
 psutil==6.0.0
 psycopg==3.2.6
 psycopg-binary==3.2.6

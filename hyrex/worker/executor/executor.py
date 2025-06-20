@@ -35,7 +35,7 @@ from hyrex.worker.messages.root_messages import (
     TaskRegistrationComplete,
 )
 from hyrex.worker.s3_logs import write_task_logs_to_s3, write_task_logs_with_dispatcher
-from hyrex.worker.utils import glob_to_postgres_regex, is_glob_pattern, is_process_alive
+from hyrex.worker.utils import glob_pattern_to_postgres_pattern, is_glob_pattern, is_process_alive
 
 
 def generate_executor_name():
@@ -374,14 +374,14 @@ class WorkerExecutor(Process):
         # Retrieve name and task registry from the provided app module path.
         self.load_app_module()
 
-        # Convert queue pattern to Postgres regex syntax if needed.
+        # Convert queue pattern to Postgres SIMILAR TO pattern if needed.
         if is_glob_pattern(self.queue):
             self.queue_pattern = QueuePattern(
                 glob_pattern=self.queue,
-                postgres_pattern=glob_to_postgres_regex(self.queue),
+                postgres_pattern=glob_pattern_to_postgres_pattern(self.queue),
             )
             self.logger.debug(
-                f"Converted queue glob to Postgres regex syntax: {self.queue_pattern.glob_pattern} -> {self.queue_pattern.postgres_pattern}"
+                f"Converted queue glob to Postgres SIMILAR TO pattern: {self.queue_pattern.glob_pattern} -> {self.queue_pattern.postgres_pattern}"
             )
 
         try:

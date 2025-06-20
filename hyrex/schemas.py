@@ -11,15 +11,17 @@ class QueuePattern(BaseModel):
 
 
 class TaskStatus(StrEnum):
-    success = "success"
-    failed = "failed"
-    up_for_cancel = "up_for_cancel"
-    canceled = "canceled"
-    running = "running"
-    queued = "queued"
-    waiting = "waiting"
-    lost = "lost"
-    skipped = "skipped"
+    success = "SUCCESS"
+    failed = "FAILED"
+    running = "RUNNING"
+    queued = "QUEUED"
+    up_for_cancel = "UP_FOR_CANCEL"
+    canceled = "CANCELED"
+    lost = "LOST"
+    stopped = "STOPPED"
+    skipped = "SKIPPED"
+    await_deps = "AWAIT_DEPS"
+    await_start_time = "AWAIT_START_TIME"
 
 
 class EnqueueTaskRequest(BaseModel):
@@ -71,14 +73,12 @@ class TaskRun(BaseModel):
 
 
 class WorkflowStatus(StrEnum):
-    success = "success"
-    failed = "failed"
-    running = "running"
-    queued = "queued"
-    waiting = "waiting"
-    up_for_cancel = "up_for_cancel"
-    lost = "lost"
-    canceled = "canceled"
+    success = "SUCCESS"
+    failed = "FAILED"
+    running = "RUNNING"
+    up_for_cancel = "UP_FOR_CANCEL"
+    canceled = "CANCELED"
+    asleep = "ASLEEP"
 
 
 class WorkflowRunRequest(BaseModel):

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyrex"
-version = "0.9.16"
+version = "0.10.0"
 description = "Hyrex is the open-source COLD task orchestration framework built on Postgres."
 readme = "README.md"
 license = "Apache-2.0"
@@ -25,7 +25,7 @@ dependencies = [
     "croniter>=6.0.0",
     "boto3>=1.35.98",
     "grpcio>=1.71.0",
-    "protobuf>=5.29.0,<6.0.0",
+    "protobuf>=5.29.5,<6.0.0",
     "psycopg[binary,pool]>=3.2.1",
     "pydantic>=2.8.2",
     "pydantic_core>=2.20.1",

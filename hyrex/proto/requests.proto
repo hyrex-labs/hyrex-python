@@ -212,3 +212,17 @@ message GetTaskRunsUpForCancelResponse {
 message MarkCanceledRequest {
   string task_run_id = 1;
 }
+
+message KVStoreSetRequest {
+  string key = 1;
+  string value = 2;
+  optional bool overwrite = 3;
+}
+
+message KVStoreGetRequest {
+  string key = 1;
+}
+
+message KVStoreGetResponse {
+  string value = 1;
+}
