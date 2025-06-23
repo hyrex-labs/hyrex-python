@@ -234,25 +234,29 @@ class PostgresDispatcher(Dispatcher):
                 # it will call our pydantic_aware_default function.
                 args_json = json.dumps(task.args, default=pydantic_aware_default)
             except TypeError as e:
-                self.logger.error(f"Task {task.id}: Failed to serialize args to JSON: {e}")
+                self.logger.error(
+                    f"Task {task.id}: Failed to serialize args to JSON: {e}"
+                )
                 raise
-            
-            task_data.append((
-                task.id,
-                task.durable_id,
-                task.root_id,
-                task.parent_id,
-                task.task_name,
-                args_json,  # Already a JSON string
-                task.queue,
-                task.max_retries,
-                task.priority,
-                task.timeout_seconds,
-                task.idempotency_key,
-                task.status,
-                task.workflow_run_id,
-                task.workflow_dependencies,
-            ))
+
+            task_data.append(
+                (
+                    task.id,
+                    task.durable_id,
+                    task.root_id,
+                    task.parent_id,
+                    task.task_name,
+                    args_json,  # Already a JSON string
+                    task.queue,
+                    task.max_retries,
+                    task.priority,
+                    task.timeout_seconds,
+                    task.idempotency_key,
+                    task.status,
+                    task.workflow_run_id,
+                    task.workflow_dependencies,
+                )
+            )
 
         with self.transaction() as cur:
             cur.executemany(
@@ -357,7 +361,7 @@ class PostgresDispatcher(Dispatcher):
             cur.execute(sql.GET_QUEUES_FOR_PATTERN, [pattern.postgres_pattern])
             return [row[0] for row in cur.fetchall()]
 
-    def register_task(
+    def register_task_def(
         self,
         task_name: str,
         arg_schema: dict,

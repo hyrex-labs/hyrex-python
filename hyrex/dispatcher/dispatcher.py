@@ -116,7 +116,7 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_task(
+    def register_task_def(
         self,
         task_name: str,
         arg_schema: Type[BaseModel] | None,
