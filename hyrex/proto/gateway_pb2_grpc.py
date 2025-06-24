@@ -110,6 +110,16 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.MarkCanceledRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.KVStoreSet = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/KVStoreSet',
+                request_serializer=requests__pb2.KVStoreSetRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.KVStoreGet = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/KVStoreGet',
+                request_serializer=requests__pb2.KVStoreGetRequest.SerializeToString,
+                response_deserializer=requests__pb2.KVStoreGetResponse.FromString,
+                _registered_method=True)
         self.RegisterTaskDef = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
                 request_serializer=requests__pb2.RegisterTaskDefRequest.SerializeToString,
@@ -159,11 +169,6 @@ class GatewayServiceStub(object):
                 '/hyrex.performanceserver.GatewayService/SetLogLink',
                 request_serializer=requests__pb2.SetLogLinkRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                _registered_method=True)
-        self.AcquireSchedulerLock = channel.unary_unary(
-                '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
-                request_serializer=requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
-                response_deserializer=requests__pb2.AcquireSchedulerLockResponse.FromString,
                 _registered_method=True)
         self.RegisterWorkflow = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterWorkflow',
@@ -287,6 +292,18 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def KVStoreSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def KVStoreGet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterTaskDef(self, request, context):
         """---- Postgres requests ----
         """
@@ -343,12 +360,6 @@ class GatewayServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def SetLogLink(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def AcquireSchedulerLock(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -462,6 +473,16 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.MarkCanceledRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
+            'KVStoreSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.KVStoreSet,
+                    request_deserializer=requests__pb2.KVStoreSetRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'KVStoreGet': grpc.unary_unary_rpc_method_handler(
+                    servicer.KVStoreGet,
+                    request_deserializer=requests__pb2.KVStoreGetRequest.FromString,
+                    response_serializer=requests__pb2.KVStoreGetResponse.SerializeToString,
+            ),
             'RegisterTaskDef': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTaskDef,
                     request_deserializer=requests__pb2.RegisterTaskDefRequest.FromString,
@@ -511,11 +532,6 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     servicer.SetLogLink,
                     request_deserializer=requests__pb2.SetLogLinkRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-            'AcquireSchedulerLock': grpc.unary_unary_rpc_method_handler(
-                    servicer.AcquireSchedulerLock,
-                    request_deserializer=requests__pb2.AcquireSchedulerLockRequest.FromString,
-                    response_serializer=requests__pb2.AcquireSchedulerLockResponse.SerializeToString,
             ),
             'RegisterWorkflow': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterWorkflow,
@@ -959,6 +975,60 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
+    def KVStoreSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/KVStoreSet',
+            requests__pb2.KVStoreSetRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def KVStoreGet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/KVStoreGet',
+            requests__pb2.KVStoreGetRequest.SerializeToString,
+            requests__pb2.KVStoreGetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def RegisterTaskDef(request,
             target,
             options=(),
@@ -1218,33 +1288,6 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/SetLogLink',
             requests__pb2.SetLogLinkRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def AcquireSchedulerLock(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/hyrex.performanceserver.GatewayService/AcquireSchedulerLock',
-            requests__pb2.AcquireSchedulerLockRequest.SerializeToString,
-            requests__pb2.AcquireSchedulerLockResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -48,7 +48,7 @@ class HyrexRegistry:
             self.dispatcher.register_task_def(
                 task_name=task.task_identifier,
                 arg_schema=task.get_arg_schema(),
-                default_config=task.task_config.get_default_config(),
+                task_config=task.task_config,
                 cron=task.cron,
                 source_code=inspect.getsource(task.func),
             )

@@ -27,6 +27,8 @@ service GatewayService {
   rpc TryToCancelDurableRun(TryToCancelDurableRunRequest) returns (google.protobuf.Empty);
   rpc GetTaskRunsUpForCancel(google.protobuf.Empty) returns (GetTaskRunsUpForCancelResponse);
   rpc MarkCanceled(MarkCanceledRequest) returns (google.protobuf.Empty);
+  rpc KVStoreSet(KVStoreSetRequest) returns (google.protobuf.Empty);
+  rpc KVStoreGet(KVStoreGetRequest) returns (KVStoreGetResponse);
 
   // ---- Postgres requests ----
   rpc RegisterTaskDef(RegisterTaskDefRequest) returns (google.protobuf.Empty);
@@ -39,7 +41,6 @@ service GatewayService {
   rpc DisconnectExecutor(DisconnectExecutorRequest) returns (google.protobuf.Empty);
   rpc RegisterApp(RegisterAppRequest) returns (google.protobuf.Empty);
   rpc SetLogLink(SetLogLinkRequest) returns (google.protobuf.Empty);
-  rpc AcquireSchedulerLock(AcquireSchedulerLockRequest) returns (AcquireSchedulerLockResponse);
   rpc RegisterWorkflow(RegisterWorkflowRequest) returns (google.protobuf.Empty);
   rpc SendWorkflowRun(SendWorkflowRunRequest) returns (google.protobuf.Empty);
   rpc GetWorkflowRunArgs(GetWorkflowRunArgsRequest) returns (GetWorkflowRunArgsResponse);

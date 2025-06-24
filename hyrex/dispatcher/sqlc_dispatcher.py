@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from uuid6 import uuid7
 
 from hyrex import constants
+from hyrex.configs import TaskConfig
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (
@@ -471,21 +472,31 @@ class SqlcDispatcher(Dispatcher):
                 )
             ))
     
-    def register_task(
+    def register_task_def(
         self,
         task_name: str,
-        arg_schema: dict,
-        default_config: dict,
+        arg_schema: Type[BaseModel] | None,
+        task_config: TaskConfig,
         cron: str = None,
         source_code: str = None,
     ):
         with self.transaction() as conn:
+            # Convert arg_schema to dict if it's a Pydantic model class
+            arg_schema_dict = None
+            if arg_schema and hasattr(arg_schema, "model_json_schema"):
+                arg_schema_dict = json.dumps(arg_schema.model_json_schema())
+            
             register_task_def_sync(
                 conn,
                 register_task_def.RegisterTaskDefParams(
                     task_name=task_name,
                     cron_expr=cron,
-                    source_code=source_code
+                    source_code=source_code,
+                    arg_schema=arg_schema_dict,
+                    queue=task_config.get_queue_name() if task_config.queue else 'default',
+                    priority=task_config.priority if task_config.priority is not None else 5,
+                    max_retries=task_config.max_retries if task_config.max_retries is not None else 0,
+                    timeout_seconds=task_config.timeout_seconds
                 )
             )
             
@@ -501,13 +512,13 @@ class SqlcDispatcher(Dispatcher):
                     workflow_dependencies=None,
                     root_id=current_id,
                     parent_id=None,
-                    queue="TODO",
+                    queue=task_config.get_queue_name() if task_config.queue else 'default',
                     status=TaskStatus.queued,
                     task_name=task_name,
                     args={},
-                    max_retries=0,
-                    priority=1,
-                    timeout_seconds=None,
+                    max_retries=task_config.max_retries if task_config.max_retries is not None else 0,
+                    priority=task_config.priority if task_config.priority is not None else 5,
+                    timeout_seconds=task_config.timeout_seconds,
                     idempotency_key=None,
                 )
                 # Convert task request to SQL command string

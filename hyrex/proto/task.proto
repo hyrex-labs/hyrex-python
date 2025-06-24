@@ -67,9 +67,12 @@ message TaskRun {
 
 message TaskDef {
   string task_name = 1;
-  google.protobuf.Struct arg_schema = 2;
-  google.protobuf.Struct default_config = 3;
-  optional string cron = 4;
-  optional string source_code = 5;
-  optional google.protobuf.Timestamp last_updated = 6;
+  optional google.protobuf.Struct arg_schema = 2;
+  optional string cron = 3;
+  optional string source_code = 4;
+  string queue = 5;
+  Priority priority = 6;
+  int32 max_retries = 7;
+  optional int32 timeout_seconds = 8;
+  optional google.protobuf.Timestamp last_updated = 9;
 }

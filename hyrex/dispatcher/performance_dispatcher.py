@@ -21,6 +21,7 @@ from tenacity import (
 )
 
 from hyrex import constants
+from hyrex.configs import TaskConfig
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
@@ -71,6 +72,21 @@ class PerformanceDispatcher(Dispatcher):
 
     # Reverse mapping for proto to Python conversion
     _PROTO_TO_PY_STATUS = {v: k for k, v in _PY_TO_PROTO_STATUS.items()}
+    
+    # Priority mapping between Python int and proto Priority enum
+    _PY_TO_PROTO_PRIORITY = {
+        0: task_pb2.Priority.P_UNSPECIFIED,
+        1: task_pb2.Priority.P1,
+        2: task_pb2.Priority.P2,
+        3: task_pb2.Priority.P3,
+        4: task_pb2.Priority.P4,
+        5: task_pb2.Priority.P5,
+        6: task_pb2.Priority.P6,
+        7: task_pb2.Priority.P7,
+        8: task_pb2.Priority.P8,
+        9: task_pb2.Priority.P9,
+        10: task_pb2.Priority.P10,
+    }
 
     def __init__(self, api_key: str, conn_string: str):
         # def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
@@ -573,7 +589,7 @@ class PerformanceDispatcher(Dispatcher):
         self,
         task_name: str,
         arg_schema: Type[BaseModel] | None,
-        default_config: dict,
+        task_config: TaskConfig,
         cron: str = None,
         source_code: str = None,
     ):
@@ -585,18 +601,23 @@ class PerformanceDispatcher(Dispatcher):
         task_def.task_name = task_name
 
         # Handle arg_schema
-        if arg_schema:
+        if arg_schema and hasattr(arg_schema, "model_json_schema"):
             arg_schema_struct = Struct()
-            arg_schema_struct.update(arg_schema)
+            arg_schema_struct.update(arg_schema.model_json_schema())
             task_def.arg_schema.CopyFrom(arg_schema_struct)
 
-        # Handle default_config
-        if default_config:
-            default_config_struct = Struct()
-            default_config_struct.update(default_config)
-            task_def.default_config.CopyFrom(default_config_struct)
+        # Set required fields from task_config
+        task_def.queue = task_config.get_queue_name() if task_config.queue else 'default'
+        task_def.max_retries = task_config.max_retries if task_config.max_retries is not None else 0
+        
+        # Map Python priority to protobuf Priority enum
+        priority_value = task_config.priority if task_config.priority is not None else 5
+        task_def.priority = self._PY_TO_PROTO_PRIORITY.get(priority_value, task_pb2.Priority.P5)
 
         # Set optional fields
+        if task_config.timeout_seconds is not None:
+            task_def.timeout_seconds = task_config.timeout_seconds
+            
         if cron:
             task_def.cron = cron
 
@@ -618,18 +639,7 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        request_proto = requests_pb2.AcquireSchedulerLockRequest()
-        request_proto.worker_name = worker_name
-
-        try:
-            response = self.gateway_stub.AcquireSchedulerLock(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(response)
-            return response.lock_id
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        pass
 
     def pull_cron_job_expressions(self) -> list[CronJob]:
         return []

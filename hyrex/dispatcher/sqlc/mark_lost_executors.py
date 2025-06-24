@@ -18,7 +18,7 @@ UPDATE hyrex_executor
 SET status = 'LOST',
     stopped = last_heartbeat
 WHERE status = 'RUNNING'
-AND last_heartbeat < CURRENT_TIMESTAMP - INTERVAL :p1
+AND last_heartbeat < CURRENT_TIMESTAMP - :p1\\:\\:INTERVAL
 AND stopped IS NULL
 RETURNING id
 """
@@ -26,7 +26,7 @@ RETURNING id
 
 @dataclasses.dataclass()
 class MarkLostExecutorsParams:
-    column_1: datetime.timedelta
+    timeout: datetime.timedelta
 
 
 class Querier:
@@ -34,7 +34,7 @@ class Querier:
         self._conn = conn
 
     def mark_lost_executors(self, arg: MarkLostExecutorsParams) -> Iterator[uuid.UUID]:
-        result = self._conn.execute(sqlalchemy.text(MARK_LOST_EXECUTORS), {"p1": arg.column_1})
+        result = self._conn.execute(sqlalchemy.text(MARK_LOST_EXECUTORS), {"p1": arg.timeout})
         for row in result:
             yield row[0]
 
@@ -44,6 +44,6 @@ class AsyncQuerier:
         self._conn = conn
 
     async def mark_lost_executors(self, arg: MarkLostExecutorsParams) -> AsyncIterator[uuid.UUID]:
-        result = await self._conn.stream(sqlalchemy.text(MARK_LOST_EXECUTORS), {"p1": arg.column_1})
+        result = await self._conn.stream(sqlalchemy.text(MARK_LOST_EXECUTORS), {"p1": arg.timeout})
         async for row in result:
             yield row[0]
