@@ -88,11 +88,7 @@ class HyrexWorkflow:
             idempotency_key=self.workflow_config.idempotency_key,
         )
 
-        workflow_run_id = self.dispatcher.send_workflow_run(workflow_run_request)
-
-        task_requests = self.serialize_workflow_to_task_requests(workflow_run_id)
-
-        self.dispatcher.enqueue(task_requests)
+        self.dispatcher.send_workflow_run(workflow_run_request)
 
     def traverse(
         self,
