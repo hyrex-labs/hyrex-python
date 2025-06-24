@@ -14,16 +14,16 @@ from . import models
 
 UPDATE_WORKFLOW_RUN_STATUS = """-- name: update_workflow_run_status \\:exec
 UPDATE hyrex_workflow_run
-SET status = :p2\\:\\:workflow_run_status,
+SET status = :p1\\:\\:workflow_run_status,
     last_heartbeat = now()
-WHERE id = :p1
+WHERE id = :p2
 """
 
 
 @dataclasses.dataclass()
 class UpdateWorkflowRunStatusParams:
+    status: Any
     id: uuid.UUID
-    column_2: Any
 
 
 class Querier:
@@ -31,7 +31,7 @@ class Querier:
         self._conn = conn
 
     def update_workflow_run_status(self, arg: UpdateWorkflowRunStatusParams) -> None:
-        self._conn.execute(sqlalchemy.text(UPDATE_WORKFLOW_RUN_STATUS), {"p1": arg.id, "p2": arg.column_2})
+        self._conn.execute(sqlalchemy.text(UPDATE_WORKFLOW_RUN_STATUS), {"p1": arg.status, "p2": arg.id})
 
 
 class AsyncQuerier:
@@ -39,4 +39,4 @@ class AsyncQuerier:
         self._conn = conn
 
     async def update_workflow_run_status(self, arg: UpdateWorkflowRunStatusParams) -> None:
-        await self._conn.execute(sqlalchemy.text(UPDATE_WORKFLOW_RUN_STATUS), {"p1": arg.id, "p2": arg.column_2})
+        await self._conn.execute(sqlalchemy.text(UPDATE_WORKFLOW_RUN_STATUS), {"p1": arg.status, "p2": arg.id})

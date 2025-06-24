@@ -149,15 +149,6 @@ message RegisterAppRequest {
   google.protobuf.Struct app_info = 1;
 }
 
-message AcquireSchedulerLockRequest {
-  string worker_name = 1;
-  string duration = 2;
-}
-
-message AcquireSchedulerLockResponse {
-  optional int32 lock_id = 1;
-}
-
 message WriteLogsRequest {
   string task_run_id = 1;
   string logs = 2;

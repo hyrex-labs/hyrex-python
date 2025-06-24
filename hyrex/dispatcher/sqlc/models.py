@@ -97,8 +97,11 @@ class HyrexTaskDef:
     task_name: str
     cron_expr: Optional[str]
     source_code: Optional[str]
-    default_config: Optional[Any]
     arg_schema: Optional[Any]
+    queue: Optional[str]
+    priority: Optional[int]
+    max_retries: Optional[int]
+    timeout_seconds: Optional[int]
     last_updated: Optional[datetime.datetime]
 
 

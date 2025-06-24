@@ -12,13 +12,17 @@ from . import models
 
 
 REGISTER_TASK_DEF = """-- name: register_task_def \\:exec
-INSERT INTO hyrex_task_def (task_name, cron_expr, source_code, arg_schema, last_updated)
-VALUES (:p1, :p2, :p3, :p4, NOW())
+INSERT INTO hyrex_task_def (task_name, cron_expr, source_code, arg_schema, queue, priority, max_retries, timeout_seconds, last_updated)
+VALUES (:p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, NOW())
 ON CONFLICT (task_name)
 DO UPDATE SET
     cron_expr = EXCLUDED.cron_expr,
     source_code = EXCLUDED.source_code,
     arg_schema = EXCLUDED.arg_schema,
+    queue = EXCLUDED.queue,
+    priority = EXCLUDED.priority,
+    max_retries = EXCLUDED.max_retries,
+    timeout_seconds = EXCLUDED.timeout_seconds,
     last_updated = NOW()
 """
 
@@ -29,6 +33,10 @@ class RegisterTaskDefParams:
     cron_expr: Optional[str]
     source_code: Optional[str]
     arg_schema: Optional[Any]
+    queue: Optional[str]
+    priority: Optional[int]
+    max_retries: Optional[int]
+    timeout_seconds: Optional[int]
 
 
 class Querier:
@@ -41,6 +49,10 @@ class Querier:
             "p2": arg.cron_expr,
             "p3": arg.source_code,
             "p4": arg.arg_schema,
+            "p5": arg.queue,
+            "p6": arg.priority,
+            "p7": arg.max_retries,
+            "p8": arg.timeout_seconds,
         })
 
 
@@ -54,4 +66,8 @@ class AsyncQuerier:
             "p2": arg.cron_expr,
             "p3": arg.source_code,
             "p4": arg.arg_schema,
+            "p5": arg.queue,
+            "p6": arg.priority,
+            "p7": arg.max_retries,
+            "p8": arg.timeout_seconds,
         })

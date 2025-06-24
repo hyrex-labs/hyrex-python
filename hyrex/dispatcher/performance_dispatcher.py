@@ -21,6 +21,7 @@ from tenacity import (
 )
 
 from hyrex import constants
+from hyrex.configs import TaskConfig
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
@@ -71,6 +72,21 @@ class PerformanceDispatcher(Dispatcher):
 
     # Reverse mapping for proto to Python conversion
     _PROTO_TO_PY_STATUS = {v: k for k, v in _PY_TO_PROTO_STATUS.items()}
+    
+    # Priority mapping between Python int and proto Priority enum
+    _PY_TO_PROTO_PRIORITY = {
+        0: task_pb2.Priority.P_UNSPECIFIED,
+        1: task_pb2.Priority.P1,
+        2: task_pb2.Priority.P2,
+        3: task_pb2.Priority.P3,
+        4: task_pb2.Priority.P4,
+        5: task_pb2.Priority.P5,
+        6: task_pb2.Priority.P6,
+        7: task_pb2.Priority.P7,
+        8: task_pb2.Priority.P8,
+        9: task_pb2.Priority.P9,
+        10: task_pb2.Priority.P10,
+    }
 
     def __init__(self, api_key: str, conn_string: str):
         # def __init__(self, api_key: str, batch_size=100, flush_interval=0.1):
@@ -569,11 +585,11 @@ class PerformanceDispatcher(Dispatcher):
 
         return response.queues
 
-    def register_task(
+    def register_task_def(
         self,
         task_name: str,
         arg_schema: Type[BaseModel] | None,
-        default_config: dict,
+        task_config: TaskConfig,
         cron: str = None,
         source_code: str = None,
     ):
@@ -585,18 +601,23 @@ class PerformanceDispatcher(Dispatcher):
         task_def.task_name = task_name
 
         # Handle arg_schema
-        if arg_schema:
+        if arg_schema and hasattr(arg_schema, "model_json_schema"):
             arg_schema_struct = Struct()
-            arg_schema_struct.update(arg_schema)
+            arg_schema_struct.update(arg_schema.model_json_schema())
             task_def.arg_schema.CopyFrom(arg_schema_struct)
 
-        # Handle default_config
-        if default_config:
-            default_config_struct = Struct()
-            default_config_struct.update(default_config)
-            task_def.default_config.CopyFrom(default_config_struct)
+        # Set required fields from task_config
+        task_def.queue = task_config.get_queue_name() if task_config.queue else 'default'
+        task_def.max_retries = task_config.max_retries if task_config.max_retries is not None else 0
+        
+        # Map Python priority to protobuf Priority enum
+        priority_value = task_config.priority if task_config.priority is not None else 5
+        task_def.priority = self._PY_TO_PROTO_PRIORITY.get(priority_value, task_pb2.Priority.P5)
 
         # Set optional fields
+        if task_config.timeout_seconds is not None:
+            task_def.timeout_seconds = task_config.timeout_seconds
+            
         if cron:
             task_def.cron = cron
 
@@ -618,18 +639,7 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
-        request_proto = requests_pb2.AcquireSchedulerLockRequest()
-        request_proto.worker_name = worker_name
-
-        try:
-            response = self.gateway_stub.AcquireSchedulerLock(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(response)
-            return response.lock_id
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        pass
 
     def pull_cron_job_expressions(self) -> list[CronJob]:
         return []
@@ -666,31 +676,31 @@ class PerformanceDispatcher(Dispatcher):
         request_proto = requests_pb2.RegisterWorkflowRequest()
         request_proto.workflow_name = name
         request_proto.source_code = source_code
-        
+
         # Handle workflow_dag_json - convert dict to JSON string if needed
         if isinstance(workflow_dag_json, dict):
             request_proto.workflow_dag_json = json.dumps(workflow_dag_json)
         else:
             request_proto.workflow_dag_json = workflow_dag_json
-        
+
         # Handle arg_schema
         if workflow_arg_schema:
             arg_schema_struct = Struct()
             # Convert Pydantic BaseModel class to JSON schema dict
-            if hasattr(workflow_arg_schema, 'model_json_schema'):
+            if hasattr(workflow_arg_schema, "model_json_schema"):
                 schema_dict = workflow_arg_schema.model_json_schema()
                 arg_schema_struct.update(schema_dict)
             else:
                 # If it's already a dict or other type, use it directly
                 arg_schema_struct.update(workflow_arg_schema)
             request_proto.workflow_arg_schema.CopyFrom(arg_schema_struct)
-            
+
         # Handle default_config
         if default_config:
             default_config_struct = Struct()
             default_config_struct.update(default_config)
             request_proto.default_config.CopyFrom(default_config_struct)
-            
+
         try:
             self.gateway_stub.RegisterWorkflow(
                 request_proto, metadata=self.api_key_metadata
@@ -707,19 +717,19 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.workflow_run_id = str(workflow_run_request.id)
         request_proto.workflow_name = workflow_run_request.workflow_name
         request_proto.queue = workflow_run_request.queue
-        
+
         # Convert args to protobuf Struct
         args_struct = Struct()
         args_struct.update(workflow_run_request.args)
         request_proto.args.CopyFrom(args_struct)
-        
+
         # Handle optional fields
         if workflow_run_request.timeout_seconds is not None:
             request_proto.timeout_seconds = workflow_run_request.timeout_seconds
-            
+
         if workflow_run_request.idempotency_key:
             request_proto.idempotency_key = workflow_run_request.idempotency_key
-            
+
         try:
             self.gateway_stub.SendWorkflowRun(
                 request_proto, metadata=self.api_key_metadata
@@ -735,7 +745,7 @@ class PerformanceDispatcher(Dispatcher):
     def advance_workflow_run(self, workflow_run_id: UUID):
         request_proto = requests_pb2.AdvanceWorkflowRunRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
-        
+
         try:
             self.gateway_stub.AdvanceWorkflowRun(
                 request_proto, metadata=self.api_key_metadata
@@ -750,13 +760,13 @@ class PerformanceDispatcher(Dispatcher):
     def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
         request_proto = requests_pb2.GetWorkflowRunArgsRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
-        
+
         try:
             response = self.gateway_stub.GetWorkflowRunArgs(
                 request_proto, metadata=self.api_key_metadata
             )
             self.logger.debug("gRPC GetWorkflowRunArgs call successful")
-            
+
             # Convert protobuf Struct to dict
             return dict(response.args)
         except grpc.RpcError as e:
@@ -792,8 +802,12 @@ class PerformanceDispatcher(Dispatcher):
                 if current_status is None:
                     # Fallback: try to convert protobuf enum name to Python enum
                     status_name = task_pb2.TaskStatus.Name(proto_task.status)
-                    self.logger.warning(f"Unknown proto status {proto_task.status} ({status_name})")
-                    current_status = TaskStatus(status_name)  # This will raise if not found
+                    self.logger.warning(
+                        f"Unknown proto status {proto_task.status} ({status_name})"
+                    )
+                    current_status = TaskStatus(
+                        status_name
+                    )  # This will raise if not found
 
                 # Convert timestamps, checking for epoch zero (default/unset) for optional Python fields
                 queued_dt = proto_task.queued.ToDatetime(
@@ -835,13 +849,13 @@ class PerformanceDispatcher(Dispatcher):
     def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
         request_proto = requests_pb2.GetWorkflowDurableRunsRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
-        
+
         try:
             response = self.gateway_stub.GetWorkflowDurableRuns(
                 request_proto, metadata=self.api_key_metadata
             )
             self.logger.debug("gRPC GetWorkflowDurableRuns call successful")
-            
+
             # Convert string UUIDs to UUID objects
             return [UUID(durable_id) for durable_id in response.durable_ids]
         except grpc.RpcError as e:

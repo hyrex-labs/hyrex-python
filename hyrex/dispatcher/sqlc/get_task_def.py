@@ -12,7 +12,7 @@ from . import models
 
 
 GET_TASK_DEF = """-- name: get_task_def \\:one
-SELECT task_name, cron_expr, source_code, default_config, arg_schema, last_updated FROM hyrex_task_def
+SELECT task_name, cron_expr, source_code, arg_schema, queue, priority, max_retries, timeout_seconds, last_updated FROM hyrex_task_def
 WHERE task_name = :p1
 """
 
@@ -34,9 +34,12 @@ class Querier:
             task_name=row[0],
             cron_expr=row[1],
             source_code=row[2],
-            default_config=row[3],
-            arg_schema=row[4],
-            last_updated=row[5],
+            arg_schema=row[3],
+            queue=row[4],
+            priority=row[5],
+            max_retries=row[6],
+            timeout_seconds=row[7],
+            last_updated=row[8],
         )
 
 
@@ -52,7 +55,10 @@ class AsyncQuerier:
             task_name=row[0],
             cron_expr=row[1],
             source_code=row[2],
-            default_config=row[3],
-            arg_schema=row[4],
-            last_updated=row[5],
+            arg_schema=row[3],
+            queue=row[4],
+            priority=row[5],
+            max_retries=row[6],
+            timeout_seconds=row[7],
+            last_updated=row[8],
         )

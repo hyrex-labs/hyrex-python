@@ -45,10 +45,10 @@ class HyrexRegistry:
     def register_all_with_db(self):
         # Register tasks and workflows with DB
         for task in self._task_registry.values():
-            self.dispatcher.register_task(
+            self.dispatcher.register_task_def(
                 task_name=task.task_identifier,
                 arg_schema=task.get_arg_schema(),
-                default_config=task.task_config.get_default_config(),
+                task_config=task.task_config,
                 cron=task.cron,
                 source_code=inspect.getsource(task.func),
             )
@@ -62,8 +62,8 @@ class HyrexRegistry:
                 default_config=workflow.workflow_config.get_default_config(),
             )
 
-    def register_task(self, task_wrapper: TaskWrapper):
-        self.logger.debug(f"Registering task: {task_wrapper.task_identifier}")
+    def register_task_def(self, task_wrapper: TaskWrapper):
+        self.logger.debug(f"Registering task def: {task_wrapper.task_identifier}")
         if self._task_registry.get(task_wrapper.task_identifier):
             raise KeyError(
                 f"Task {task_wrapper.task_identifier} is already registered. Task names must be unique."
@@ -133,7 +133,7 @@ class HyrexRegistry:
 
     def add_registry(self, registry: "HyrexRegistry"):
         for task_wrapper in registry.get_task_wrappers():
-            self.register_task(task_wrapper=task_wrapper)
+            self.register_task_def(task_wrapper=task_wrapper)
         for workflow in registry.get_workflows():
             self.register_workflow(workflow=workflow)
 
@@ -190,7 +190,7 @@ class HyrexRegistry:
                 retry_backoff=retry_backoff,
             )
             # Register task within this registry
-            self.register_task(task_wrapper=task_wrapper)
+            self.register_task_def(task_wrapper=task_wrapper)
             return task_wrapper
 
         if func is not None:

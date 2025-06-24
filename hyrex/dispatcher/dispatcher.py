@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hyrex import constants
+from hyrex.configs import TaskConfig
 from hyrex.hyrex_queue import HyrexQueue
 from hyrex.schemas import (
     CronJob,
@@ -116,11 +117,11 @@ class Dispatcher(ABC):
         pass
 
     @abstractmethod
-    def register_task(
+    def register_task_def(
         self,
         task_name: str,
         arg_schema: Type[BaseModel] | None,
-        default_config: dict,
+        task_config: TaskConfig,
         cron: str = None,
         source_code: str = None,
     ):
