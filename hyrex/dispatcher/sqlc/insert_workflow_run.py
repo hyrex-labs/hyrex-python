@@ -22,10 +22,11 @@ INSERT INTO hyrex_workflow_run (
     timeout_seconds,
     status,
     queued,
+    started,
     last_heartbeat,
     idempotency_key
 )
-VALUES (:p1, NULL, :p2, :p3, :p4, :p5, 'RUNNING'\\:\\:workflow_run_status, now(), now(), :p6)
+VALUES (:p1, NULL, :p2, :p3, :p4, :p5, 'RUNNING'\\:\\:workflow_run_status, now(), now(), now(), :p6)
 RETURNING id
 """
 

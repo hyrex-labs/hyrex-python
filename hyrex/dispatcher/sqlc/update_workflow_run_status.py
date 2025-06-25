@@ -15,7 +15,11 @@ from . import models
 UPDATE_WORKFLOW_RUN_STATUS = """-- name: update_workflow_run_status \\:exec
 UPDATE hyrex_workflow_run
 SET status = :p1\\:\\:workflow_run_status,
-    last_heartbeat = now()
+    last_heartbeat = now(),
+    finished = CASE 
+        WHEN :p1\\:\\:workflow_run_status IN ('SUCCESS', 'FAILED', 'CANCELED') THEN now()
+        ELSE finished
+    END
 WHERE id = :p2
 """
 
