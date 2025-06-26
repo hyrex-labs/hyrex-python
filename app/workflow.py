@@ -1,3 +1,4 @@
+import random
 import time
 from typing import Literal
 
@@ -19,12 +20,16 @@ def initiate_onboard():
 
 
 @hy.task
-def validate_payment():
+def validate_payment(max_retries=5):
+    if random.random() < 0.5:
+        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
-@hy.task
+@hy.task(max_retries=5)
 def validate_identity():
+    if random.random() < 0.5:
+        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
@@ -34,7 +39,7 @@ def validate_org():
     if context:
         # Get workflow arguments
         args = context.workflow_args
-        
+
         # Get DurableTaskRun for a specific task
         payment_run = context.durable_runs.get("validate_payment")
         if payment_run:
@@ -42,20 +47,24 @@ def validate_org():
             payment_run.refresh()  # Get latest status
             for task_run in payment_run.task_runs:
                 print(f"Payment task status: {task_run.status}")
-        
+
         # Print the full context
         print(context)
-    
+
     time.sleep(5)
 
 
-@hy.task
+@hy.task(max_retries=5)
 def approve_user():
+    if random.random() < 0.5:
+        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
-@hy.task
+@hy.task(max_retries=5)
 def check_credit():
+    if random.random() < 0.5:
+        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
@@ -82,10 +91,7 @@ def onboard_user():
     )
 
     (
-        validate_identity.with_config(priority=5)
+        validate_identity
         >> check_credit.with_config(queue="credit-queue")
         >> train_credit_machine_learning_model.with_config(queue="credit-queue")
     )
-
-
-# onboard_user.with_config(queue="new_queue").send()
