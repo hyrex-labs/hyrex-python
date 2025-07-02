@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-06-25T11:12:21.078993
+Generated on: 2025-07-02T10:51:38.223763
 """
 
 # Import all models
@@ -23,6 +23,8 @@ from ._12_create_hyrex_task_run_table import Querier as _12_create_hyrex_task_ru
 from ._13_create_hyrex_task_run_table_indexes import Querier as _13_create_hyrex_task_run_table_indexes_Querier, AsyncQuerier as _13_create_hyrex_task_run_table_indexes_AsyncQuerier
 from ._14_create_results_table import Querier as _14_create_results_table_Querier, AsyncQuerier as _14_create_results_table_AsyncQuerier
 from ._15_create_hyrex_kv_table import Querier as _15_create_hyrex_kv_table_Querier, AsyncQuerier as _15_create_hyrex_kv_table_AsyncQuerier
+from ._16_create_hype_cron_job_table import Querier as _16_create_hype_cron_job_table_Querier, AsyncQuerier as _16_create_hype_cron_job_table_AsyncQuerier
+from ._17_create_hype_cron_job_run_details_table import Querier as _17_create_hype_cron_job_run_details_table_Querier, AsyncQuerier as _17_create_hype_cron_job_run_details_table_AsyncQuerier
 
 # Scheduler
 from .acquire_scheduler_lock import Querier as acquire_scheduler_lock_Querier, AsyncQuerier as acquire_scheduler_lock_AsyncQuerier
@@ -44,6 +46,16 @@ from .mark_lost_executors import Querier as mark_lost_executors_Querier, AsyncQu
 from .register_executor import Querier as register_executor_Querier, AsyncQuerier as register_executor_AsyncQuerier
 from .update_executor_stats import Querier as update_executor_stats_Querier, AsyncQuerier as update_executor_stats_AsyncQuerier
 from .update_queues_on_executor import Querier as update_queues_on_executor_Querier, AsyncQuerier as update_queues_on_executor_AsyncQuerier
+
+# Hype
+from .claim_queued_hype_cron_job_runs import Querier as claim_queued_hype_cron_job_runs_Querier, AsyncQuerier as claim_queued_hype_cron_job_runs_AsyncQuerier
+from .count_queued_hype_cron_job_runs import Querier as count_queued_hype_cron_job_runs_Querier, AsyncQuerier as count_queued_hype_cron_job_runs_AsyncQuerier
+from .create_hype_cron_job_run_details import Querier as create_hype_cron_job_run_details_Querier, AsyncQuerier as create_hype_cron_job_run_details_AsyncQuerier
+from .get_active_hype_cron_jobs import Querier as get_active_hype_cron_jobs_Querier, AsyncQuerier as get_active_hype_cron_jobs_AsyncQuerier
+from .get_hype_cron_job_by_name import Querier as get_hype_cron_job_by_name_Querier, AsyncQuerier as get_hype_cron_job_by_name_AsyncQuerier
+from .register_hype_cron_job import Querier as register_hype_cron_job_Querier, AsyncQuerier as register_hype_cron_job_AsyncQuerier
+from .update_hype_cron_job_confirmed_until import Querier as update_hype_cron_job_confirmed_until_Querier, AsyncQuerier as update_hype_cron_job_confirmed_until_AsyncQuerier
+from .update_hype_cron_job_run_status import Querier as update_hype_cron_job_run_status_Querier, AsyncQuerier as update_hype_cron_job_run_status_AsyncQuerier
 
 # Task Run
 from .conditionally_retry_task import Querier as conditionally_retry_task_Querier, AsyncQuerier as conditionally_retry_task_AsyncQuerier
@@ -78,6 +90,8 @@ from .update_cron_job_confirmation_ts import Querier as update_cron_job_confirma
 # Enums
 from .create_cron_job_status_enum import Querier as create_cron_job_status_enum_Querier, AsyncQuerier as create_cron_job_status_enum_AsyncQuerier
 from .create_executor_status_enum import Querier as create_executor_status_enum_Querier, AsyncQuerier as create_executor_status_enum_AsyncQuerier
+from .create_hype_command_type_enum import Querier as create_hype_command_type_enum_Querier, AsyncQuerier as create_hype_command_type_enum_AsyncQuerier
+from .create_hype_cron_job_status_enum import Querier as create_hype_cron_job_status_enum_Querier, AsyncQuerier as create_hype_cron_job_status_enum_AsyncQuerier
 from .create_job_source_type_enum import Querier as create_job_source_type_enum_Querier, AsyncQuerier as create_job_source_type_enum_AsyncQuerier
 from .create_task_run_status_enum import Querier as create_task_run_status_enum_Querier, AsyncQuerier as create_task_run_status_enum_AsyncQuerier
 from .create_workflow_run_status_enum import Querier as create_workflow_run_status_enum_Querier, AsyncQuerier as create_workflow_run_status_enum_AsyncQuerier
@@ -221,6 +235,18 @@ def create_hyrex_kv_table_sync(client, *args, **kwargs):
     params = CreateHyrexKvTableParams()
     return querier.create_hyrex_kv_table(params)
 
+def create_hype_cron_job_table_sync(client, *args, **kwargs):
+    querier = _16_create_hype_cron_job_table_Querier(client)
+    from ._16_create_hype_cron_job_table import CreateHypeCronJobTableParams
+    params = CreateHypeCronJobTableParams()
+    return querier.create_hype_cron_job_table(params)
+
+def create_hype_cron_job_run_details_table_sync(client, *args, **kwargs):
+    querier = _17_create_hype_cron_job_run_details_table_Querier(client)
+    from ._17_create_hype_cron_job_run_details_table import CreateHypeCronJobRunDetailsTableParams
+    params = CreateHypeCronJobRunDetailsTableParams()
+    return querier.create_hype_cron_job_run_details_table(params)
+
 def acquire_scheduler_lock_sync(client, *args, **kwargs):
     querier = acquire_scheduler_lock_Querier(client)
     return querier.acquire_scheduler_lock(*args, **kwargs)
@@ -237,9 +263,17 @@ def batch_update_heartbeat_on_executors_sync(client, *args, **kwargs):
     querier = batch_update_heartbeat_on_executors_Querier(client)
     return querier.batch_update_heartbeat_on_executors(*args, **kwargs)
 
+def claim_queued_hype_cron_job_runs_sync(client, *args, **kwargs):
+    querier = claim_queued_hype_cron_job_runs_Querier(client)
+    return querier.claim_queued_hype_cron_job_runs(*args, **kwargs)
+
 def conditionally_retry_task_sync(client, *args, **kwargs):
     querier = conditionally_retry_task_Querier(client)
     return querier.conditionally_retry_task(*args, **kwargs)
+
+def count_queued_hype_cron_job_runs_sync(client, *args, **kwargs):
+    querier = count_queued_hype_cron_job_runs_Querier(client)
+    return querier.count_queued_hype_cron_job_runs(*args, **kwargs)
 
 def create_advance_workflow_run_function_sync(client, *args, **kwargs):
     querier = create_advance_workflow_run_func_Querier(client)
@@ -278,6 +312,22 @@ def create_executor_status_enum_sync(client, *args, **kwargs):
     from .create_executor_status_enum import CreateExecutorStatusEnumParams
     params = CreateExecutorStatusEnumParams()
     return querier.create_executor_status_enum(params)
+
+def create_hype_command_type_enum_sync(client, *args, **kwargs):
+    querier = create_hype_command_type_enum_Querier(client)
+    from .create_hype_command_type_enum import CreateHypeCommandTypeEnumParams
+    params = CreateHypeCommandTypeEnumParams()
+    return querier.create_hype_command_type_enum(params)
+
+def create_hype_cron_job_run_details_sync(client, *args, **kwargs):
+    querier = create_hype_cron_job_run_details_Querier(client)
+    return querier.create_hype_cron_job_run_details(*args, **kwargs)
+
+def create_hype_cron_job_status_enum_sync(client, *args, **kwargs):
+    querier = create_hype_cron_job_status_enum_Querier(client)
+    from .create_hype_cron_job_status_enum import CreateHypeCronJobStatusEnumParams
+    params = CreateHypeCronJobStatusEnumParams()
+    return querier.create_hype_cron_job_status_enum(params)
 
 def create_job_source_type_enum_sync(client, *args, **kwargs):
     querier = create_job_source_type_enum_Querier(client)
@@ -365,6 +415,10 @@ def fill_historical_task_status_counts_table_sync(client, *args, **kwargs):
     querier = fill_historical_task_status_counts_table_Querier(client)
     return querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+def get_active_hype_cron_jobs_sync(client, *args, **kwargs):
+    querier = get_active_hype_cron_jobs_Querier(client)
+    return querier.get_active_hype_cron_jobs(*args, **kwargs)
+
 def get_all_task_defs_sync(client, *args, **kwargs):
     querier = get_all_task_defs_Querier(client)
     return querier.get_all_task_defs(*args, **kwargs)
@@ -388,6 +442,10 @@ def get_executor_by_id_sync(client, *args, **kwargs):
 def get_executors_paginated_sync(client, *args, **kwargs):
     querier = get_executors_paginated_Querier(client)
     return querier.get_executors_paginated(*args, **kwargs)
+
+def get_hype_cron_job_by_name_sync(client, *args, **kwargs):
+    querier = get_hype_cron_job_by_name_Querier(client)
+    return querier.get_hype_cron_job_by_name(*args, **kwargs)
 
 def get_project_stats_sync(client, *args, **kwargs):
     querier = get_project_stats_Querier(client)
@@ -485,6 +543,10 @@ def register_executor_sync(client, *args, **kwargs):
     querier = register_executor_Querier(client)
     return querier.register_executor(*args, **kwargs)
 
+def register_hype_cron_job_sync(client, *args, **kwargs):
+    querier = register_hype_cron_job_Querier(client)
+    return querier.register_hype_cron_job(*args, **kwargs)
+
 def register_task_def_sync(client, *args, **kwargs):
     querier = register_task_def_Querier(client)
     return querier.register_task_def(*args, **kwargs)
@@ -548,6 +610,14 @@ def update_cron_job_confirmation_ts_sync(client, *args, **kwargs):
 def update_executor_stats_sync(client, *args, **kwargs):
     querier = update_executor_stats_Querier(client)
     return querier.update_executor_stats(*args, **kwargs)
+
+def update_hype_cron_job_confirmed_until_sync(client, *args, **kwargs):
+    querier = update_hype_cron_job_confirmed_until_Querier(client)
+    return querier.update_hype_cron_job_confirmed_until(*args, **kwargs)
+
+def update_hype_cron_job_run_status_sync(client, *args, **kwargs):
+    querier = update_hype_cron_job_run_status_Querier(client)
+    return querier.update_hype_cron_job_run_status(*args, **kwargs)
 
 def update_queues_on_executor_sync(client, *args, **kwargs):
     querier = update_queues_on_executor_Querier(client)
@@ -649,6 +719,18 @@ async def create_hyrex_kv_table_async(client, *args, **kwargs):
     params = CreateHyrexKvTableParams()
     return await querier.create_hyrex_kv_table(params)
 
+async def create_hype_cron_job_table_async(client, *args, **kwargs):
+    querier = _16_create_hype_cron_job_table_AsyncQuerier(client)
+    from ._16_create_hype_cron_job_table import CreateHypeCronJobTableParams
+    params = CreateHypeCronJobTableParams()
+    return await querier.create_hype_cron_job_table(params)
+
+async def create_hype_cron_job_run_details_table_async(client, *args, **kwargs):
+    querier = _17_create_hype_cron_job_run_details_table_AsyncQuerier(client)
+    from ._17_create_hype_cron_job_run_details_table import CreateHypeCronJobRunDetailsTableParams
+    params = CreateHypeCronJobRunDetailsTableParams()
+    return await querier.create_hype_cron_job_run_details_table(params)
+
 async def acquire_scheduler_lock_async(client, *args, **kwargs):
     querier = acquire_scheduler_lock_AsyncQuerier(client)
     return await querier.acquire_scheduler_lock(*args, **kwargs)
@@ -665,9 +747,17 @@ async def batch_update_heartbeat_on_executors_async(client, *args, **kwargs):
     querier = batch_update_heartbeat_on_executors_AsyncQuerier(client)
     return await querier.batch_update_heartbeat_on_executors(*args, **kwargs)
 
+async def claim_queued_hype_cron_job_runs_async(client, *args, **kwargs):
+    querier = claim_queued_hype_cron_job_runs_AsyncQuerier(client)
+    return await querier.claim_queued_hype_cron_job_runs(*args, **kwargs)
+
 async def conditionally_retry_task_async(client, *args, **kwargs):
     querier = conditionally_retry_task_AsyncQuerier(client)
     return await querier.conditionally_retry_task(*args, **kwargs)
+
+async def count_queued_hype_cron_job_runs_async(client, *args, **kwargs):
+    querier = count_queued_hype_cron_job_runs_AsyncQuerier(client)
+    return await querier.count_queued_hype_cron_job_runs(*args, **kwargs)
 
 async def create_advance_workflow_run_function_async(client, *args, **kwargs):
     querier = create_advance_workflow_run_func_AsyncQuerier(client)
@@ -706,6 +796,22 @@ async def create_executor_status_enum_async(client, *args, **kwargs):
     from .create_executor_status_enum import CreateExecutorStatusEnumParams
     params = CreateExecutorStatusEnumParams()
     return await querier.create_executor_status_enum(params)
+
+async def create_hype_command_type_enum_async(client, *args, **kwargs):
+    querier = create_hype_command_type_enum_AsyncQuerier(client)
+    from .create_hype_command_type_enum import CreateHypeCommandTypeEnumParams
+    params = CreateHypeCommandTypeEnumParams()
+    return await querier.create_hype_command_type_enum(params)
+
+async def create_hype_cron_job_run_details_async(client, *args, **kwargs):
+    querier = create_hype_cron_job_run_details_AsyncQuerier(client)
+    return await querier.create_hype_cron_job_run_details(*args, **kwargs)
+
+async def create_hype_cron_job_status_enum_async(client, *args, **kwargs):
+    querier = create_hype_cron_job_status_enum_AsyncQuerier(client)
+    from .create_hype_cron_job_status_enum import CreateHypeCronJobStatusEnumParams
+    params = CreateHypeCronJobStatusEnumParams()
+    return await querier.create_hype_cron_job_status_enum(params)
 
 async def create_job_source_type_enum_async(client, *args, **kwargs):
     querier = create_job_source_type_enum_AsyncQuerier(client)
@@ -793,6 +899,10 @@ async def fill_historical_task_status_counts_table_async(client, *args, **kwargs
     querier = fill_historical_task_status_counts_table_AsyncQuerier(client)
     return await querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+async def get_active_hype_cron_jobs_async(client, *args, **kwargs):
+    querier = get_active_hype_cron_jobs_AsyncQuerier(client)
+    return await querier.get_active_hype_cron_jobs(*args, **kwargs)
+
 async def get_all_task_defs_async(client, *args, **kwargs):
     querier = get_all_task_defs_AsyncQuerier(client)
     return await querier.get_all_task_defs(*args, **kwargs)
@@ -816,6 +926,10 @@ async def get_executor_by_id_async(client, *args, **kwargs):
 async def get_executors_paginated_async(client, *args, **kwargs):
     querier = get_executors_paginated_AsyncQuerier(client)
     return await querier.get_executors_paginated(*args, **kwargs)
+
+async def get_hype_cron_job_by_name_async(client, *args, **kwargs):
+    querier = get_hype_cron_job_by_name_AsyncQuerier(client)
+    return await querier.get_hype_cron_job_by_name(*args, **kwargs)
 
 async def get_project_stats_async(client, *args, **kwargs):
     querier = get_project_stats_AsyncQuerier(client)
@@ -913,6 +1027,10 @@ async def register_executor_async(client, *args, **kwargs):
     querier = register_executor_AsyncQuerier(client)
     return await querier.register_executor(*args, **kwargs)
 
+async def register_hype_cron_job_async(client, *args, **kwargs):
+    querier = register_hype_cron_job_AsyncQuerier(client)
+    return await querier.register_hype_cron_job(*args, **kwargs)
+
 async def register_task_def_async(client, *args, **kwargs):
     querier = register_task_def_AsyncQuerier(client)
     return await querier.register_task_def(*args, **kwargs)
@@ -977,6 +1095,14 @@ async def update_executor_stats_async(client, *args, **kwargs):
     querier = update_executor_stats_AsyncQuerier(client)
     return await querier.update_executor_stats(*args, **kwargs)
 
+async def update_hype_cron_job_confirmed_until_async(client, *args, **kwargs):
+    querier = update_hype_cron_job_confirmed_until_AsyncQuerier(client)
+    return await querier.update_hype_cron_job_confirmed_until(*args, **kwargs)
+
+async def update_hype_cron_job_run_status_async(client, *args, **kwargs):
+    querier = update_hype_cron_job_run_status_AsyncQuerier(client)
+    return await querier.update_hype_cron_job_run_status(*args, **kwargs)
+
 async def update_queues_on_executor_async(client, *args, **kwargs):
     querier = update_queues_on_executor_AsyncQuerier(client)
     return await querier.update_queues_on_executor(*args, **kwargs)
@@ -1036,6 +1162,16 @@ def create_functions_sync(client: SyncDatabaseClient) -> None:
     create_uuid7_function_sync(client)
     create_workflow_trigger_sync(client)
 
+def create_hype_enums_sync(client: SyncDatabaseClient) -> None:
+    """Create all hype-specific enum types (synchronous)"""
+    create_hype_command_type_enum_sync(client)
+    create_hype_cron_job_status_enum_sync(client)
+
+def create_hype_tables_sync(client: SyncDatabaseClient) -> None:
+    """Create all hype-specific tables (synchronous)"""
+    create_hype_cron_job_table_sync(client)
+    create_hype_cron_job_run_details_table_sync(client)
+
 async def create_enums_async(client: DatabaseClient) -> None:
     """Create all database enum types (asynchronous)"""
     await create_cron_job_status_enum_async(client)
@@ -1074,6 +1210,16 @@ async def create_functions_async(client: DatabaseClient) -> None:
     await create_uuid7_function_async(client)
     await create_workflow_trigger_async(client)
 
+async def create_hype_enums_async(client: DatabaseClient) -> None:
+    """Create all hype-specific enum types (asynchronous)"""
+    await create_hype_command_type_enum_async(client)
+    await create_hype_cron_job_status_enum_async(client)
+
+async def create_hype_tables_async(client: DatabaseClient) -> None:
+    """Create all hype-specific tables (asynchronous)"""
+    await create_hype_cron_job_table_async(client)
+    await create_hype_cron_job_run_details_table_async(client)
+
 # Define what's exported when using 'from sdkPostgresDispatcher import *'
 __all__ = [
     # Models
@@ -1082,10 +1228,14 @@ __all__ = [
     'create_enums_sync',
     'create_tables_sync',
     'create_functions_sync',
+    'create_hype_enums_sync',
+    'create_hype_tables_sync',
     # Schema helpers (async)
     'create_enums_async',
     'create_tables_async',
     'create_functions_async',
+    'create_hype_enums_async',
+    'create_hype_tables_async',
     # Query functions
     'acquire_scheduler_lock_async',
     'acquire_scheduler_lock_sync',
@@ -1095,8 +1245,12 @@ __all__ = [
     'batch_update_heartbeat_log_sync',
     'batch_update_heartbeat_on_executors_async',
     'batch_update_heartbeat_on_executors_sync',
+    'claim_queued_hype_cron_job_runs_async',
+    'claim_queued_hype_cron_job_runs_sync',
     'conditionally_retry_task_async',
     'conditionally_retry_task_sync',
+    'count_queued_hype_cron_job_runs_async',
+    'count_queued_hype_cron_job_runs_sync',
     'create_advance_workflow_run_func_async',
     'create_advance_workflow_run_func_sync',
     'create_conditionally_retry_task_func_async',
@@ -1113,6 +1267,16 @@ __all__ = [
     'create_executor_status_enum_sync',
     'create_executor_table_async',
     'create_executor_table_sync',
+    'create_hype_command_type_enum_async',
+    'create_hype_command_type_enum_sync',
+    'create_hype_cron_job_run_details_async',
+    'create_hype_cron_job_run_details_sync',
+    'create_hype_cron_job_run_details_table_async',
+    'create_hype_cron_job_run_details_table_sync',
+    'create_hype_cron_job_status_enum_async',
+    'create_hype_cron_job_status_enum_sync',
+    'create_hype_cron_job_table_async',
+    'create_hype_cron_job_table_sync',
     'create_hyrex_app_table_async',
     'create_hyrex_app_table_sync',
     'create_hyrex_cron_job_run_details_table_async',
@@ -1173,6 +1337,8 @@ __all__ = [
     'fetch_task_with_concurrency_limit_sync',
     'fill_historical_task_status_counts_table_async',
     'fill_historical_task_status_counts_table_sync',
+    'get_active_hype_cron_jobs_async',
+    'get_active_hype_cron_jobs_sync',
     'get_all_task_defs_async',
     'get_all_task_defs_sync',
     'get_app_name_async',
@@ -1185,6 +1351,8 @@ __all__ = [
     'get_executor_by_id_sync',
     'get_executors_paginated_async',
     'get_executors_paginated_sync',
+    'get_hype_cron_job_by_name_async',
+    'get_hype_cron_job_by_name_sync',
     'get_project_stats_async',
     'get_project_stats_sync',
     'get_task_attempts_by_durable_id_async',
@@ -1233,6 +1401,8 @@ __all__ = [
     'register_app_info_sync',
     'register_executor_async',
     'register_executor_sync',
+    'register_hype_cron_job_async',
+    'register_hype_cron_job_sync',
     'register_task_def_async',
     'register_task_def_sync',
     'register_workflow_async',
@@ -1265,6 +1435,10 @@ __all__ = [
     'update_cron_job_confirmation_ts_sync',
     'update_executor_stats_async',
     'update_executor_stats_sync',
+    'update_hype_cron_job_confirmed_until_async',
+    'update_hype_cron_job_confirmed_until_sync',
+    'update_hype_cron_job_run_status_async',
+    'update_hype_cron_job_run_status_sync',
     'update_queues_on_executor_async',
     'update_queues_on_executor_sync',
     'update_workflow_run_status_async',
