@@ -8,6 +8,31 @@ import uuid
 
 
 @dataclasses.dataclass()
+class HypeCronJob:
+    jobid: int
+    schedule: Optional[str]
+    command_type: Any
+    command_params: Any
+    active: bool
+    jobname: str
+    activated_at: Optional[datetime.datetime]
+    scheduled_jobs_confirmed_until: Optional[datetime.datetime]
+    should_backfill: Optional[bool]
+
+
+@dataclasses.dataclass()
+class HypeCronJobRunDetail:
+    jobid: int
+    runid: int
+    command_type: Any
+    command_params: Any
+    status: Optional[Any]
+    schedule_time: datetime.datetime
+    start_time: Optional[datetime.datetime]
+    end_time: Optional[datetime.datetime]
+
+
+@dataclasses.dataclass()
 class HyrexApp:
     id: int
     app_info: Optional[Any]
