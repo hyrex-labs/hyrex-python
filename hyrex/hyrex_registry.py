@@ -60,6 +60,7 @@ class HyrexRegistry:
                 workflow_dag_json=workflow.workflow_builder.to_json(),
                 workflow_arg_schema=workflow.workflow_arg_schema,
                 default_config=workflow.workflow_config.get_default_config(),
+                cron=workflow.cron,
             )
 
     def register_task_def(self, task_wrapper: TaskWrapper):
@@ -230,6 +231,7 @@ class HyrexRegistry:
                     workflow_builder=workflow_builder,
                     dispatcher=self.dispatcher,
                     source_code=inspect.getsource(func),
+                    cron=cron,
                 )
                 # Register workflow within this registry
                 self.register_workflow(workflow)

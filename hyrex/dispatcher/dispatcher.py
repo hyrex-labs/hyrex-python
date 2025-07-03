@@ -198,6 +198,7 @@ class Dispatcher(ABC):
         workflow_dag_json: str,
         workflow_arg_schema: Type[BaseModel] | None,
         default_config: dict,
+        cron: str | None,
     ):
         pass
 

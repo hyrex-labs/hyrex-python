@@ -20,6 +20,7 @@ class HyrexWorkflow:
         workflow_builder: WorkflowBuilder,
         dispatcher: Dispatcher,
         source_code: str,
+        cron: str | None,
     ):
         self.name = name
         self.workflow_config = workflow_config
@@ -27,6 +28,7 @@ class HyrexWorkflow:
         self.workflow_builder = workflow_builder
         self.dispatcher = dispatcher
         self.source_code = source_code
+        self.cron = cron
 
     def get_queue(self) -> HyrexQueue | str | None:
         return self.workflow_config.queue

@@ -72,7 +72,7 @@ class PerformanceDispatcher(Dispatcher):
 
     # Reverse mapping for proto to Python conversion
     _PROTO_TO_PY_STATUS = {v: k for k, v in _PY_TO_PROTO_STATUS.items()}
-    
+
     # Priority mapping between Python int and proto Priority enum
     _PY_TO_PROTO_PRIORITY = {
         0: task_pb2.Priority.P_UNSPECIFIED,
@@ -607,17 +607,23 @@ class PerformanceDispatcher(Dispatcher):
             task_def.arg_schema.CopyFrom(arg_schema_struct)
 
         # Set required fields from task_config
-        task_def.queue = task_config.get_queue_name() if task_config.queue else 'default'
-        task_def.max_retries = task_config.max_retries if task_config.max_retries is not None else 0
-        
+        task_def.queue = (
+            task_config.get_queue_name() if task_config.queue else "default"
+        )
+        task_def.max_retries = (
+            task_config.max_retries if task_config.max_retries is not None else 0
+        )
+
         # Map Python priority to protobuf Priority enum
         priority_value = task_config.priority if task_config.priority is not None else 5
-        task_def.priority = self._PY_TO_PROTO_PRIORITY.get(priority_value, task_pb2.Priority.P5)
+        task_def.priority = self._PY_TO_PROTO_PRIORITY.get(
+            priority_value, task_pb2.Priority.P5
+        )
 
         # Set optional fields
         if task_config.timeout_seconds is not None:
             task_def.timeout_seconds = task_config.timeout_seconds
-            
+
         if cron:
             task_def.cron = cron
 
@@ -672,6 +678,7 @@ class PerformanceDispatcher(Dispatcher):
         workflow_dag_json: str,
         workflow_arg_schema: Type[BaseModel] | None,
         default_config: dict,
+        cron: str | None,
     ):
         request_proto = requests_pb2.RegisterWorkflowRequest()
         request_proto.workflow_name = name
@@ -700,6 +707,10 @@ class PerformanceDispatcher(Dispatcher):
             default_config_struct = Struct()
             default_config_struct.update(default_config)
             request_proto.default_config.CopyFrom(default_config_struct)
+
+        # Handle cron
+        if cron:
+            request_proto.cron = cron
 
         try:
             self.gateway_stub.RegisterWorkflow(
