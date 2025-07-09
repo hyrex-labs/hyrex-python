@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from hyrex import constants
 from hyrex.dispatcher import DequeuedTask, get_dispatcher
+from hyrex.dispatcher.enqueue_tracker import EnqueueTracker
 from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_app import HyrexApp, HyrexAppInfo
@@ -195,6 +196,9 @@ class WorkerExecutor(Process):
             return False
 
         try:
+            # Create an enqueue tracker for this task execution
+            enqueue_tracker = EnqueueTracker()
+            
             set_hyrex_context(
                 HyrexContext(
                     task_id=task.id,
@@ -212,6 +216,7 @@ class WorkerExecutor(Process):
                     attempt_number=task.attempt_number,
                     max_retries=task.max_retries,
                     workflow_run_id=task.workflow_run_id,
+                    enqueue_tracker=enqueue_tracker,
                 )
             )
 
@@ -231,6 +236,32 @@ class WorkerExecutor(Process):
                         result = json.dumps(result)
                     except (TypeError, ValueError):
                         raise TypeError("Return value must be JSON-serializable")
+
+            # Wait for all child tasks to be enqueued before marking success
+            remaining_timeout = None
+            if task.timeout_seconds:
+                # Calculate remaining time before task timeout
+                elapsed = time.time() - task.started.timestamp()
+                remaining_timeout = max(0.1, task.timeout_seconds - elapsed)
+                self.logger.debug(
+                    f"Waiting for child task enqueues to complete "
+                    f"(remaining timeout: {remaining_timeout:.1f}s)"
+                )
+            
+            if not enqueue_tracker.wait_for_completion(timeout=remaining_timeout):
+                # Timeout occurred - check for failures
+                failed_futures = enqueue_tracker.get_failed_futures()
+                if failed_futures:
+                    error_msg = f"Failed to enqueue {len(failed_futures)} child tasks"
+                    self.logger.error(error_msg)
+                    for i, exc in enumerate(failed_futures):
+                        self.logger.error(f"  Child task {i+1} error: {exc}")
+                    raise RuntimeError(error_msg)
+                else:
+                    # We timed out waiting for enqueues within the task timeout
+                    raise RuntimeError(
+                        f"Child task enqueue timeout - unable to complete within task timeout"
+                    )
 
             self.mark_task_success(task.id, result)
 

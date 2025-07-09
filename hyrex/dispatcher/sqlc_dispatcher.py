@@ -284,7 +284,18 @@ class SqlcDispatcher(Dispatcher):
             return
         if self.stopping:
             self.logger.warning("Task enqueued during shutdown. May not be processed.")
+            
+        # Check if we're in a task context with an enqueue tracker
+        # Import here to avoid circular import
+        from hyrex.hyrex_context import get_hyrex_context
+        
+        context = get_hyrex_context()
+        enqueue_tracker = context.enqueue_tracker if context else None
+        
         for task in tasks:
+            # Track pending enqueue if we have a tracker
+            if enqueue_tracker:
+                enqueue_tracker.increment_pending()
             self.local_queue.put(task)
 
     def _batch_enqueue(self):
@@ -327,40 +338,52 @@ class SqlcDispatcher(Dispatcher):
 
     def _enqueue_tasks(self, tasks: List[EnqueueTaskRequest]):
         """Inserts a batch of tasks into the database using SQLC."""
-        with self.transaction() as conn:
-            for task in tasks:
-                # Convert args to JSON, handling Pydantic models
-                try:
-                    args_json = json.dumps(task.args, default=pydantic_aware_default)
-                except TypeError as e:
-                    self.logger.error(
-                        f"Task {task.id}: Failed to serialize args to JSON: {e}"
-                    )
-                    raise
+        # Check if we're in a task context with an enqueue tracker
+        # Import here to avoid circular import
+        from hyrex.hyrex_context import get_hyrex_context
+        
+        context = get_hyrex_context()
+        enqueue_tracker = context.enqueue_tracker if context else None
+        
+        try:
+            with self.transaction() as conn:
+                for task in tasks:
+                    # Convert args to JSON, handling Pydantic models
+                    try:
+                        args_json = json.dumps(task.args, default=pydantic_aware_default)
+                    except TypeError as e:
+                        self.logger.error(
+                            f"Task {task.id}: Failed to serialize args to JSON: {e}"
+                        )
+                        raise
 
-                # Create task using SQLC generated function
-                create_task_run_sync(
-                    conn,
-                    create_task_run.CreateTaskRunParams(
-                        id=task.id,
-                        durable_id=task.durable_id,
-                        root_id=task.root_id,
-                        parent_id=task.parent_id,
-                        status=task.status.value,  # Convert enum to string
-                        task_name=task.task_name,
-                        args=args_json,  # Pass JSON string directly
-                        queue=task.queue,
-                        max_retries=task.max_retries,
-                        priority=task.priority,
-                        timeout_seconds=task.timeout_seconds,
-                        idempotency_key=task.idempotency_key,
-                        scheduled_start=datetime.now(
-                            timezone.utc
-                        ),  # Use current time for scheduled_start
-                        workflow_run_id=task.workflow_run_id,
-                        workflow_dependencies=task.workflow_dependencies or [],
-                    ),
-                )
+                    # Create task using SQLC generated function
+                    create_task_run_sync(
+                        conn,
+                        create_task_run.CreateTaskRunParams(
+                            id=task.id,
+                            durable_id=task.durable_id,
+                            root_id=task.root_id,
+                            parent_id=task.parent_id,
+                            status=task.status.value,  # Convert enum to string
+                            task_name=task.task_name,
+                            args=args_json,  # Pass JSON string directly
+                            queue=task.queue,
+                            max_retries=task.max_retries,
+                            priority=task.priority,
+                            timeout_seconds=task.timeout_seconds,
+                            idempotency_key=task.idempotency_key,
+                            scheduled_start=datetime.now(
+                                timezone.utc
+                            ),  # Use current time for scheduled_start
+                            workflow_run_id=task.workflow_run_id,
+                            workflow_dependencies=task.workflow_dependencies or [],
+                        ),
+                    )
+        finally:
+            # Decrement the pending count for all tasks that were processed
+            if enqueue_tracker:
+                enqueue_tracker.decrement_pending(len(tasks))
 
     def stop(self, timeout: float = 5.0) -> bool:
         # Check if already stopping/stopped

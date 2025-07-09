@@ -1,10 +1,12 @@
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.dispatcher_provider import get_dispatcher
+from hyrex.dispatcher.enqueue_tracker import EnqueueTracker
 from hyrex.durable_run import DurableTaskRun
 
 
@@ -32,6 +34,10 @@ class HyrexContext(BaseModel):
     workflow_run_id: UUID | None
 
     workflow_context: HyrexWorkflowContext | None = None
+    enqueue_tracker: Optional[EnqueueTracker] = None
+    
+    class Config:
+        arbitrary_types_allowed = True
 
     def update_workflow_context(self):
         if self.workflow_run_id:

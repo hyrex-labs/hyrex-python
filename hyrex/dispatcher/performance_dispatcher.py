@@ -219,6 +219,13 @@ class PerformanceDispatcher(Dispatcher):
             self.logger.error(f"Enqueue request failed: {e}")
 
     def enqueue(self, tasks: list[EnqueueTaskRequest]):
+        # Check if we're in a task context with an enqueue tracker
+        # Import here to avoid circular import
+        from hyrex.hyrex_context import get_hyrex_context
+        
+        context = get_hyrex_context()
+        enqueue_tracker = context.enqueue_tracker if context else None
+        
         for task in tasks:
             proto_task = self._convert_enqueue_request_to_proto(task)
             # Submit the gRPC request to the thread pool for async execution
@@ -227,6 +234,10 @@ class PerformanceDispatcher(Dispatcher):
             )
             # Add callback to handle the result
             future.add_done_callback(self._send_grpc_enqueue_callback)
+            
+            # Track the future if we have a tracker
+            if enqueue_tracker:
+                enqueue_tracker.track_future(future)
 
     def dequeue(
         self,
