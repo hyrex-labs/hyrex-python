@@ -491,8 +491,19 @@ class PerformanceDispatcher(Dispatcher):
             raise
 
     def mark_running_tasks_lost(self, executor_id: UUID):
-        # TODO: Implement
-        pass
+        request_proto = requests_pb2.MarkRunningTasksLostRequest()
+        request_proto.executor_id = str(executor_id)
+
+        try:
+            self.gateway_stub.MarkRunningTasksLost(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("MarkRunningTasksLost gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(
+                f"gRPC MarkRunningTasksLost call failed: {e.code()} - {e.details()}"
+            )
+            raise
 
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
         request_proto = requests_pb2.ExecutorHeartbeatRequest()

@@ -145,6 +145,10 @@ message DisconnectExecutorRequest {
   string executor_id = 1;
 }
 
+message MarkRunningTasksLostRequest {
+  string executor_id = 1;
+}
+
 message RegisterAppRequest {
   google.protobuf.Struct app_info = 1;
 }

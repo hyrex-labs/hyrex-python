@@ -63,6 +63,8 @@ message TaskRun {
 
   string result = 19;
   string log_link = 20;
+
+  string executor_id = 21;
 }
 
 message TaskDef {

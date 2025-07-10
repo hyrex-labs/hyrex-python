@@ -120,6 +120,11 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.KVStoreGetRequest.SerializeToString,
                 response_deserializer=requests__pb2.KVStoreGetResponse.FromString,
                 _registered_method=True)
+        self.MarkRunningTasksLost = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/MarkRunningTasksLost',
+                request_serializer=requests__pb2.MarkRunningTasksLostRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.RegisterTaskDef = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
                 request_serializer=requests__pb2.RegisterTaskDefRequest.SerializeToString,
@@ -304,6 +309,12 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def MarkRunningTasksLost(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterTaskDef(self, request, context):
         """---- Postgres requests ----
         """
@@ -482,6 +493,11 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     servicer.KVStoreGet,
                     request_deserializer=requests__pb2.KVStoreGetRequest.FromString,
                     response_serializer=requests__pb2.KVStoreGetResponse.SerializeToString,
+            ),
+            'MarkRunningTasksLost': grpc.unary_unary_rpc_method_handler(
+                    servicer.MarkRunningTasksLost,
+                    request_deserializer=requests__pb2.MarkRunningTasksLostRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'RegisterTaskDef': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTaskDef,
@@ -1018,6 +1034,33 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/KVStoreGet',
             requests__pb2.KVStoreGetRequest.SerializeToString,
             requests__pb2.KVStoreGetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def MarkRunningTasksLost(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/MarkRunningTasksLost',
+            requests__pb2.MarkRunningTasksLostRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
