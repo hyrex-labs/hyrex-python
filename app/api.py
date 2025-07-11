@@ -18,6 +18,7 @@ from .tasks import (
     root_level_task,
     sleepy_task,
     spawn_empty_tasks,
+    send_test_tasks,
 )
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
@@ -50,6 +51,11 @@ async def generate_tasks(num_tasks: int):
 # @app.get("/generate-random-number/")
 # async def generate_tasks():
 #     random_number_task.send(RandomNumberContext())
+
+
+@app.get("/big-test")
+async def run_big_test():
+    send_test_tasks.send(number=5)
 
 
 @app.get("/empty-task/")

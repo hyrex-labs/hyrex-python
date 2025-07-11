@@ -30,6 +30,30 @@ async def sleepy_task(context: SleepContext):
 
 
 @hy.task
+def send_test_tasks(number: int):
+    for _ in range(number):
+        test_task.send()
+
+
+@hy.task(max_retries=3)
+def test_task():
+    # Throw exception 1% of the time
+    if random.random() < 0.01:
+        raise Exception("Random exception occurred!")
+
+    # Sleep for random duration (0 to 5 seconds)
+    sleep_duration = random.uniform(0, 5)
+    time.sleep(sleep_duration)
+
+    # Loop where 60% of the time it calls itself, otherwise returns
+    while True:
+        if random.random() < 0.5:
+            test_task.send()  # Recursive call
+        else:
+            return "Function completed successfully"
+
+
+@hy.task
 def empty_task():
     print("Task complete.")
 
