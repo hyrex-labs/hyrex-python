@@ -47,7 +47,7 @@ def test_task():
 
     # Loop where 60% of the time it calls itself, otherwise returns
     while True:
-        if random.random() < 0.5:
+        if random.random() < 0.4:
             test_task.send()  # Recursive call
         else:
             return "Function completed successfully"
