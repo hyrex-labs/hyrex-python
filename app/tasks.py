@@ -21,7 +21,9 @@ class SleepContext(BaseModel):
     duration: float
 
 
-@hy.task(priority=2, queue=HyrexQueue(name="sleepy", concurrency_limit=1))
+@hy.task(
+    priority=2, queue=HyrexQueue(name="sleepy", concurrency_limit=1), max_retries=2
+)
 async def sleepy_task(context: SleepContext):
     time.sleep(context.duration)
     print("Time to wake up!")

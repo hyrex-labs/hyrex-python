@@ -19,8 +19,8 @@ def initiate_onboard():
     time.sleep(5)
 
 
-@hy.task
-def validate_payment(max_retries=5):
+@hy.task(max_retries=5)
+def validate_payment():
     if random.random() < 0.5:
         raise Exception("Random exception occurred!")
     time.sleep(5)
@@ -82,6 +82,7 @@ class OnboardUserWorkflowArg(BaseModel):
     queue="onboard-user",
     timeout_seconds=100,
     workflow_arg_schema=OnboardUserWorkflowArg,
+    # cron="* * * * *",
 )
 def onboard_user():
     (

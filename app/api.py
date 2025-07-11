@@ -41,7 +41,7 @@ async def generate_tasks(num_tasks: int):
             print(i)
             print(datetime.now())
         # empty_task.withConfig(queue=str(i)).send(EmptyContext())
-        empty_task.send(EmptyContext())
+        empty_task.send()
 
     print("end:")
     print(datetime.now())
@@ -65,16 +65,12 @@ async def send_empty_tasks():
 
 @app.get("/sleepy-task/")
 async def run_sleepy_task(seconds: int):
-    task = sleepy_task.with_config(timeout_seconds=5, max_retries=1).send(
+    task = sleepy_task.with_config(timeout_seconds=15, max_retries=1).send(
         context=SleepContext(duration=seconds)
     )
-    task.wait()
-    # tasks = []
-    # for i in range(10):
-    #     tasks.append(sleepy_task.send(SleepContext(duration=seconds)))
-    # # task.wait()
-    # tasks[5].cancel()
-    # tasks[9].cancel()
+
+    # time.sleep(5)
+    # task.cancel()
 
 
 def print_hello():
