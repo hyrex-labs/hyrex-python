@@ -41,9 +41,10 @@ def test_task():
     if random.random() < 0.01:
         raise Exception("Random exception occurred!")
 
-    # Sleep for random duration (0 to 5 seconds)
-    sleep_duration = random.uniform(0, 5)
-    time.sleep(sleep_duration)
+    # Sleep for random duration (0 to 1 seconds)
+    if random.random() < 0.2:
+        sleep_duration = random.uniform(0, 1)
+        time.sleep(sleep_duration)
 
     # Loop where 60% of the time it calls itself, otherwise returns
     while True:
