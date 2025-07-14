@@ -385,7 +385,7 @@ class WorkerExecutor(Process):
             )
 
         try:
-            self.dispatcher = get_dispatcher(worker=True)
+            self.dispatcher = get_dispatcher()
             self.dispatcher.register_executor(
                 executor_id=self.executor_id,
                 executor_name=self.name,

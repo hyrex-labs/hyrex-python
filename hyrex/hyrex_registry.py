@@ -26,7 +26,7 @@ class HyrexRegistry:
             self.is_worker_process = True
         else:
             self.is_worker_process = False
-        self.dispatcher = get_dispatcher(self.is_worker_process)
+        self.dispatcher = get_dispatcher()
 
         self._task_registry: dict[str, TaskWrapper] = {}
         self._queue_registry: dict[str, HyrexQueue] = {}
