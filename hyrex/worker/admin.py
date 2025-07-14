@@ -67,7 +67,7 @@ class WorkerAdmin(Process):
         init_logging(self.log_level)
 
         self.logger.info("Initializing admin.")
-        self.dispatcher = get_dispatcher(worker=True)
+        self.dispatcher = get_dispatcher()
 
         # Ignore signals, let main process manage shutdown.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
