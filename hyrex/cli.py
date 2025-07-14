@@ -153,5 +153,54 @@ def run_worker(
         sys.exit(1)
 
 
+@cli.command()
+def studio(
+    port: int = typer.Option(
+        int(os.getenv("STUDIO_PORT", 1337)),
+        "--port",
+        "-p",
+        help="Port to run the studio server on",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+):
+    """
+    Run Hyrex Studio server for database inspection and query execution
+    """
+    database_url = os.environ.get(EnvVars.DATABASE_URL) or os.environ.get("PGURL")
+    
+    if not database_url:
+        typer.echo(
+            f"Error: Database connection string must be provided through HYREX_DATABASE_URL or PGURL environment variable."
+        )
+        sys.exit(1)
+    
+    # Set environment variables for the studio server
+    os.environ["STUDIO_PORT"] = str(port)
+    if verbose:
+        os.environ["STUDIO_VERBOSE"] = "true"
+    
+    try:
+        import uvicorn
+    except ImportError:
+        typer.echo("Error: uvicorn is required to run the studio server. Install it with: pip install uvicorn")
+        sys.exit(1)
+    
+    try:
+        from hyrex.hyrex_studio_server import app
+        
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info" if verbose else "warning")
+    except ImportError as e:
+        typer.echo(f"Error importing studio server: {e}")
+        sys.exit(1)
+    except Exception as e:
+        typer.echo(f"Error running studio server: {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()
