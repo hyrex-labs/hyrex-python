@@ -237,6 +237,7 @@ class PerformanceDispatcher(Dispatcher):
     ) -> DequeuedTask:
         request_proto = requests_pb2.DequeueRequest()
         request_proto.queue = queue
+        request_proto.executor_id = str(executor_id)
 
         try:
             response = self.gateway_stub.Dequeue(
