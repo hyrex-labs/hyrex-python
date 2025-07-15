@@ -185,17 +185,16 @@ def studio(
         os.environ["STUDIO_VERBOSE"] = "true"
     
     try:
-        import uvicorn
-    except ImportError:
-        typer.echo("Error: uvicorn is required to run the studio server. Install it with: pip install uvicorn")
-        sys.exit(1)
-    
-    try:
-        from hyrex.hyrex_studio_server import app
+        from hyrex.hyrex_studio_server import main
         
-        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info" if verbose else "warning")
+        # The studio server handles its own startup
+        main()
     except ImportError as e:
         typer.echo(f"Error importing studio server: {e}")
+        if "asyncpg" in str(e).lower():
+            typer.echo("Install it with: pip install asyncpg")
+        elif "colorama" in str(e).lower():
+            typer.echo("Install it with: pip install colorama")
         sys.exit(1)
     except Exception as e:
         typer.echo(f"Error running studio server: {e}")

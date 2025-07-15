@@ -1,14 +1,16 @@
 # studio_server.py
 import os
 import sys
+import json
 import asyncio
 from pathlib import Path
-from urllib.parse import urlparse
-from contextlib import asynccontextmanager
+from urllib.parse import urlparse, parse_qs
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+from datetime import datetime, date, time
+from decimal import Decimal
+from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from dotenv import load_dotenv
 import asyncpg
 from colorama import init as colorama_init, Fore, Style
@@ -148,6 +150,7 @@ def banner():
 # 3. Database pool – use asyncpg (async, high‑perf, server‑side prepared)
 # ------------------------------------------------------------
 _pool: asyncpg.pool.Pool | None = None
+_loop: asyncio.AbstractEventLoop | None = None
 
 
 async def get_pool() -> asyncpg.pool.Pool:
@@ -160,66 +163,74 @@ async def get_pool() -> asyncpg.pool.Pool:
 
 
 # ------------------------------------------------------------
-# 4. FastAPI app & models
+# 4. HTTP Request Handler
 # ------------------------------------------------------------
-class QueryPayload(BaseModel):
-    query: str
-    params: list | None = None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    await get_pool()
-    banner()
-    yield
-    # Shutdown
-    global _pool
-    if _pool:
-        await _pool.close()
+class StudioRequestHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        # Only log if verbose mode is enabled
         if STUDIO_VERBOSE:
-            print("Database pool closed")
+            super().log_message(format, *args)
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
-app = FastAPI(
-    title="Hyrex Studio",
-    version="1.0",
-    docs_url="/docs" if STUDIO_VERBOSE else None,
-    redoc_url=None,
-    lifespan=lifespan,
-)
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            response = {"status": "OK", "timestamp": str(asyncio.get_event_loop().time())}
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_error(404, "Not Found")
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # adjust if needed
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    def do_POST(self):
+        if self.path == "/api/query":
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                
+                if STUDIO_VERBOSE:
+                    print("Received query payload:", json.dumps(payload, indent=2, default=str))
+                
+                if not payload.get("query"):
+                    self.send_error(400, "Query is required")
+                    return
+                
+                # Run async query in the event loop
+                future = asyncio.run_coroutine_threadsafe(
+                    self._execute_query(payload.get("query"), payload.get("params")),
+                    _loop
+                )
+                result = future.result()
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(result, default=str).encode())
+                
+            except json.JSONDecodeError:
+                self.send_error(400, "Invalid JSON")
+            except Exception as exc:
+                if STUDIO_VERBOSE:
+                    print("Error executing query:", exc, file=sys.stderr)
+                self.send_error(500, str(exc))
+        else:
+            self.send_error(404, "Not Found")
 
-
-# ------------------------------------------------------------
-# 5. Endpoints
-# ------------------------------------------------------------
-@app.get("/health")
-async def health():
-    return {"status": "OK", "timestamp": str(asyncio.get_event_loop().time())}
-
-
-@app.post("/api/query")
-async def raw_query(payload: QueryPayload):
-    if STUDIO_VERBOSE:
-        print("Received query payload:", payload.model_dump_json(indent=2))
-
-    if not payload.query:
-        raise HTTPException(status_code=400, detail="Query is required")
-
-    pool = await get_pool()
-    try:
+    async def _execute_query(self, query: str, params: list | None = None):
+        pool = await get_pool()
         async with pool.acquire() as conn:
-            stmt = await conn.prepare(payload.query)
-            rows = await stmt.fetch(*(payload.params or []))
+            stmt = await conn.prepare(query)
+            rows = await stmt.fetch(*(params or []))
             # Convert asyncpg Record objects → dict
             rows_dict = [dict(r) for r in rows]
             return {
@@ -230,17 +241,61 @@ async def raw_query(payload: QueryPayload):
                     for a in stmt.get_attributes()
                 ],
             }
-    except Exception as exc:
-        if STUDIO_VERBOSE:
-            print("Error executing query:", exc, file=sys.stderr)
-        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ------------------------------------------------------------
+# 5. Async event loop thread
+# ------------------------------------------------------------
+def run_async_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
 
 
 # ------------------------------------------------------------
 # 6. Entry‑point helper
 # ------------------------------------------------------------
-if __name__ == "__main__":
-    # Run with:  python studio_server.py  (or better: `uvicorn studio_server:app --port 1337`)
-    import uvicorn
+async def initialize():
+    """Initialize database pool and show banner"""
+    await get_pool()
+    banner()
 
-    uvicorn.run("studio_server:app", host="0.0.0.0", port=PORT, reload=False)
+
+async def cleanup():
+    """Clean up resources"""
+    global _pool
+    if _pool:
+        await _pool.close()
+        if STUDIO_VERBOSE:
+            print("Database pool closed")
+
+
+def main():
+    global _loop
+    
+    # Create and start async event loop in a separate thread
+    _loop = asyncio.new_event_loop()
+    loop_thread = threading.Thread(target=run_async_loop, args=(_loop,), daemon=True)
+    loop_thread.start()
+    
+    # Initialize async resources
+    future = asyncio.run_coroutine_threadsafe(initialize(), _loop)
+    future.result()
+    
+    # Create and start HTTP server
+    server = HTTPServer(("0.0.0.0", PORT), StudioRequestHandler)
+    
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+    finally:
+        server.shutdown()
+        # Clean up async resources
+        future = asyncio.run_coroutine_threadsafe(cleanup(), _loop)
+        future.result()
+        _loop.call_soon_threadsafe(_loop.stop)
+        loop_thread.join(timeout=5)
+
+
+if __name__ == "__main__":
+    main()
