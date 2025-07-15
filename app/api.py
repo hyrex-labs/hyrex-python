@@ -19,6 +19,7 @@ from .tasks import (
     sleepy_task,
     spawn_empty_tasks,
     send_test_tasks,
+    write_kv,
 )
 from .workflow import OnboardUserWorkflowArg, onboard_user
 
@@ -51,6 +52,11 @@ async def generate_tasks(num_tasks: int):
 # @app.get("/generate-random-number/")
 # async def generate_tasks():
 #     random_number_task.send(RandomNumberContext())
+
+
+@app.get("/kv-test")
+async def kv_test(value: str):
+    write_kv.send(value)
 
 
 @app.get("/big-test")

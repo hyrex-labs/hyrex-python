@@ -120,6 +120,11 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.KVStoreGetRequest.SerializeToString,
                 response_deserializer=requests__pb2.KVStoreGetResponse.FromString,
                 _registered_method=True)
+        self.KVStoreDelete = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/KVStoreDelete',
+                request_serializer=requests__pb2.KVStoreDeleteRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
         self.MarkRunningTasksLost = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/MarkRunningTasksLost',
                 request_serializer=requests__pb2.MarkRunningTasksLostRequest.SerializeToString,
@@ -309,6 +314,12 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def KVStoreDelete(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def MarkRunningTasksLost(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -493,6 +504,11 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     servicer.KVStoreGet,
                     request_deserializer=requests__pb2.KVStoreGetRequest.FromString,
                     response_serializer=requests__pb2.KVStoreGetResponse.SerializeToString,
+            ),
+            'KVStoreDelete': grpc.unary_unary_rpc_method_handler(
+                    servicer.KVStoreDelete,
+                    request_deserializer=requests__pb2.KVStoreDeleteRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'MarkRunningTasksLost': grpc.unary_unary_rpc_method_handler(
                     servicer.MarkRunningTasksLost,
@@ -1034,6 +1050,33 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/KVStoreGet',
             requests__pb2.KVStoreGetRequest.SerializeToString,
             requests__pb2.KVStoreGetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def KVStoreDelete(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/KVStoreDelete',
+            requests__pb2.KVStoreDeleteRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,

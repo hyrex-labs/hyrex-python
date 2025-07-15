@@ -12,7 +12,7 @@ from . import models
 
 
 COUNT_QUEUED_HYPE_CRON_JOB_RUNS = """-- name: count_queued_hype_cron_job_runs \\:one
-  SELECT COUNT(*)\\:\\:int
+  SELECT COUNT(*)\\:\\:int AS count
   FROM hype_cron_job_run_details
   WHERE status = 'QUEUED'
     AND schedule_time <= NOW()

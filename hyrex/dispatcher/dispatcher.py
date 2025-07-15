@@ -235,3 +235,15 @@ class Dispatcher(ABC):
     @abstractmethod
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
         pass
+
+    @abstractmethod
+    def kv_set(self, key: str, value: str) -> None:
+        pass
+
+    @abstractmethod
+    def kv_get(self, key: str) -> str | None:
+        pass
+
+    @abstractmethod
+    def kv_delete(self, key: str) -> None:
+        pass

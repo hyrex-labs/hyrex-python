@@ -221,3 +221,7 @@ message KVStoreGetRequest {
 message KVStoreGetResponse {
   string value = 1;
 }
+
+message KVStoreDeleteRequest {
+  string key = 1;
+}
