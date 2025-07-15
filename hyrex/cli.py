@@ -148,6 +148,9 @@ def run_worker(
     """
     Run a Hyrex worker for the specified app module path
     """
+    # Print ASCII logo as first action
+    print(constants.ASCII_HYREX_LOGO)
+    
     database_url = os.environ.get(EnvVars.DATABASE_URL)
 
     if not database_url and not os.environ.get(EnvVars.API_KEY):
