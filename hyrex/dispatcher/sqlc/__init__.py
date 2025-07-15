@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-07-02T10:51:38.223763
+Generated on: 2025-07-14T13:33:08.501064
 """
 
 # Import all models
@@ -42,6 +42,7 @@ from .update_workflow_run_status import Querier as update_workflow_run_status_Qu
 from .batch_update_heartbeat_log import Querier as batch_update_heartbeat_log_Querier, AsyncQuerier as batch_update_heartbeat_log_AsyncQuerier
 from .batch_update_heartbeat_on_executors import Querier as batch_update_heartbeat_on_executors_Querier, AsyncQuerier as batch_update_heartbeat_on_executors_AsyncQuerier
 from .disconnect_executor import Querier as disconnect_executor_Querier, AsyncQuerier as disconnect_executor_AsyncQuerier
+from .get_executor_statuses import Querier as get_executor_statuses_Querier, AsyncQuerier as get_executor_statuses_AsyncQuerier
 from .mark_lost_executors import Querier as mark_lost_executors_Querier, AsyncQuerier as mark_lost_executors_AsyncQuerier
 from .register_executor import Querier as register_executor_Querier, AsyncQuerier as register_executor_AsyncQuerier
 from .update_executor_stats import Querier as update_executor_stats_Querier, AsyncQuerier as update_executor_stats_AsyncQuerier
@@ -100,6 +101,9 @@ from .create_workflow_run_status_enum import Querier as create_workflow_run_stat
 from .fill_historical_task_status_counts_table import Querier as fill_historical_task_status_counts_table_Querier, AsyncQuerier as fill_historical_task_status_counts_table_AsyncQuerier
 from .insert_single_task_status_counts_row import Querier as insert_single_task_status_counts_row_Querier, AsyncQuerier as insert_single_task_status_counts_row_AsyncQuerier
 from .trim_task_stats import Querier as trim_task_stats_Querier, AsyncQuerier as trim_task_stats_AsyncQuerier
+
+# Utility
+from .flush_all_data import Querier as flush_all_data_Querier, AsyncQuerier as flush_all_data_AsyncQuerier
 
 # Task Def
 from .get_all_task_defs import Querier as get_all_task_defs_Querier, AsyncQuerier as get_all_task_defs_AsyncQuerier
@@ -415,6 +419,10 @@ def fill_historical_task_status_counts_table_sync(client, *args, **kwargs):
     querier = fill_historical_task_status_counts_table_Querier(client)
     return querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+def flush_all_data_sync(client, *args, **kwargs):
+    querier = flush_all_data_Querier(client)
+    return querier.flush_all_data(*args, **kwargs)
+
 def get_active_hype_cron_jobs_sync(client, *args, **kwargs):
     querier = get_active_hype_cron_jobs_Querier(client)
     return querier.get_active_hype_cron_jobs(*args, **kwargs)
@@ -438,6 +446,10 @@ def get_cron_jobs_paginated_sync(client, *args, **kwargs):
 def get_executor_by_id_sync(client, *args, **kwargs):
     querier = get_executor_by_id_Querier(client)
     return querier.get_executor_by_id(*args, **kwargs)
+
+def get_executor_statuses_sync(client, *args, **kwargs):
+    querier = get_executor_statuses_Querier(client)
+    return querier.get_executor_statuses(*args, **kwargs)
 
 def get_executors_paginated_sync(client, *args, **kwargs):
     querier = get_executors_paginated_Querier(client)
@@ -899,6 +911,10 @@ async def fill_historical_task_status_counts_table_async(client, *args, **kwargs
     querier = fill_historical_task_status_counts_table_AsyncQuerier(client)
     return await querier.fill_historical_task_status_counts_table(*args, **kwargs)
 
+async def flush_all_data_async(client, *args, **kwargs):
+    querier = flush_all_data_AsyncQuerier(client)
+    return await querier.flush_all_data(*args, **kwargs)
+
 async def get_active_hype_cron_jobs_async(client, *args, **kwargs):
     querier = get_active_hype_cron_jobs_AsyncQuerier(client)
     return await querier.get_active_hype_cron_jobs(*args, **kwargs)
@@ -922,6 +938,10 @@ async def get_cron_jobs_paginated_async(client, *args, **kwargs):
 async def get_executor_by_id_async(client, *args, **kwargs):
     querier = get_executor_by_id_AsyncQuerier(client)
     return await querier.get_executor_by_id(*args, **kwargs)
+
+async def get_executor_statuses_async(client, *args, **kwargs):
+    querier = get_executor_statuses_AsyncQuerier(client)
+    return await querier.get_executor_statuses(*args, **kwargs)
 
 async def get_executors_paginated_async(client, *args, **kwargs):
     querier = get_executors_paginated_AsyncQuerier(client)
@@ -1337,6 +1357,8 @@ __all__ = [
     'fetch_task_with_concurrency_limit_sync',
     'fill_historical_task_status_counts_table_async',
     'fill_historical_task_status_counts_table_sync',
+    'flush_all_data_async',
+    'flush_all_data_sync',
     'get_active_hype_cron_jobs_async',
     'get_active_hype_cron_jobs_sync',
     'get_all_task_defs_async',
@@ -1349,6 +1371,8 @@ __all__ = [
     'get_cron_jobs_paginated_sync',
     'get_executor_by_id_async',
     'get_executor_by_id_sync',
+    'get_executor_statuses_async',
+    'get_executor_statuses_sync',
     'get_executors_paginated_async',
     'get_executors_paginated_sync',
     'get_hype_cron_job_by_name_async',

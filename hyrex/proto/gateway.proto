@@ -29,6 +29,7 @@ service GatewayService {
   rpc MarkCanceled(MarkCanceledRequest) returns (google.protobuf.Empty);
   rpc KVStoreSet(KVStoreSetRequest) returns (google.protobuf.Empty);
   rpc KVStoreGet(KVStoreGetRequest) returns (KVStoreGetResponse);
+  rpc KVStoreDelete(KVStoreDeleteRequest) returns (google.protobuf.Empty);
   rpc MarkRunningTasksLost(MarkRunningTasksLostRequest) returns (google.protobuf.Empty);
 
   // ---- Postgres requests ----

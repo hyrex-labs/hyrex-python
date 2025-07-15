@@ -66,6 +66,9 @@ from .sqlc import (
     get_workflow_run_task_runs,
     update_queues_on_executor,
     fetch_result,
+    kv_set_value,
+    kv_get_value,
+    kv_delete_value,
     # Import sync functions
     register_app_info_sync,
     transition_task_state_sync,
@@ -101,6 +104,9 @@ from .sqlc import (
     get_workflow_run_task_runs_sync,
     update_queues_on_executor_sync,
     fetch_result_sync,
+    set_value_sync,
+    get_value_sync,
+    delete_value_sync,
 )
 
 
@@ -836,3 +842,24 @@ class SqlcDispatcher(Dispatcher):
                 conn, fetch_result.FetchResultParams(task_id=task_id)
             )
             return result.result if result else None
+
+    def kv_set(self, key: str, value: str) -> None:
+        with self.transaction() as conn:
+            set_value_sync(
+                conn,
+                kv_set_value.SetValueParams(key=key, value=value)
+            )
+
+    def kv_get(self, key: str) -> str | None:
+        with self.transaction() as conn:
+            return get_value_sync(
+                conn,
+                kv_get_value.GetValueParams(key=key)
+            )
+
+    def kv_delete(self, key: str) -> None:
+        with self.transaction() as conn:
+            delete_value_sync(
+                conn,
+                kv_delete_value.DeleteValueParams(key=key)
+            )

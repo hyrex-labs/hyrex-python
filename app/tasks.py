@@ -3,7 +3,7 @@ import time
 
 from pydantic import BaseModel
 
-from hyrex import HyrexQueue, HyrexRegistry, get_hyrex_context
+from hyrex import HyrexQueue, HyrexRegistry, get_hyrex_context, HyrexKV
 
 
 def task_error_callback(task_name: str, e: Exception):
@@ -57,6 +57,18 @@ def test_task():
 @hy.task
 def empty_task():
     print("Task complete.")
+
+
+@hy.task
+def write_kv(value: str):
+    HyrexKV.set("kv_test", value)
+    read_kv.send()
+
+
+@hy.task
+def read_kv():
+    print(HyrexKV.get("kv_test"))
+    HyrexKV.delete("kv_test")
 
 
 @hy.task

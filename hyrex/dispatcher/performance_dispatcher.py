@@ -965,3 +965,43 @@ class PerformanceDispatcher(Dispatcher):
         except grpc.RpcError as e:
             self.logger.error(f"gRPC WriteLogs call failed: {e.code()} - {e.details()}")
             raise
+
+    def kv_set(self, key: str, value: str) -> None:
+        request_proto = requests_pb2.KVStoreSetRequest()
+        request_proto.key = key
+        request_proto.value = value
+        request_proto.overwrite = True  # Always overwrite for now
+
+        try:
+            self.gateway_stub.KVStoreSet(request_proto, metadata=self.api_key_metadata)
+            self.logger.debug("KVStoreSet gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(f"gRPC KVStoreSet call failed: {e.code()} - {e.details()}")
+            raise
+
+    def kv_get(self, key: str) -> str | None:
+        request_proto = requests_pb2.KVStoreGetRequest()
+        request_proto.key = key
+
+        try:
+            response = self.gateway_stub.KVStoreGet(
+                request_proto, metadata=self.api_key_metadata
+            )
+            self.logger.debug("KVStoreGet gRPC call successful")
+            return response.value if response.value else None
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                return None
+            self.logger.error(f"gRPC KVStoreGet call failed: {e.code()} - {e.details()}")
+            raise
+
+    def kv_delete(self, key: str) -> None:
+        request_proto = requests_pb2.KVStoreDeleteRequest()
+        request_proto.key = key
+
+        try:
+            self.gateway_stub.KVStoreDelete(request_proto, metadata=self.api_key_metadata)
+            self.logger.debug("KVStoreDelete gRPC call successful")
+        except grpc.RpcError as e:
+            self.logger.error(f"gRPC KVStoreDelete call failed: {e.code()} - {e.details()}")
+            raise

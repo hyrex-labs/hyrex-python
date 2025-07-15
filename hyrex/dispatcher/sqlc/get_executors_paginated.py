@@ -25,12 +25,7 @@ SELECT
     stopped,
     last_heartbeat,
     stats,
-    CASE
-        WHEN stopped IS NOT NULL THEN 'SHUTDOWN'
-        WHEN last_heartbeat < NOW() - INTERVAL '1 minute' THEN 'LOST'
-        WHEN last_heartbeat >= NOW() - INTERVAL '1 minute' THEN 'RUNNING'
-        ELSE 'UNKNOWN'
-    END as status
+    status
 FROM hyrex_executor
 ORDER BY started DESC NULLS LAST
 LIMIT :p1 OFFSET :p2
@@ -55,7 +50,7 @@ class GetExecutorsPaginatedRow:
     stopped: Optional[datetime.datetime]
     last_heartbeat: Optional[datetime.datetime]
     stats: Optional[Any]
-    status: str
+    status: Any
 
 
 class Querier:
