@@ -25,13 +25,40 @@ from hyrex.init_db import init_postgres_db
 from hyrex.worker.logging import LogLevel
 from hyrex.worker.root_process import WorkerRootProcess
 
+
+def load_env_file():
+    """Load .env file if it exists in the current directory."""
+    try:
+        from dotenv import load_dotenv
+        env_path = Path.cwd() / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+            return True
+    except ImportError:
+        env_path = Path.cwd() / ".env"
+        if env_path.exists():
+            print("Warning: python-dotenv not installed, skipping .env file loading")
+    return False
+
+# Load .env file on module import
+load_env_file()
+
 cli = typer.Typer()
+
+
+@cli.command()
+def init():
+    """
+    Initialize a new Hyrex project with interactive setup
+    """
+    from hyrex.hyrex_init import main as init_main
+    init_main()
 
 
 @cli.command()
 def init_db(
     database_string: str = typer.Option(
-        os.getenv(EnvVars.DATABASE_URL),
+        None,
         "--database-string",
         help="Database connection string",
     )
@@ -39,6 +66,10 @@ def init_db(
     """
     Creates the tables for hyrex tasks/workers in the given Postgres database
     """
+    # Get database string from option or environment
+    if not database_string:
+        database_string = os.getenv(EnvVars.DATABASE_URL)
+    
     if os.getenv(EnvVars.API_KEY) is not None:
         typer.echo(f"{EnvVars.API_KEY} is set. Skipping database initialization.")
         return
@@ -117,7 +148,6 @@ def run_worker(
     """
     Run a Hyrex worker for the specified app module path
     """
-
     database_url = os.environ.get(EnvVars.DATABASE_URL)
 
     if not database_url and not os.environ.get(EnvVars.API_KEY):
