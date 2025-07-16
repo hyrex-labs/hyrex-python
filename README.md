@@ -255,10 +255,18 @@ def daily_cleanup():
     # Cleanup logic
     pass
 
+# Tasks with default arguments can also be scheduled
+@hy.task(cron="0 0 * * 0")  # Weekly on Sunday
+def weekly_backup(retention_days: int = 30):
+    # Backup logic with configurable retention
+    pass
+
 @hy.workflow(cron="0 0 * * 0")  # Weekly on Sunday
 def weekly_report():
     generate_report >> send_report
 ```
+
+**Note**: Cron-scheduled tasks must have no arguments or all arguments must have default values.
 
 ### Error Handling
 

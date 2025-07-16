@@ -107,6 +107,18 @@ class TaskWrapper(Generic[P, R]):
                 has_default=param.default is not param.empty,
             )
 
+        # Validate that cron tasks have no required arguments
+        if self.cron:
+            required_params = [
+                name for name, info in self.param_info.items() 
+                if not info.has_default
+            ]
+            if required_params:
+                raise ValueError(
+                    f"Task '{task_identifier}' has cron scheduling but requires arguments: {required_params}. "
+                    f"Cron-scheduled tasks must have no arguments or all arguments must have default values."
+                )
+
     async def async_call(self, **kwargs):
         self.logger.info(f"Executing task {self.func.__name__}.")
 
