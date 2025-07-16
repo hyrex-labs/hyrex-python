@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from queue import Empty, Queue
 from typing import Type
 from uuid import UUID
+import logging
+from functools import wraps
 
 import grpc
 from google.protobuf.struct_pb2 import Struct
@@ -18,6 +20,7 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
     before_sleep_log,
+    RetryCallState,
 )
 
 from hyrex import constants
@@ -39,6 +42,41 @@ from hyrex.schemas import (
 
 # Define the epoch zero timestamp for comparison
 EPOCH_ZERO = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _log_retry_attempt(retry_state: RetryCallState):
+    """Log retry attempts with details about the error and wait time."""
+    logger = logging.getLogger(__name__)
+    exception = retry_state.outcome.exception()
+    if isinstance(exception, grpc.RpcError):
+        logger.warning(
+            f"Retrying gRPC call {retry_state.fn.__name__} "
+            f"(attempt {retry_state.attempt_number}) due to error: "
+            f"{exception.code()} - {exception.details()}. "
+            f"Waiting {retry_state.next_action.sleep} seconds before next attempt."
+        )
+
+
+# Create a retry decorator for ALL gRPC calls
+grpc_retry = retry(
+    stop=stop_after_attempt(4),  # Try up to 4 times (initial + 3 retries)
+    wait=wait_exponential(
+        multiplier=1, min=1, max=30
+    ),  # Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
+    retry=retry_if_exception_type(grpc.RpcError),  # Retry on ANY gRPC error
+    before_sleep=_log_retry_attempt,
+)
+
+
+def with_grpc_retry(method):
+    """Decorator to add retry logic to gRPC methods."""
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        @grpc_retry
+        def _retry_wrapper():
+            return method(self, *args, **kwargs)
+        return _retry_wrapper()
+    return wrapper
 
 
 def pydantic_aware_default(obj):
@@ -113,6 +151,7 @@ class PerformanceDispatcher(Dispatcher):
 
         self.register_shutdown_handlers()
 
+    @with_grpc_retry
     def register_app(self, app_info: dict):
         app_info_struct = Struct()
         app_info_struct.update(app_info)
@@ -120,13 +159,10 @@ class PerformanceDispatcher(Dispatcher):
         request_proto = requests_pb2.RegisterAppRequest()
         request_proto.app_info = app_info_struct
 
-        try:
-            response = self.gateway_stub.RegisterApp(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        response = self.gateway_stub.RegisterApp(
+            request_proto, metadata=self.api_key_metadata
+        )
+        return response
 
     def _convert_enqueue_request_to_proto(
         self, task: EnqueueTaskRequest
@@ -167,44 +203,16 @@ class PerformanceDispatcher(Dispatcher):
 
         return proto_task
 
-    @retry(
-        stop=stop_after_attempt(4),  # Try up to 4 times (initial + 3 retries)
-        wait=wait_exponential(
-            multiplier=1, min=1, max=30
-        ),  # Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
-        retry=retry_if_exception_type(grpc.RpcError),
-    )
+    @with_grpc_retry
     def _send_grpc_enqueue_request(self, proto_task: requests_pb2.EnqueueRequest):
         """
         Send a single gRPC enqueue request synchronously with automatic retry.
         This method is designed to be called from within the ThreadPoolExecutor.
-        Tenacity handles the retry logic with exponential backoff.
         """
-        try:
-            response = self.gateway_stub.Enqueue(
-                proto_task, metadata=self.api_key_metadata
-            )
-            return response
-        except grpc.RpcError as e:
-            # Only retry on certain error codes
-            retryable_codes = [
-                grpc.StatusCode.UNAVAILABLE,
-                grpc.StatusCode.DEADLINE_EXCEEDED,
-                grpc.StatusCode.RESOURCE_EXHAUSTED,
-                grpc.StatusCode.ABORTED,
-                grpc.StatusCode.INTERNAL,
-            ]
-
-            if e.code() not in retryable_codes:
-                self.logger.error(
-                    f"Non-retryable gRPC error: {e.code()} - {e.details()}"
-                )
-                raise  # This won't be retried by tenacity
-
-            self.logger.warning(
-                f"Retryable gRPC error: {e.code()} - {e.details()}. Retrying..."
-            )
-            raise  # This will be retried by tenacity
+        response = self.gateway_stub.Enqueue(
+            proto_task, metadata=self.api_key_metadata
+        )
+        return response
 
     def _send_grpc_enqueue_callback(self, future):
         """
@@ -228,6 +236,7 @@ class PerformanceDispatcher(Dispatcher):
             # Add callback to handle the result
             future.add_done_callback(self._send_grpc_enqueue_callback)
 
+    @with_grpc_retry
     def dequeue(
         self,
         executor_id: UUID,
@@ -239,14 +248,10 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.queue = queue
         request_proto.executor_id = str(executor_id)
 
-        try:
-            response = self.gateway_stub.Dequeue(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(f"gRPC call successful, response {response}")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        response = self.gateway_stub.Dequeue(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug(f"gRPC call successful, response {response}")
 
         # No task found
         # Check for task.id instead of just task because sometimes Python parses this as an instantiated empty task
@@ -373,85 +378,61 @@ class PerformanceDispatcher(Dispatcher):
             self.channel.close()
         self.logger.debug("Dispatcher stopped successfully!")
 
+    @with_grpc_retry
     def mark_success(self, task_id: UUID, result: str):
         request_proto = requests_pb2.MarkSuccessRequest()
         request_proto.task_run_id = str(task_id)
         if result:
             request_proto.result = result
 
-        try:
-            self.gateway_stub.MarkSuccess(request_proto, metadata=self.api_key_metadata)
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC MarkSuccess call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.MarkSuccess(request_proto, metadata=self.api_key_metadata)
 
+    @with_grpc_retry
     def mark_failed(self, task_id: UUID):
         request_proto = requests_pb2.MarkFailedRequest()
         request_proto.task_run_id = str(task_id)
 
-        try:
-            self.gateway_stub.MarkFailed(request_proto, metadata=self.api_key_metadata)
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC MarkFailed call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.MarkFailed(request_proto, metadata=self.api_key_metadata)
 
+    @with_grpc_retry
     def retry_task(self, task_id: UUID, backoff_seconds: int):
         request_proto = requests_pb2.RetryTaskRunRequest()
         request_proto.task_run_id = str(task_id)
         request_proto.backoff_seconds = backoff_seconds
 
-        try:
-            self.gateway_stub.RetryTaskRun(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC RetryTaskRun call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.RetryTaskRun(
+            request_proto, metadata=self.api_key_metadata
+        )
 
     # TODO: Implement
     def try_to_cancel_task(self, task_id: UUID):
         raise NotImplementedError("Cancellation not yet implemented on Hyrex platform")
 
+    @with_grpc_retry
     def task_canceled(self, task_id: UUID):
         request_proto = requests_pb2.MarkCanceledRequest()
         request_proto.task_run_id = str(task_id)
 
-        try:
-            self.gateway_stub.MarkCanceled(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("MarkCanceled gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC MarkCanceled call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.MarkCanceled(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("MarkCanceled gRPC call successful")
 
+    @with_grpc_retry
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         request_proto = requests_pb2.GetTaskRunStatusRequest()
         request_proto.task_run_id = str(task_id)
 
-        try:
-            response = self.gateway_stub.GetTaskStatus(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(
-                f"gRPC GetTaskStatus call successful, response: {response}"
-            )
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC GetTaskStatus call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        response = self.gateway_stub.GetTaskStatus(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug(
+            f"gRPC GetTaskStatus call successful, response: {response}"
+        )
 
         return self._PROTO_TO_PY_STATUS[response.status]
 
+    @with_grpc_retry
     def register_executor(
         self,
         executor_id: UUID,
@@ -467,45 +448,30 @@ class PerformanceDispatcher(Dispatcher):
         request_proto.queues.extend([queue.name for queue in queues])
         request_proto.worker_name = worker_name
 
-        try:
-            self.gateway_stub.RegisterExecutor(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC RegisterExecutor call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.RegisterExecutor(
+            request_proto, metadata=self.api_key_metadata
+        )
 
+    @with_grpc_retry
     def disconnect_executor(self, executor_id: UUID):
         request_proto = requests_pb2.DisconnectExecutorRequest()
         request_proto.executor_id = str(executor_id)
 
-        try:
-            self.gateway_stub.DisconnectExecutor(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC DisconnectExecutor call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.DisconnectExecutor(
+            request_proto, metadata=self.api_key_metadata
+        )
 
+    @with_grpc_retry
     def mark_running_tasks_lost(self, executor_id: UUID):
         request_proto = requests_pb2.MarkRunningTasksLostRequest()
         request_proto.executor_id = str(executor_id)
 
-        try:
-            self.gateway_stub.MarkRunningTasksLost(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("MarkRunningTasksLost gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC MarkRunningTasksLost call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.MarkRunningTasksLost(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("MarkRunningTasksLost gRPC call successful")
 
+    @with_grpc_retry
     def executor_heartbeat(self, executor_ids: list[UUID], timestamp: datetime):
         request_proto = requests_pb2.ExecutorHeartbeatRequest()
         request_proto.executor_ids.extend(
@@ -515,17 +481,12 @@ class PerformanceDispatcher(Dispatcher):
         # Convert datetime to protobuf timestamp
         request_proto.timestamp.FromDatetime(timestamp)
 
-        try:
-            self.gateway_stub.ExecutorHeartbeat(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("ExecutorHeartbeat gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC ExecutorHeartbeat call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.ExecutorHeartbeat(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("ExecutorHeartbeat gRPC call successful")
 
+    @with_grpc_retry
     def update_executor_stats(self, executor_id: UUID, stats: dict):
         request_proto = requests_pb2.UpdateExecutorStatsRequest()
         request_proto.executor_id = str(executor_id)
@@ -535,17 +496,12 @@ class PerformanceDispatcher(Dispatcher):
         stats_struct.update(stats)
         request_proto.executor_stats.CopyFrom(stats_struct)
 
-        try:
-            self.gateway_stub.UpdateExecutorStats(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("UpdateExecutorStats gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC UpdateExecutorStats call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.UpdateExecutorStats(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("UpdateExecutorStats gRPC call successful")
 
+    @with_grpc_retry
     def task_heartbeat(self, task_ids: list[UUID], timestamp: datetime):
         request_proto = requests_pb2.TaskRunHeartbeatRequest()
         request_proto.task_run_ids.extend([str(task_id) for task_id in task_ids])
@@ -553,50 +509,37 @@ class PerformanceDispatcher(Dispatcher):
         # Convert datetime to protobuf timestamp
         request_proto.timestamp.FromDatetime(timestamp)
 
-        try:
-            self.gateway_stub.TaskRunHeartbeat(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("TaskRunHeartbeat gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC TaskRunHeartbeat call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.TaskRunHeartbeat(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("TaskRunHeartbeat gRPC call successful")
 
+    @with_grpc_retry
     def get_tasks_up_for_cancel(self) -> list[UUID]:
-        try:
-            response = self.gateway_stub.GetTaskRunsUpForCancel(
-                empty_pb2.Empty(), metadata=self.api_key_metadata
-            )
-            self.logger.debug(
-                f"GetTaskRunsUpForCancel gRPC call successful, response: {response}"
-            )
+        response = self.gateway_stub.GetTaskRunsUpForCancel(
+            empty_pb2.Empty(), metadata=self.api_key_metadata
+        )
+        self.logger.debug(
+            f"GetTaskRunsUpForCancel gRPC call successful, response: {response}"
+        )
 
-            # Convert string UUIDs to UUID objects
-            return [UUID(task_id) for task_id in response.task_run_ids]
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC GetTaskRunsUpForCancel call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        # Convert string UUIDs to UUID objects
+        return [UUID(task_id) for task_id in response.task_run_ids]
 
+    @with_grpc_retry
     def get_queues_for_pattern(self, pattern: QueuePattern) -> list[str]:
         request_proto = requests_pb2.GetQueuesRequest()
         request_proto.max_num_queues = 10000
         request_proto.pattern = pattern.glob_pattern
 
-        try:
-            response = self.gateway_stub.GetQueues(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(f"GetQueues gRPC call successful. response: {response}")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        response = self.gateway_stub.GetQueues(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug(f"GetQueues gRPC call successful. response: {response}")
 
         return response.queues
 
+    @with_grpc_retry
     def register_task_def(
         self,
         task_name: str,
@@ -645,16 +588,10 @@ class PerformanceDispatcher(Dispatcher):
         # Set the task in the request proto
         request_proto.task_def.CopyFrom(task_def)
 
-        try:
-            self.gateway_stub.RegisterTaskDef(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC RegisterTaskDef call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC RegisterTaskDef call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.RegisterTaskDef(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC RegisterTaskDef call successful")
 
     def acquire_scheduler_lock(self, worker_name: str) -> int | None:
         pass
@@ -683,6 +620,7 @@ class PerformanceDispatcher(Dispatcher):
     def release_scheduler_lock(self, worker_name: str) -> None:
         pass
 
+    @with_grpc_retry
     def register_workflow(
         self,
         name: str,
@@ -724,17 +662,12 @@ class PerformanceDispatcher(Dispatcher):
         if cron:
             request_proto.cron = cron
 
-        try:
-            self.gateway_stub.RegisterWorkflow(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC RegisterWorkflow call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC RegisterWorkflow call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.RegisterWorkflow(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC RegisterWorkflow call successful")
 
+    @with_grpc_retry
     def send_workflow_run(self, workflow_run_request: WorkflowRunRequest) -> UUID:
         request_proto = requests_pb2.SendWorkflowRunRequest()
         request_proto.workflow_run_id = str(workflow_run_request.id)
@@ -753,63 +686,44 @@ class PerformanceDispatcher(Dispatcher):
         if workflow_run_request.idempotency_key:
             request_proto.idempotency_key = workflow_run_request.idempotency_key
 
-        try:
-            self.gateway_stub.SendWorkflowRun(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC SendWorkflowRun call successful")
-            return workflow_run_request.id
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC SendWorkflowRun call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.SendWorkflowRun(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC SendWorkflowRun call successful")
+        return workflow_run_request.id
 
+    @with_grpc_retry
     def advance_workflow_run(self, workflow_run_id: UUID):
         request_proto = requests_pb2.AdvanceWorkflowRunRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
 
-        try:
-            self.gateway_stub.AdvanceWorkflowRun(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC AdvanceWorkflowRun call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC AdvanceWorkflowRun call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.AdvanceWorkflowRun(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC AdvanceWorkflowRun call successful")
 
+    @with_grpc_retry
     def get_workflow_run_args(self, workflow_run_id: UUID) -> dict:
         request_proto = requests_pb2.GetWorkflowRunArgsRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
 
-        try:
-            response = self.gateway_stub.GetWorkflowRunArgs(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC GetWorkflowRunArgs call successful")
+        response = self.gateway_stub.GetWorkflowRunArgs(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC GetWorkflowRunArgs call successful")
 
-            # Convert protobuf Struct to dict
-            return dict(response.args)
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC GetWorkflowRunArgs call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        # Convert protobuf Struct to dict
+        return dict(response.args)
 
+    @with_grpc_retry
     def get_durable_run_tasks(self, durable_id: UUID) -> list[TaskRun]:
         request_proto = requests_pb2.GetDurableTaskRunsRequest()
         request_proto.durable_id = str(durable_id)
 
-        try:
-            response = self.gateway_stub.GetDurableTaskRuns(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug(f"gRPC call successful, response: {response}")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        response = self.gateway_stub.GetDurableTaskRuns(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug(f"gRPC call successful, response: {response}")
 
         # This helps handle immediate `wait()` calls when task is sent, but not yet processed by performance server.
         # TODO: Handle this better!
@@ -869,39 +783,30 @@ class PerformanceDispatcher(Dispatcher):
 
         return python_task_runs
 
+    @with_grpc_retry
     def get_workflow_durable_runs(self, workflow_run_id: UUID) -> list[UUID]:
         request_proto = requests_pb2.GetWorkflowDurableRunsRequest()
         request_proto.workflow_run_id = str(workflow_run_id)
 
-        try:
-            response = self.gateway_stub.GetWorkflowDurableRuns(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("gRPC GetWorkflowDurableRuns call successful")
+        response = self.gateway_stub.GetWorkflowDurableRuns(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("gRPC GetWorkflowDurableRuns call successful")
 
-            # Convert string UUIDs to UUID objects
-            return [UUID(durable_id) for durable_id in response.durable_ids]
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC GetWorkflowDurableRuns call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        # Convert string UUIDs to UUID objects
+        return [UUID(durable_id) for durable_id in response.durable_ids]
 
+    @with_grpc_retry
     def try_to_cancel_durable_run(self, durable_id: UUID):
         request_proto = requests_pb2.TryToCancelDurableRunRequest()
         request_proto.durable_id = str(durable_id)
 
-        try:
-            self.gateway_stub.TryToCancelDurableRun(
-                request_proto, metadata=self.api_key_metadata
-            )
-            self.logger.debug("TryToCancelDurableRun gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(
-                f"gRPC TryToCancelDurableRun call failed: {e.code()} - {e.details()}"
-            )
-            raise
+        self.gateway_stub.TryToCancelDurableRun(
+            request_proto, metadata=self.api_key_metadata
+        )
+        self.logger.debug("TryToCancelDurableRun gRPC call successful")
 
+    @with_grpc_retry
     def update_executor_queues(self, executor_id: UUID, queues: list[str]):
         request_proto = requests_pb2.UpdateExecutorQueuesRequest()
         request_proto.executor_id = str(executor_id)
@@ -909,76 +814,58 @@ class PerformanceDispatcher(Dispatcher):
             queues
         )  # Use extend for repeated field instead of direct assignment
 
-        try:
-            self.gateway_stub.UpdateExecutorQueues(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.UpdateExecutorQueues(
+            request_proto, metadata=self.api_key_metadata
+        )
 
+    @with_grpc_retry
     def save_result(self, task_id: UUID, result: str):
         request_proto = requests_pb2.SaveTaskRunResultRequest()
         request_proto.task_run_id = str(task_id)
         request_proto.result = result
 
-        try:
-            self.gateway_stub.SaveTaskResult(
-                request_proto, metadata=self.api_key_metadata
-            )
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.SaveTaskResult(
+            request_proto, metadata=self.api_key_metadata
+        )
 
+    @with_grpc_retry
     def get_result(self, task_id: UUID) -> dict:
         request_proto = requests_pb2.GetTaskRunResultRequest()
         request_proto.task_run_id = str(task_id)
 
-        try:
-            response = self.gateway_stub.GetTaskResult(
-                request_proto, metadata=self.api_key_metadata
-            )
-            return json.loads(response.result)
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        response = self.gateway_stub.GetTaskResult(
+            request_proto, metadata=self.api_key_metadata
+        )
+        return json.loads(response.result)
 
+    @with_grpc_retry
     def set_log_link(self, task_id: UUID, log_link: str):
         request_proto = requests_pb2.SetLogLinkRequest()
         request_proto.task_run_id = str(task_id)
         request_proto.log_link = log_link
 
-        try:
-            self.gateway_stub.SetLogLink(request_proto, metadata=self.api_key_metadata)
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.SetLogLink(request_proto, metadata=self.api_key_metadata)
 
+    @with_grpc_retry
     def write_s3_logs(self, task_id: UUID, logs: str):
         request_proto = requests_pb2.WriteLogsRequest()
         request_proto.task_run_id = str(task_id)
         request_proto.logs = logs
 
-        try:
-            self.gateway_stub.WriteLogs(request_proto, metadata=self.api_key_metadata)
-            self.logger.debug("WriteLogs gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC WriteLogs call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.WriteLogs(request_proto, metadata=self.api_key_metadata)
+        self.logger.debug("WriteLogs gRPC call successful")
 
+    @with_grpc_retry
     def kv_set(self, key: str, value: str) -> None:
         request_proto = requests_pb2.KVStoreSetRequest()
         request_proto.key = key
         request_proto.value = value
         request_proto.overwrite = True  # Always overwrite for now
 
-        try:
-            self.gateway_stub.KVStoreSet(request_proto, metadata=self.api_key_metadata)
-            self.logger.debug("KVStoreSet gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC KVStoreSet call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.KVStoreSet(request_proto, metadata=self.api_key_metadata)
+        self.logger.debug("KVStoreSet gRPC call successful")
 
+    @with_grpc_retry
     def kv_get(self, key: str) -> str | None:
         request_proto = requests_pb2.KVStoreGetRequest()
         request_proto.key = key
@@ -992,16 +879,12 @@ class PerformanceDispatcher(Dispatcher):
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.NOT_FOUND:
                 return None
-            self.logger.error(f"gRPC KVStoreGet call failed: {e.code()} - {e.details()}")
             raise
 
+    @with_grpc_retry
     def kv_delete(self, key: str) -> None:
         request_proto = requests_pb2.KVStoreDeleteRequest()
         request_proto.key = key
 
-        try:
-            self.gateway_stub.KVStoreDelete(request_proto, metadata=self.api_key_metadata)
-            self.logger.debug("KVStoreDelete gRPC call successful")
-        except grpc.RpcError as e:
-            self.logger.error(f"gRPC KVStoreDelete call failed: {e.code()} - {e.details()}")
-            raise
+        self.gateway_stub.KVStoreDelete(request_proto, metadata=self.api_key_metadata)
+        self.logger.debug("KVStoreDelete gRPC call successful")
