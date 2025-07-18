@@ -96,3 +96,11 @@ def onboard_user():
         >> check_credit.with_config(queue="credit-queue")
         >> train_credit_machine_learning_model.with_config(queue="credit-queue")
     )
+
+
+@hy.task
+def run_onboard_user_workflows(num: int):
+    for _ in range(num):
+        onboard_user.send(
+            OnboardUserWorkflowArg(user_email="email@website.com", sign_up_tier="PRO")
+        )
