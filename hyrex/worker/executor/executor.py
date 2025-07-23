@@ -35,7 +35,11 @@ from hyrex.worker.messages.root_messages import (
     TaskRegistrationComplete,
 )
 from hyrex.worker.s3_logs import write_task_logs_to_s3, write_task_logs_with_dispatcher
-from hyrex.worker.utils import glob_pattern_to_postgres_pattern, is_glob_pattern, is_process_alive
+from hyrex.worker.utils import (
+    glob_pattern_to_postgres_pattern,
+    is_glob_pattern,
+    is_process_alive,
+)
 
 
 def generate_executor_name():

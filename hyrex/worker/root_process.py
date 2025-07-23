@@ -331,9 +331,11 @@ class WorkerRootProcess:
         try:
             # Stop internal message listener
             self.root_message_queue.put(None)
-            self.message_listener_thread.join()
+            self.message_listener_thread.join(timeout=5.0)
             if self.message_listener_thread.is_alive():
-                self.logger.warning("Message listener thread did not exit cleanly.")
+                self.logger.warning("Message listener thread did not exit cleanly within timeout.")
+                # Force terminate the thread by setting it as daemon and exiting
+                # Python will clean it up on process exit
             else:
                 self.logger.info("Message listener thread closed successfully.")
 

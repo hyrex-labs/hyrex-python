@@ -171,7 +171,7 @@ message SendWorkflowRunRequest {
   string workflow_run_id = 1;
   string workflow_name = 2;
   google.protobuf.Struct args = 3;
-  string queue = 4;
+  optional string queue = 4;
   optional int32 timeout_seconds = 5;
   optional string idempotency_key = 6;
 }
