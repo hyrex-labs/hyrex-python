@@ -190,6 +190,20 @@ class WorkerExecutor(Process):
             SetExecutorTaskMessage(executor_id=self.executor_id, task_id=task_id),
         )
 
+    def advance_workflow_if_needed(self, task: DequeuedTask):
+        """Advance workflow if this task is part of one"""
+        if task.workflow_run_id:
+            self.logger.info(f"Advancing workflow {task.workflow_run_id}...")
+            try:
+                self.dispatcher.advance_workflow_run(
+                    workflow_run_id=task.workflow_run_id
+                )
+            except Exception as workflow_error:
+                self.logger.error(f"Error advancing workflow: {workflow_error}")
+                self.logger.error(
+                    f"Workflow advance error traceback:\n%s", traceback.format_exc()
+                )
+
     def process(self, queue: HyrexQueue) -> bool:
         """Returns True if a task is found and attempted, False otherwise"""
         task: DequeuedTask | None = self.fetch_task(
@@ -243,11 +257,7 @@ class WorkerExecutor(Process):
             )
 
             # If this task is part of a workflow, advance it
-            if task.workflow_run_id:
-                self.logger.info(f"Advancing workflow {task.workflow_run_id}...")
-                self.dispatcher.advance_workflow_run(
-                    workflow_run_id=task.workflow_run_id
-                )
+            self.advance_workflow_if_needed(task)
 
         except Exception as e:
             self.logger.error(f"Executor {self.name}: Exception hit during processing.")
@@ -257,6 +267,10 @@ class WorkerExecutor(Process):
             if "task" in locals():
                 self.logger.error(f"Marking task {task.id} as failed.")
                 self.mark_task_failed(task.id)
+
+                # Advance workflow even after task failure
+                self.advance_workflow_if_needed(task)
+
                 if task.attempt_number < task.max_retries:
                     self.logger.info("Submitting task for retry...")
                     try:
