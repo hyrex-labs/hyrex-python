@@ -100,6 +100,11 @@ class GatewayServiceStub(object):
                 request_serializer=requests__pb2.TryToCancelDurableRunRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.TryToCancelMultipleDurableRuns = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/TryToCancelMultipleDurableRuns',
+                request_serializer=requests__pb2.TryToCancelMultipleDurableRunsRequest.SerializeToString,
+                response_deserializer=requests__pb2.TryToCancelMultipleDurableRunsResponse.FromString,
+                _registered_method=True)
         self.GetTaskRunsUpForCancel = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/GetTaskRunsUpForCancel',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -129,6 +134,11 @@ class GatewayServiceStub(object):
                 '/hyrex.performanceserver.GatewayService/MarkRunningTasksLost',
                 request_serializer=requests__pb2.MarkRunningTasksLostRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.GetTaskTree = channel.unary_unary(
+                '/hyrex.performanceserver.GatewayService/GetTaskTree',
+                request_serializer=requests__pb2.GetTaskTreeRequest.SerializeToString,
+                response_deserializer=requests__pb2.GetTaskTreeResponse.FromString,
                 _registered_method=True)
         self.RegisterTaskDef = channel.unary_unary(
                 '/hyrex.performanceserver.GatewayService/RegisterTaskDef',
@@ -290,6 +300,12 @@ class GatewayServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def TryToCancelMultipleDurableRuns(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetTaskRunsUpForCancel(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -321,6 +337,12 @@ class GatewayServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def MarkRunningTasksLost(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTaskTree(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -485,6 +507,11 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     request_deserializer=requests__pb2.TryToCancelDurableRunRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
+            'TryToCancelMultipleDurableRuns': grpc.unary_unary_rpc_method_handler(
+                    servicer.TryToCancelMultipleDurableRuns,
+                    request_deserializer=requests__pb2.TryToCancelMultipleDurableRunsRequest.FromString,
+                    response_serializer=requests__pb2.TryToCancelMultipleDurableRunsResponse.SerializeToString,
+            ),
             'GetTaskRunsUpForCancel': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTaskRunsUpForCancel,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
@@ -514,6 +541,11 @@ def add_GatewayServiceServicer_to_server(servicer, server):
                     servicer.MarkRunningTasksLost,
                     request_deserializer=requests__pb2.MarkRunningTasksLostRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetTaskTree': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTaskTree,
+                    request_deserializer=requests__pb2.GetTaskTreeRequest.FromString,
+                    response_serializer=requests__pb2.GetTaskTreeResponse.SerializeToString,
             ),
             'RegisterTaskDef': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTaskDef,
@@ -953,6 +985,33 @@ class GatewayService(object):
             _registered_method=True)
 
     @staticmethod
+    def TryToCancelMultipleDurableRuns(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/TryToCancelMultipleDurableRuns',
+            requests__pb2.TryToCancelMultipleDurableRunsRequest.SerializeToString,
+            requests__pb2.TryToCancelMultipleDurableRunsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def GetTaskRunsUpForCancel(request,
             target,
             options=(),
@@ -1104,6 +1163,33 @@ class GatewayService(object):
             '/hyrex.performanceserver.GatewayService/MarkRunningTasksLost',
             requests__pb2.MarkRunningTasksLostRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTaskTree(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyrex.performanceserver.GatewayService/GetTaskTree',
+            requests__pb2.GetTaskTreeRequest.SerializeToString,
+            requests__pb2.GetTaskTreeResponse.FromString,
             options,
             channel_credentials,
             insecure,

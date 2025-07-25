@@ -196,6 +196,22 @@ message GetWorkflowDurableRunsResponse {
   repeated string durable_ids = 1;
 }
 
+message GetTaskTreeRequest {
+  string root_id = 1;
+}
+
+message GetTaskTreeResponse {
+  repeated string task_run_ids = 1;
+}
+
+message TryToCancelMultipleDurableRunsRequest {
+  repeated string durable_ids = 1;
+}
+
+message TryToCancelMultipleDurableRunsResponse {
+  repeated string failed_cancellations = 1;
+}
+
 message TryToCancelDurableRunRequest {
   string durable_id = 1;
 }
