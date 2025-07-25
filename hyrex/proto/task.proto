@@ -10,7 +10,7 @@ import "google/protobuf/struct.proto";
 // Top-level Priority enum
 enum Priority {
   P_UNSPECIFIED = 0; // Will be treated as default (P5)
-  P1 = 1;  // Lowest priority
+  P1 = 1;  // Highest priority
   P2 = 2;
   P3 = 3;
   P4 = 4;
@@ -19,7 +19,7 @@ enum Priority {
   P7 = 7;
   P8 = 8;
   P9 = 9;
-  P10 = 10; // Highest priority
+  P10 = 10; // Lowest priority
 }
 
 

@@ -25,12 +25,14 @@ service GatewayService {
   rpc RetryTaskRun(RetryTaskRunRequest) returns (google.protobuf.Empty);
   rpc TaskRunHeartbeat(TaskRunHeartbeatRequest) returns (google.protobuf.Empty);
   rpc TryToCancelDurableRun(TryToCancelDurableRunRequest) returns (google.protobuf.Empty);
+  rpc TryToCancelMultipleDurableRuns(TryToCancelMultipleDurableRunsRequest) returns (TryToCancelMultipleDurableRunsResponse);
   rpc GetTaskRunsUpForCancel(google.protobuf.Empty) returns (GetTaskRunsUpForCancelResponse);
   rpc MarkCanceled(MarkCanceledRequest) returns (google.protobuf.Empty);
   rpc KVStoreSet(KVStoreSetRequest) returns (google.protobuf.Empty);
   rpc KVStoreGet(KVStoreGetRequest) returns (KVStoreGetResponse);
   rpc KVStoreDelete(KVStoreDeleteRequest) returns (google.protobuf.Empty);
   rpc MarkRunningTasksLost(MarkRunningTasksLostRequest) returns (google.protobuf.Empty);
+  rpc GetTaskTree(GetTaskTreeRequest) returns (GetTaskTreeResponse);
 
   // ---- Postgres requests ----
   rpc RegisterTaskDef(RegisterTaskDefRequest) returns (google.protobuf.Empty);
@@ -48,4 +50,4 @@ service GatewayService {
   rpc GetWorkflowRunArgs(GetWorkflowRunArgsRequest) returns (GetWorkflowRunArgsResponse);
   rpc AdvanceWorkflowRun(AdvanceWorkflowRunRequest) returns (google.protobuf.Empty);
   rpc GetWorkflowDurableRuns(GetWorkflowDurableRunsRequest) returns (GetWorkflowDurableRunsResponse);
-  }
+}
