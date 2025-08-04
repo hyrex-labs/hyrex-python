@@ -138,27 +138,11 @@ class WorkerExecutor(Process):
         self.app_info = app_instance.app_info
 
     async def process_item(self, task: DequeuedTask):
-        task_wrapper = self.registry.get_task(task.task_name)
-
-        # Write logs via performance server
-        if isinstance(self.dispatcher, PerformanceDispatcher):
-            async with write_task_logs_with_dispatcher(
-                task_id=task.id, dispatcher=self.dispatcher
-            ):
-                result = await task_wrapper.async_call(**task.args)
-        # Write logs directly to S3
-        elif self.logs_s3_bucket:
-            try:
-                async with write_task_logs_to_s3(
-                    task.id, self.logs_s3_bucket
-                ) as s3_log_link:
-                    result = await task_wrapper.async_call(**task.args)
-            finally:
-                self.dispatcher.set_log_link(task.id, s3_log_link)
-        # No logs written to S3
-        else:
-            result = await task_wrapper.async_call(**task.args)
-
+        try:
+            task_wrapper = self.registry.get_task(task.task_name)
+        except KeyError:
+            raise KeyError(f"Task '{task.task_name}' not found in Hyrex registry")
+        result = await task_wrapper.async_call(**task.args)
         return result
 
     def fetch_task(self, queue: str, concurrency_limit: int = 0) -> DequeuedTask | None:
@@ -204,14 +188,8 @@ class WorkerExecutor(Process):
                     f"Workflow advance error traceback:\n%s", traceback.format_exc()
                 )
 
-    def process(self, queue: HyrexQueue) -> bool:
-        """Returns True if a task is found and attempted, False otherwise"""
-        task: DequeuedTask | None = self.fetch_task(
-            queue=queue.name, concurrency_limit=queue.concurrency_limit
-        )
-        if not task:
-            return False
-
+    async def process_task_with_logging(self, task: DequeuedTask):
+        """Process a task with full logging context including error handling"""
         try:
             set_hyrex_context(
                 HyrexContext(
@@ -239,7 +217,7 @@ class WorkerExecutor(Process):
             if task.timeout_seconds:
                 signal.alarm(task.timeout_seconds)
             # Run task
-            result = asyncio.run(self.process_item(task))
+            result = await self.process_item(task)
 
             if result is not None:
                 if isinstance(result, BaseModel):
@@ -264,54 +242,89 @@ class WorkerExecutor(Process):
             self.logger.error(e)
             self.logger.error("Traceback:\n%s", traceback.format_exc())
 
-            if "task" in locals():
-                self.logger.error(f"Marking task {task.id} as failed.")
-                self.mark_task_failed(task.id)
+            self.logger.error(f"Marking task {task.id} as failed.")
+            self.mark_task_failed(task.id)
 
-                # Advance workflow even after task failure
-                self.advance_workflow_if_needed(task)
+            # Advance workflow even after task failure
+            self.advance_workflow_if_needed(task)
 
-                if task.attempt_number < task.max_retries:
-                    self.logger.info("Submitting task for retry...")
-                    try:
-                        backoff_seconds = self.registry.get_retry_backoff(
-                            task_name=task.task_name, attempt_number=task.attempt_number
-                        )
-                        self.retry_task(
-                            task_id=task.id, backoff_seconds=backoff_seconds
-                        )
-                    except Exception as retry_error:
-                        self.logger.error(f"Error during retry process: {retry_error}")
-                        self.logger.error(
-                            f"Retry error traceback:\n%s", traceback.format_exc()
-                        )
-
-                on_error = self.registry.get_on_error_handler(task.task_name)
-                if on_error:
-                    self.logger.info(
-                        f"Running on_error handler for task {task.task_name}"
+            if task.attempt_number < task.max_retries:
+                self.logger.info("Submitting task for retry...")
+                try:
+                    backoff_seconds = self.registry.get_retry_backoff(
+                        task_name=task.task_name, attempt_number=task.attempt_number
                     )
-                    try:
-                        sig = signature(on_error)
-                        if len(sig.parameters) == 0:
-                            on_error()
-                        else:
-                            on_error(e)
+                    self.retry_task(
+                        task_id=task.id, backoff_seconds=backoff_seconds
+                    )
+                except Exception as retry_error:
+                    self.logger.error(f"Error during retry process: {retry_error}")
+                    self.logger.error(
+                        f"Retry error traceback:\n%s", traceback.format_exc()
+                    )
 
-                    except Exception as on_error_exception:
-                        self.logger.error(
-                            "Exception hit when running on_error handler."
-                        )
-                        self.logger.error(on_error_exception)
-                        self.logger.error("Traceback:\n%s", traceback.format_exc())
+            on_error = self.registry.get_on_error_handler(task.task_name)
+            if on_error:
+                self.logger.info(
+                    f"Running on_error handler for task {task.task_name}"
+                )
+                try:
+                    sig = signature(on_error)
+                    if len(sig.parameters) == 0:
+                        on_error()
+                    else:
+                        on_error(e)
 
-            self._stop_event.wait(0.5)  # Add delay after error
-            return True
+                except Exception as on_error_exception:
+                    self.logger.error(
+                        "Exception hit when running on_error handler."
+                    )
+                    self.logger.error(on_error_exception)
+                    self.logger.error("Traceback:\n%s", traceback.format_exc())
+
         finally:
             self.update_current_task(None)
             signal.alarm(0)  # Clear alarm
             clear_hyrex_context()
 
+    def process(self, queue: HyrexQueue) -> bool:
+        """Returns True if a task is found and attempted, False otherwise"""
+        task: DequeuedTask | None = self.fetch_task(
+            queue=queue.name, concurrency_limit=queue.concurrency_limit
+        )
+        if not task:
+            return False
+
+        try:
+            # Run task with logging context based on dispatcher type
+            if isinstance(self.dispatcher, PerformanceDispatcher):
+                # Write logs via performance server
+                async def run_with_logs():
+                    async with write_task_logs_with_dispatcher(
+                        task_id=task.id, dispatcher=self.dispatcher
+                    ):
+                        await self.process_task_with_logging(task)
+                asyncio.run(run_with_logs())
+            elif self.logs_s3_bucket:
+                # Write logs directly to S3
+                async def run_with_logs():
+                    s3_log_link = None
+                    try:
+                        async with write_task_logs_to_s3(
+                            task.id, self.logs_s3_bucket
+                        ) as s3_log_link:
+                            await self.process_task_with_logging(task)
+                    finally:
+                        if s3_log_link:
+                            self.dispatcher.set_log_link(task.id, s3_log_link)
+                asyncio.run(run_with_logs())
+            else:
+                # No logs written to S3
+                asyncio.run(self.process_task_with_logging(task))
+
+            self._stop_event.wait(0.5)  # Add delay after error
+            return True
+        finally:
             # 1/25 chance to publish stats
             if random.random() < 0.04:
                 stats = {

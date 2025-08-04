@@ -162,6 +162,14 @@ def test_task():
     """A simple test task that sleeps for a random duration."""
     sleep_duration = random.uniform(0, 2)
     time.sleep(sleep_duration)
+
+
+@hy.task
+def send_n_test_tasks(n: int):
+    """Enqueue n test_task instances."""
+    for i in range(n):
+        test_task.send()
+    return f"Enqueued {n} test tasks"
 '''
     
     tasks_path.write_text(tasks_content)
