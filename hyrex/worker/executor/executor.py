@@ -138,7 +138,10 @@ class WorkerExecutor(Process):
         self.app_info = app_instance.app_info
 
     async def process_item(self, task: DequeuedTask):
-        task_wrapper = self.registry.get_task(task.task_name)
+        try:
+            task_wrapper = self.registry.get_task(task.task_name)
+        except KeyError:
+            raise KeyError(f"Task '{task.task_name}' not found in Hyrex registry")
         result = await task_wrapper.async_call(**task.args)
         return result
 
