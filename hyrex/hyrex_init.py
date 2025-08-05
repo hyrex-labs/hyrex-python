@@ -201,13 +201,6 @@ def load_data():
 def simple_etl_workflow():
     """A simple ETL workflow that chains extract, transform, and load tasks."""
     extract_data >> transform_data >> load_data
-
-
-@hy.task
-def run_etl_workflow():
-    """Helper task to trigger the ETL workflow."""
-    simple_etl_workflow.send()
-    return "ETL workflow started"
 '''
     
     tasks_path.write_text(tasks_content)
