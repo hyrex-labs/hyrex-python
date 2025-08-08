@@ -1,5 +1,4 @@
 import atexit
-import logging
 import signal
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -11,6 +10,7 @@ from pydantic import BaseModel
 from hyrex import constants
 from hyrex.configs import TaskConfig
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.logging import get_logger, LogFeature
 from hyrex.schemas import (
     CronJob,
     CronJobRun,
@@ -24,7 +24,7 @@ from hyrex.schemas import (
 
 
 class Dispatcher(ABC):
-    logger = logging.getLogger(__name__)
+    logger = get_logger("dispatcher", LogFeature.DISPATCHER)
 
     def _signal_handler(self, signum, frame):
         signame = signal.Signals(signum).name

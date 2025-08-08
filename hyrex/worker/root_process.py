@@ -1,4 +1,3 @@
-import logging
 import os
 import signal
 import socket
@@ -15,7 +14,7 @@ from hyrex.env_vars import EnvVars
 from hyrex.worker.admin import WorkerAdmin
 from hyrex.worker.cron_scheduler import WorkerCronScheduler
 from hyrex.worker.executor.executor import WorkerExecutor
-from hyrex.worker.logging import LogLevel, init_logging
+from hyrex.logging import get_logger, LogFeature
 from hyrex.worker.messages.admin_messages import (
     ExecutorHeartbeatMessage,
     ExecutorStoppedMessage,
@@ -41,14 +40,13 @@ def generate_worker_name():
 class WorkerRootProcess:
     def __init__(
         self,
-        log_level: LogLevel,
+        log_level: str,
         app_module_path: str,
         queue_pattern: str = None,
         num_processes: int = constants.DEFAULT_EXECUTOR_PROCESSES,
     ):
         self.log_level = log_level
-        init_logging(log_level=log_level)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger("root_process", LogFeature.PROCESS_MANAGEMENT, level=log_level)
 
         self.app_module_path = app_module_path
         self.queue_pattern = queue_pattern
@@ -295,7 +293,7 @@ class WorkerRootProcess:
                     executor_process.kill()
                     executor_process.join(timeout=1.0)
         except Exception as e:
-            print(f"Error during executor shutdown: {e}")
+            self.logger.error(f"Error during executor shutdown: {e}")
 
         # Hyrex Cloud handles cron scheduling
         if not self.running_on_platform:
@@ -312,7 +310,7 @@ class WorkerRootProcess:
                     self.cron_scheduler_process.kill()
                     self.cron_scheduler_process.join(timeout=1.0)
             except Exception as e:
-                print(f"Error during cron scheduler shutdown: {e}")
+                self.logger.error(f"Error during cron scheduler shutdown: {e}")
 
         try:
             # Stop admin
@@ -326,7 +324,7 @@ class WorkerRootProcess:
                 self.admin_process.kill()
                 self.admin_process.join(timeout=1.0)
         except Exception as e:
-            print(f"Error during admin shutdown: {e}")
+            self.logger.error(f"Error during admin shutdown: {e}")
 
         try:
             # Stop internal message listener
@@ -340,6 +338,6 @@ class WorkerRootProcess:
                 self.logger.info("Message listener thread closed successfully.")
 
         except Exception as e:
-            print(f"Error during main process shutdown: {e}")
+            self.logger.error(f"Error during main process shutdown: {e}")
 
         self.logger.info("Worker root process completed.")

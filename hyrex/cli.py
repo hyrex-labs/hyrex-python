@@ -22,7 +22,6 @@ import typer
 from hyrex import constants
 from hyrex.env_vars import EnvVars
 from hyrex.init_db import init_postgres_db
-from hyrex.worker.logging import LogLevel
 from hyrex.worker.root_process import WorkerRootProcess
 
 
@@ -134,14 +133,13 @@ def run_worker(
     num_processes: int = typer.Option(
         8, "--num-processes", "-p", help="Number of executor processes to run"
     ),
-    log_level: LogLevel = typer.Option(
+    log_level: str = typer.Option(
         "INFO",
         "--log-level",
         "-l",
-        help="Set the log level",
+        help="Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
         case_sensitive=False,
         show_default=True,
-        show_choices=True,
     ),
     profiling: bool = False,
 ):

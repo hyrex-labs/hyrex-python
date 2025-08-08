@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from queue import Empty, Queue
 from typing import Type
 from uuid import UUID
-import logging
 from functools import wraps
 
 import grpc
@@ -28,6 +27,7 @@ from hyrex.configs import TaskConfig
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.logging import get_logger, LogFeature
 from hyrex.proto import gateway_pb2_grpc, requests_pb2, task_pb2
 from hyrex.schemas import (
     CronJob,
@@ -46,7 +46,7 @@ EPOCH_ZERO = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 def _log_retry_attempt(retry_state: RetryCallState):
     """Log retry attempts with details about the error and wait time."""
-    logger = logging.getLogger(__name__)
+    logger = get_logger("performance_dispatcher", LogFeature.PLATFORM)
     exception = retry_state.outcome.exception()
     if isinstance(exception, grpc.RpcError):
         logger.warning(
