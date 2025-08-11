@@ -72,6 +72,9 @@ class WorkerAdmin(Process):
                 self.dispatcher.task_heartbeat(message.task_ids, message.timestamp)
 
     def run(self):
+        # Set log level in environment for any child components
+        os.environ["HYREX_LOG_LEVEL"] = self.log_level
+        
         # Initialize logger in child process (multiprocessing requirement)
         self.logger = get_logger("admin", LogFeature.PROCESS_MANAGEMENT, level=self.log_level)
         

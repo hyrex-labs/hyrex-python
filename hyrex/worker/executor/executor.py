@@ -429,6 +429,9 @@ class WorkerExecutor(Process):
         self.dispatcher.register_app(self.app_info.model_dump())
 
     def run(self):
+        # Set log level in environment for TaskWrapper and other components
+        os.environ["HYREX_LOG_LEVEL"] = self.log_level
+        
         # Initialize logger in child process (multiprocessing requirement)
         self.logger = get_logger("executor", LogFeature.EXECUTOR, level=self.log_level)
         

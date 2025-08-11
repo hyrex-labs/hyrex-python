@@ -27,7 +27,6 @@ class LogFeature(StrEnum):
 
 
 class Color(StrEnum):
-    BLACK = "30"
     RED = "31"
     GREEN = "32"
     YELLOW = "33"
@@ -35,7 +34,6 @@ class Color(StrEnum):
     MAGENTA = "35"
     CYAN = "36"
     WHITE = "37"
-    BRIGHT_BLACK = "90"
     BRIGHT_RED = "91"
     BRIGHT_GREEN = "92"
     BRIGHT_YELLOW = "93"
@@ -71,7 +69,7 @@ class HyrexLogFormatter(logging.Formatter):
         
         # Map log levels to colors
         self.level_colors = {
-            logging.DEBUG: Color.BRIGHT_BLACK,
+            logging.DEBUG: Color.BRIGHT_BLUE,
             logging.INFO: Color.CYAN,
             logging.WARNING: Color.YELLOW,
             logging.ERROR: Color.RED,
@@ -170,6 +168,7 @@ class HyrexLogger:
         # Add our custom handler
         handler = logging.StreamHandler()
         handler.setFormatter(HyrexLogFormatter(enabled_features=self.enabled_features))
+        handler.setLevel(getattr(logging, level.upper()))  # Set handler level too
         self.logger.addHandler(handler)
         
         # Prevent propagation to avoid duplicate logs

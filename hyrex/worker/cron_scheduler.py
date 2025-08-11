@@ -68,6 +68,9 @@ class WorkerCronScheduler(Process):
         return cron_job_runs
 
     def run(self):
+        # Set log level in environment for any child components
+        os.environ["HYREX_LOG_LEVEL"] = self.log_level
+        
         # Initialize logger in child process (multiprocessing requirement)
         self.logger = get_logger("cron_scheduler", LogFeature.CRON_SCHEDULING, level=self.log_level)
         
