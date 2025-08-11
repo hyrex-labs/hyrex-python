@@ -1,4 +1,3 @@
-import logging
 import os
 import signal
 from datetime import datetime, timezone
@@ -8,7 +7,7 @@ from croniter import croniter
 
 from hyrex.dispatcher import CronJob, get_dispatcher
 from hyrex.dispatcher.dispatcher import CronJobRun
-from hyrex.worker.logging import LogLevel, init_logging
+from hyrex.logging import get_logger, LogFeature
 from hyrex.worker.utils import is_process_alive
 
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 10
@@ -16,9 +15,8 @@ LOOP_RATE_SECONDS = 30
 
 
 class WorkerCronScheduler(Process):
-    def __init__(self, log_level: LogLevel, worker_name: str):
+    def __init__(self, log_level: str, worker_name: str):
         super().__init__()
-        self.logger = logging.getLogger(__name__)
         self.log_level = log_level
         self.worker_name = worker_name
 
@@ -70,8 +68,12 @@ class WorkerCronScheduler(Process):
         return cron_job_runs
 
     def run(self):
-        init_logging(self.log_level)
-
+        # Set log level in environment for any child components
+        os.environ["HYREX_LOG_LEVEL"] = self.log_level
+        
+        # Initialize logger in child process (multiprocessing requirement)
+        self.logger = get_logger("cron_scheduler", LogFeature.CRON_SCHEDULING, level=self.log_level)
+        
         self.logger.info("Initializing cron scheduler.")
         self.dispatcher = get_dispatcher()
 

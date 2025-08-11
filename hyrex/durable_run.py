@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Any, Optional
 from uuid import UUID
@@ -7,6 +6,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.dispatcher_provider import get_dispatcher
+from hyrex.logging import get_logger, LogFeature
 from hyrex.schemas import TaskRun, TaskStatus
 
 
@@ -16,8 +16,8 @@ class DurableTaskRun(BaseModel):
     task_runs: list[TaskRun] = []
 
     _dispatcher: Dispatcher = PrivateAttr(default_factory=get_dispatcher)
-    _logger: logging.Logger = PrivateAttr(
-        default_factory=lambda: logging.getLogger(__name__)
+    _logger = PrivateAttr(
+        default_factory=lambda: get_logger("durable_run", LogFeature.TASK_PROCESSING)
     )
 
     def wait(self, timeout: float = 30.0, interval: float = 0.5) -> bool:

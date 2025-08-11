@@ -1,5 +1,4 @@
 import inspect
-import logging
 import os
 from typing import Callable, overload
 
@@ -8,6 +7,7 @@ from hyrex.configs import ConfigPhase, TaskConfig, WorkflowConfig
 from hyrex.dispatcher import Dispatcher, get_dispatcher
 from hyrex.env_vars import EnvVars
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.logging import get_logger, LogFeature
 from hyrex.task_wrapper import P, R, TaskWrapper
 from hyrex.workflow.workflow import HyrexWorkflow
 from hyrex.workflow.workflow_builder import WorkflowBuilder
@@ -20,7 +20,7 @@ class HyrexRegistry:
         max_retries: int = 0,
         priority: int = constants.DEFAULT_PRIORITY,
     ):
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger("registry", LogFeature.REGISTRY)
 
         if os.getenv(EnvVars.WORKER_PROCESS):
             self.is_worker_process = True

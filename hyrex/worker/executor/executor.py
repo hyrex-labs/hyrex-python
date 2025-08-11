@@ -1,7 +1,6 @@
 import asyncio
 import importlib
 import json
-import logging
 import os
 import random
 import signal
@@ -29,7 +28,7 @@ from hyrex.hyrex_queue import HyrexQueue
 from hyrex.hyrex_registry import HyrexRegistry
 from hyrex.schemas import QueuePattern
 from hyrex.worker.executor.time_series_averager import TimeSeriesAverager
-from hyrex.worker.logging import LogLevel, init_logging
+from hyrex.logging import get_logger, LogFeature
 from hyrex.worker.messages.root_messages import (
     SetExecutorTaskMessage,
     TaskRegistrationComplete,
@@ -58,7 +57,7 @@ class WorkerExecutor(Process):
     def __init__(
         self,
         root_message_queue: Queue,
-        log_level: LogLevel,
+        log_level: str,
         app_module_path: str,
         executor_id: UUID,
         queue: str,
@@ -67,7 +66,6 @@ class WorkerExecutor(Process):
         register_app: bool = False,
     ):
         super().__init__()
-        self.logger = logging.getLogger(__name__)
         self.log_level = log_level
 
         self.root_message_queue = root_message_queue
@@ -177,14 +175,25 @@ class WorkerExecutor(Process):
     def advance_workflow_if_needed(self, task: DequeuedTask):
         """Advance workflow if this task is part of one"""
         if task.workflow_run_id:
-            self.logger.info(f"Advancing workflow {task.workflow_run_id}...")
+            self.logger.debug(
+                "Advancing workflow",
+                feature=LogFeature.WORKFLOW,
+                workflow_run_id=str(task.workflow_run_id),
+                task_id=str(task.id)
+            )
             try:
                 self.dispatcher.advance_workflow_run(
                     workflow_run_id=task.workflow_run_id
                 )
             except Exception as workflow_error:
-                self.logger.error(f"Error advancing workflow: {workflow_error}")
                 self.logger.error(
+                    "Failed to advance workflow",
+                    feature=LogFeature.WORKFLOW,
+                    workflow_run_id=str(task.workflow_run_id),
+                    task_id=str(task.id),
+                    error=str(workflow_error)
+                )
+                self.logger.debug(
                     f"Workflow advance error traceback:\n%s", traceback.format_exc()
                 )
 
@@ -231,28 +240,48 @@ class WorkerExecutor(Process):
             self.mark_task_success(task.id, result)
 
             self.logger.info(
-                f"Executor {self.name}: Completed processing item {task.id}"
+                "Task completed successfully",
+                feature=LogFeature.TASK_PROCESSING,
+                task_id=str(task.id),
+                task_name=task.task_name,
+                queue=task.queue,
+                attempt=task.attempt_number
             )
 
             # If this task is part of a workflow, advance it
             self.advance_workflow_if_needed(task)
 
         except Exception as e:
-            self.logger.error(f"Executor {self.name}: Exception hit during processing.")
-            self.logger.error(e)
-            self.logger.error("Traceback:\n%s", traceback.format_exc())
+            self.logger.error(
+                "Task processing failed",
+                feature=LogFeature.TASK_PROCESSING,
+                task_id=str(task.id),
+                task_name=task.task_name,
+                queue=task.queue,
+                attempt=task.attempt_number,
+                error_type=type(e).__name__,
+                error_message=str(e)
+            )
+            self.logger.debug("Traceback:\n%s", traceback.format_exc())
 
-            self.logger.error(f"Marking task {task.id} as failed.")
             self.mark_task_failed(task.id)
 
             # Advance workflow even after task failure
             self.advance_workflow_if_needed(task)
 
             if task.attempt_number < task.max_retries:
-                self.logger.info("Submitting task for retry...")
                 try:
                     backoff_seconds = self.registry.get_retry_backoff(
                         task_name=task.task_name, attempt_number=task.attempt_number
+                    )
+                    self.logger.info(
+                        "Submitting task for retry",
+                        feature=LogFeature.FLOW_CONTROL,
+                        task_id=str(task.id),
+                        task_name=task.task_name,
+                        attempt=task.attempt_number,
+                        max_retries=task.max_retries,
+                        backoff_seconds=backoff_seconds
                     )
                     self.retry_task(
                         task_id=task.id, backoff_seconds=backoff_seconds
@@ -400,8 +429,12 @@ class WorkerExecutor(Process):
         self.dispatcher.register_app(self.app_info.model_dump())
 
     def run(self):
-        init_logging(self.log_level)
-
+        # Set log level in environment for TaskWrapper and other components
+        os.environ["HYREX_LOG_LEVEL"] = self.log_level
+        
+        # Initialize logger in child process (multiprocessing requirement)
+        self.logger = get_logger("executor", LogFeature.EXECUTOR, level=self.log_level)
+        
         # Retrieve name and task registry from the provided app module path.
         self.load_app_module()
 

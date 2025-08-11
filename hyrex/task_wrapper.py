@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import re
 import time
 from inspect import signature
@@ -14,6 +13,7 @@ from hyrex.dispatcher import Dispatcher
 from hyrex.durable_run import DurableTaskRun
 from hyrex.hyrex_context import get_hyrex_context
 from hyrex.hyrex_queue import HyrexQueue
+from hyrex.logging import get_logger, LogFeature
 from hyrex.schemas import EnqueueTaskRequest, TaskStatus
 from hyrex.workflow.workflow_builder_context import get_current_workflow_builder
 
@@ -71,7 +71,7 @@ class TaskWrapper(Generic[P, R]):
         on_error: Callable = None,
         retry_backoff: int | Callable[[int], int] | None = None,
     ):
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger("task_wrapper", LogFeature.TASK_PROCESSING)
 
         self.task_identifier = task_identifier
         self.func = func
