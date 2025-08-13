@@ -556,11 +556,11 @@ class SqlcDispatcher(Dispatcher):
 
     def _create_insert_task_command(self, task: EnqueueTaskRequest) -> str:
         """Create SQL command for inserting a task (used by cron jobs)."""
-        # Use a CTE to generate one UUID and use it for id, durable_id, and root_id
+        # Use a CTE to generate one UUID7 and use it for id, durable_id, and root_id
         # Parent ID is always NULL for cron-based tasks
         return f"""
         WITH new_uuid AS (
-            SELECT gen_random_uuid() AS task_id
+            SELECT uuid7() AS task_id
         )
         INSERT INTO hyrex_task_run (
             id, durable_id, root_id, parent_id, task_name, args, queue,
