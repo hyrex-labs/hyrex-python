@@ -1,4 +1,3 @@
-import random
 import time
 from typing import Literal
 
@@ -21,15 +20,11 @@ def initiate_onboard():
 
 @hy.task(max_retries=5)
 def validate_payment():
-    if random.random() < 0.5:
-        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
 @hy.task(max_retries=5)
 def validate_identity():
-    if random.random() < 0.5:
-        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
@@ -56,15 +51,11 @@ def validate_org():
 
 @hy.task(max_retries=5)
 def approve_user():
-    if random.random() < 0.5:
-        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
 @hy.task(max_retries=5)
 def check_credit():
-    if random.random() < 0.5:
-        raise Exception("Random exception occurred!")
     time.sleep(5)
 
 
