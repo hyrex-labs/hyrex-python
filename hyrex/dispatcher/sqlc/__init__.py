@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-07-14T13:33:08.501064
+Generated on: 2025-08-13T10:44:13.592839
 """
 
 # Import all models
@@ -39,6 +39,8 @@ from .skip_waiting_task_for_workflow_run_id import Querier as skip_waiting_task_
 from .update_workflow_run_status import Querier as update_workflow_run_status_Querier, AsyncQuerier as update_workflow_run_status_AsyncQuerier
 
 # Executor
+from .aggregate_dequeue_latency_by_minute import Querier as aggregate_dequeue_latency_by_minute_Querier, AsyncQuerier as aggregate_dequeue_latency_by_minute_AsyncQuerier
+from .aggregate_dequeue_latency_by_minute_with_lookback import Querier as aggregate_dequeue_latency_by_minute_with_lookback_Querier, AsyncQuerier as aggregate_dequeue_latency_by_minute_with_lookback_AsyncQuerier
 from .batch_update_heartbeat_log import Querier as batch_update_heartbeat_log_Querier, AsyncQuerier as batch_update_heartbeat_log_AsyncQuerier
 from .batch_update_heartbeat_on_executors import Querier as batch_update_heartbeat_on_executors_Querier, AsyncQuerier as batch_update_heartbeat_on_executors_AsyncQuerier
 from .disconnect_executor import Querier as disconnect_executor_Querier, AsyncQuerier as disconnect_executor_AsyncQuerier
@@ -54,6 +56,7 @@ from .count_queued_hype_cron_job_runs import Querier as count_queued_hype_cron_j
 from .create_hype_cron_job_run_details import Querier as create_hype_cron_job_run_details_Querier, AsyncQuerier as create_hype_cron_job_run_details_AsyncQuerier
 from .get_active_hype_cron_jobs import Querier as get_active_hype_cron_jobs_Querier, AsyncQuerier as get_active_hype_cron_jobs_AsyncQuerier
 from .get_hype_cron_job_by_name import Querier as get_hype_cron_job_by_name_Querier, AsyncQuerier as get_hype_cron_job_by_name_AsyncQuerier
+from .get_hype_cron_jobs import Querier as get_hype_cron_jobs_Querier, AsyncQuerier as get_hype_cron_jobs_AsyncQuerier
 from .register_hype_cron_job import Querier as register_hype_cron_job_Querier, AsyncQuerier as register_hype_cron_job_AsyncQuerier
 from .update_hype_cron_job_confirmed_until import Querier as update_hype_cron_job_confirmed_until_Querier, AsyncQuerier as update_hype_cron_job_confirmed_until_AsyncQuerier
 from .update_hype_cron_job_run_status import Querier as update_hype_cron_job_run_status_Querier, AsyncQuerier as update_hype_cron_job_run_status_AsyncQuerier
@@ -259,6 +262,14 @@ def advance_workflow_run_func_sync(client, *args, **kwargs):
     querier = advance_workflow_run_func_Querier(client)
     return querier.advance_workflow_run_func(*args, **kwargs)
 
+def aggregate_dequeue_latency_by_minute_sync(client, *args, **kwargs):
+    querier = aggregate_dequeue_latency_by_minute_Querier(client)
+    return querier.aggregate_dequeue_latency_by_minute(*args, **kwargs)
+
+def aggregate_dequeue_latency_by_minute_with_lookback_sync(client, *args, **kwargs):
+    querier = aggregate_dequeue_latency_by_minute_with_lookback_Querier(client)
+    return querier.aggregate_dequeue_latency_by_minute_with_lookback(*args, **kwargs)
+
 def batch_update_heartbeat_log_sync(client, *args, **kwargs):
     querier = batch_update_heartbeat_log_Querier(client)
     return querier.batch_update_heartbeat_log(*args, **kwargs)
@@ -458,6 +469,10 @@ def get_executors_paginated_sync(client, *args, **kwargs):
 def get_hype_cron_job_by_name_sync(client, *args, **kwargs):
     querier = get_hype_cron_job_by_name_Querier(client)
     return querier.get_hype_cron_job_by_name(*args, **kwargs)
+
+def get_hype_cron_jobs_sync(client, *args, **kwargs):
+    querier = get_hype_cron_jobs_Querier(client)
+    return querier.get_hype_cron_jobs(*args, **kwargs)
 
 def get_project_stats_sync(client, *args, **kwargs):
     querier = get_project_stats_Querier(client)
@@ -751,6 +766,14 @@ async def advance_workflow_run_func_async(client, *args, **kwargs):
     querier = advance_workflow_run_func_AsyncQuerier(client)
     return await querier.advance_workflow_run_func(*args, **kwargs)
 
+async def aggregate_dequeue_latency_by_minute_async(client, *args, **kwargs):
+    querier = aggregate_dequeue_latency_by_minute_AsyncQuerier(client)
+    return await querier.aggregate_dequeue_latency_by_minute(*args, **kwargs)
+
+async def aggregate_dequeue_latency_by_minute_with_lookback_async(client, *args, **kwargs):
+    querier = aggregate_dequeue_latency_by_minute_with_lookback_AsyncQuerier(client)
+    return await querier.aggregate_dequeue_latency_by_minute_with_lookback(*args, **kwargs)
+
 async def batch_update_heartbeat_log_async(client, *args, **kwargs):
     querier = batch_update_heartbeat_log_AsyncQuerier(client)
     return await querier.batch_update_heartbeat_log(*args, **kwargs)
@@ -950,6 +973,10 @@ async def get_executors_paginated_async(client, *args, **kwargs):
 async def get_hype_cron_job_by_name_async(client, *args, **kwargs):
     querier = get_hype_cron_job_by_name_AsyncQuerier(client)
     return await querier.get_hype_cron_job_by_name(*args, **kwargs)
+
+async def get_hype_cron_jobs_async(client, *args, **kwargs):
+    querier = get_hype_cron_jobs_AsyncQuerier(client)
+    return await querier.get_hype_cron_jobs(*args, **kwargs)
 
 async def get_project_stats_async(client, *args, **kwargs):
     querier = get_project_stats_AsyncQuerier(client)
@@ -1261,6 +1288,10 @@ __all__ = [
     'acquire_scheduler_lock_sync',
     'advance_workflow_run_func_async',
     'advance_workflow_run_func_sync',
+    'aggregate_dequeue_latency_by_minute_async',
+    'aggregate_dequeue_latency_by_minute_sync',
+    'aggregate_dequeue_latency_by_minute_with_lookback_async',
+    'aggregate_dequeue_latency_by_minute_with_lookback_sync',
     'batch_update_heartbeat_log_async',
     'batch_update_heartbeat_log_sync',
     'batch_update_heartbeat_on_executors_async',
@@ -1377,6 +1408,8 @@ __all__ = [
     'get_executors_paginated_sync',
     'get_hype_cron_job_by_name_async',
     'get_hype_cron_job_by_name_sync',
+    'get_hype_cron_jobs_async',
+    'get_hype_cron_jobs_sync',
     'get_project_stats_async',
     'get_project_stats_sync',
     'get_task_attempts_by_durable_id_async',

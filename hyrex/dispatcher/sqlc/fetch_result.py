@@ -3,7 +3,7 @@
 #   sqlc v1.29.0
 # source: fetch_result.sql
 import dataclasses
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any, Optional
 import uuid
 
 import sqlalchemy
@@ -12,7 +12,7 @@ import sqlalchemy.ext.asyncio
 from . import models
 
 
-FETCH_RESULT = """-- name: fetch_result \\:many
+FETCH_RESULT = """-- name: fetch_result \\:one
 SELECT result
 FROM hyrex_task_result
 WHERE task_id = :p1
@@ -28,17 +28,19 @@ class Querier:
     def __init__(self, conn: sqlalchemy.engine.Connection):
         self._conn = conn
 
-    def fetch_result(self, arg: FetchResultParams) -> Iterator[Optional[Any]]:
-        result = self._conn.execute(sqlalchemy.text(FETCH_RESULT), {"p1": arg.task_id})
-        for row in result:
-            yield row[0]
+    def fetch_result(self, arg: FetchResultParams) -> Optional[Optional[Any]]:
+        row = self._conn.execute(sqlalchemy.text(FETCH_RESULT), {"p1": arg.task_id}).first()
+        if row is None:
+            return None
+        return row[0]
 
 
 class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def fetch_result(self, arg: FetchResultParams) -> AsyncIterator[Optional[Any]]:
-        result = await self._conn.stream(sqlalchemy.text(FETCH_RESULT), {"p1": arg.task_id})
-        async for row in result:
-            yield row[0]
+    async def fetch_result(self, arg: FetchResultParams) -> Optional[Optional[Any]]:
+        row = (await self._conn.execute(sqlalchemy.text(FETCH_RESULT), {"p1": arg.task_id})).first()
+        if row is None:
+            return None
+        return row[0]

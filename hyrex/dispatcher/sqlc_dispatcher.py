@@ -202,19 +202,16 @@ class SqlcDispatcher(Dispatcher):
             )
 
     def retry_task(self, task_id: UUID, backoff_seconds: int):
-        scheduled_start = None
-        if backoff_seconds > 0:
-            scheduled_start = datetime.now(timezone.utc) + timedelta(
-                seconds=backoff_seconds
-            )
-
+        # TODO: backoff_seconds is not currently supported in the conditionally_retry_task function
+        # The scheduled_start would need to be added to the SQL function signature
+        
         with self.transaction() as conn:
             conditionally_retry_task_sync(
                 conn,
                 conditionally_retry_task.ConditionallyRetryTaskParams(
-                    task_id=task_id,
+                    existing_task_id=task_id,
                     new_task_id=uuid7(),
-                    scheduled_start=scheduled_start,
+                    timeout_seconds=None,  # Use the original timeout from the task
                 ),
             )
 
@@ -559,15 +556,20 @@ class SqlcDispatcher(Dispatcher):
 
     def _create_insert_task_command(self, task: EnqueueTaskRequest) -> str:
         """Create SQL command for inserting a task (used by cron jobs)."""
-        # This is a simplified version - you may need to adjust based on your exact SQL
+        # Use a CTE to generate one UUID and use it for id, durable_id, and root_id
+        # Parent ID is always NULL for cron-based tasks
         return f"""
+        WITH new_uuid AS (
+            SELECT gen_random_uuid() AS task_id
+        )
         INSERT INTO hyrex_task_run (
             id, durable_id, root_id, parent_id, task_name, args, queue,
             max_retries, priority, timeout_seconds, idempotency_key, status,
             workflow_run_id, workflow_dependencies, attempt_number, queued
-        ) VALUES (
-            '{task.id}'::uuid, '{task.durable_id}'::uuid, '{task.root_id}'::uuid,
-            {f"'{task.parent_id}'::uuid" if task.parent_id else 'NULL'},
+        ) 
+        SELECT 
+            task_id, task_id, task_id,
+            NULL,
             '{task.task_name}', '{json.dumps(task.args)}'::json, '{task.queue}',
             {task.max_retries}, {task.priority},
             {task.timeout_seconds if task.timeout_seconds else 'NULL'},
@@ -576,7 +578,7 @@ class SqlcDispatcher(Dispatcher):
             {f"'{task.workflow_run_id}'::uuid" if task.workflow_run_id else 'NULL'},
             {f"ARRAY{task.workflow_dependencies}::uuid[]" if task.workflow_dependencies else 'NULL'},
             0, CURRENT_TIMESTAMP
-        )
+        FROM new_uuid
         """
 
     def register_workflow(
@@ -630,7 +632,7 @@ class SqlcDispatcher(Dispatcher):
                 ),
             )
 
-            if updated_row and updated_row.status in ("FAILED", "SUCCESS"):
+            if updated_row and updated_row[1] in ("FAILED", "SUCCESS"):
                 return None
 
             # Advance the workflow
@@ -782,7 +784,7 @@ class SqlcDispatcher(Dispatcher):
                         conn, fetch_result.FetchResultParams(task_id=row.id)
                     )
                     if result_row:
-                        result_data = result_row.result
+                        result_data = result_row
 
                 task_run = TaskRun(
                     id=row.id,
@@ -841,7 +843,7 @@ class SqlcDispatcher(Dispatcher):
             result = fetch_result_sync(
                 conn, fetch_result.FetchResultParams(task_id=task_id)
             )
-            return result.result if result else None
+            return result if result else None
 
     def kv_set(self, key: str, value: str) -> None:
         with self.transaction() as conn:

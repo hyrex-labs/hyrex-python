@@ -134,7 +134,7 @@ BEGIN
                         ELSE 'AWAIT_DEPS'\\:\\:task_run_status
                     END,
                     v_node.value->>'name',
-                    p_args,  -- Pass workflow args to each task
+                    '{}'\\:\\:JSON,  -- Empty args for tasks
                     p_queue,
                     3\\:\\:SMALLINT,  -- Default max retries
                     0\\:\\:SMALLINT,  -- Default priority

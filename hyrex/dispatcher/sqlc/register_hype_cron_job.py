@@ -19,7 +19,10 @@ DO UPDATE SET
     schedule = EXCLUDED.schedule,
     command_type = EXCLUDED.command_type,
     command_params = EXCLUDED.command_params,
-    active = EXCLUDED.active,
+    active = CASE 
+        WHEN hype_cron_job.active = false THEN hype_cron_job.active  -- Preserve deactivated state
+        ELSE EXCLUDED.active  -- Otherwise use the new value
+    END,
     should_backfill = EXCLUDED.should_backfill
 """
 
