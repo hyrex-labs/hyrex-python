@@ -14,7 +14,7 @@ from . import models
 
 
 GET_TASK_ATTEMPTS_BY_DURABLE_ID = """-- name: get_task_attempts_by_durable_id \\:many
-SELECT 
+SELECT
     tr.id,
     tr.durable_id,
     tr.root_id,
@@ -38,7 +38,7 @@ FROM hyrex_task_run tr
 LEFT JOIN hyrex_task_def t ON tr.task_name = t.task_name
 LEFT JOIN hyrex_task_result res ON tr.id = res.task_id
 WHERE tr.durable_id = :p1
-ORDER BY tr.attempt_number DESC
+ORDER BY tr.attempt_number ASC
 """
 
 

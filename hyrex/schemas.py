@@ -66,7 +66,7 @@ class TaskRun(BaseModel):
     max_retries: int
     attempt_number: int
     status: TaskStatus
-    queued: datetime
+    queued: datetime | None
     started: datetime | None
     finished: datetime | None
     result: dict | None

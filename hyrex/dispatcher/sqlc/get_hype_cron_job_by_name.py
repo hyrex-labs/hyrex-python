@@ -3,7 +3,8 @@
 #   sqlc v1.29.0
 # source: get_hype_cron_job_by_name.sql
 import dataclasses
-from typing import Optional
+import datetime
+from typing import Any, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -12,7 +13,17 @@ from . import models
 
 
 GET_HYPE_CRON_JOB_BY_NAME = """-- name: get_hype_cron_job_by_name \\:one
-SELECT jobid, schedule, command_type, command_params, active, jobname, activated_at, scheduled_jobs_confirmed_until, should_backfill FROM hype_cron_job
+SELECT
+    jobid,
+    schedule,
+    command_type\\:\\:text as command_type,  -- Cast enum to text
+    command_params,
+    active,
+    jobname,
+    activated_at,
+    scheduled_jobs_confirmed_until,
+    should_backfill
+FROM hype_cron_job
 WHERE jobname = :p1
 """
 
@@ -22,15 +33,28 @@ class GetHypeCronJobByNameParams:
     jobname: str
 
 
+@dataclasses.dataclass()
+class GetHypeCronJobByNameRow:
+    jobid: int
+    schedule: Optional[str]
+    command_type: str
+    command_params: Any
+    active: bool
+    jobname: str
+    activated_at: Optional[datetime.datetime]
+    scheduled_jobs_confirmed_until: Optional[datetime.datetime]
+    should_backfill: Optional[bool]
+
+
 class Querier:
     def __init__(self, conn: sqlalchemy.engine.Connection):
         self._conn = conn
 
-    def get_hype_cron_job_by_name(self, arg: GetHypeCronJobByNameParams) -> Optional[models.HypeCronJob]:
+    def get_hype_cron_job_by_name(self, arg: GetHypeCronJobByNameParams) -> Optional[GetHypeCronJobByNameRow]:
         row = self._conn.execute(sqlalchemy.text(GET_HYPE_CRON_JOB_BY_NAME), {"p1": arg.jobname}).first()
         if row is None:
             return None
-        return models.HypeCronJob(
+        return GetHypeCronJobByNameRow(
             jobid=row[0],
             schedule=row[1],
             command_type=row[2],
@@ -47,11 +71,11 @@ class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def get_hype_cron_job_by_name(self, arg: GetHypeCronJobByNameParams) -> Optional[models.HypeCronJob]:
+    async def get_hype_cron_job_by_name(self, arg: GetHypeCronJobByNameParams) -> Optional[GetHypeCronJobByNameRow]:
         row = (await self._conn.execute(sqlalchemy.text(GET_HYPE_CRON_JOB_BY_NAME), {"p1": arg.jobname})).first()
         if row is None:
             return None
-        return models.HypeCronJob(
+        return GetHypeCronJobByNameRow(
             jobid=row[0],
             schedule=row[1],
             command_type=row[2],

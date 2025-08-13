@@ -20,7 +20,7 @@ DECLARE
     hex_ts     text;
     rand_hex   text;
     u          text;
-    var_nibble text \\:= to_hex(8 + floor(random()*4))\\:\\:text; -- 8–B → RFC 4122 “10xx” variant
+    var_nibble text \\:= to_hex((8 + floor(random()*4))\\:\\:int)\\:\\:text; -- 8–B → RFC 4122 "10xx" variant
 BEGIN
     -- 48-bit millisecond Unix epoch
     ts      \\:= floor(extract(epoch FROM clock_timestamp()) * 1000);
