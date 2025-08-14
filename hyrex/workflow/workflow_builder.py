@@ -91,6 +91,17 @@ class WorkflowBuilder:
 
     def get_or_create_node(self, task_wrapper: TaskWrapper) -> DagNode:
         if task_wrapper not in self.nodes:
+            # Validate that the task doesn't have required arguments
+            required_params = [
+                name for name, info in task_wrapper.param_info.items() 
+                if not info.has_default
+            ]
+            if required_params:
+                raise ValueError(
+                    f"Task '{task_wrapper.task_identifier}' cannot be used in a workflow because it requires arguments: {required_params}. "
+                    f"Tasks used in workflows must have no arguments or all arguments must have default values."
+                )
+            
             self.nodes[task_wrapper] = DagNode(
                 task_wrapper=task_wrapper, workflow_builder=self
             )

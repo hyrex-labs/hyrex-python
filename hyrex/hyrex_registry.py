@@ -223,6 +223,13 @@ class HyrexRegistry:
                     config_phase=ConfigPhase.decorator, queue=queue, priority=priority
                 )
 
+                # Validate that cron workflows don't require arguments
+                if cron and workflow_arg_schema:
+                    raise ValueError(
+                        f"Workflow '{workflow_name}' has cron scheduling but requires arguments. "
+                        f"Cron-scheduled workflows must not have any required arguments."
+                    )
+                
                 # Create and return a HyrexWorkflow instance
                 workflow = HyrexWorkflow(
                     name=workflow_name,
