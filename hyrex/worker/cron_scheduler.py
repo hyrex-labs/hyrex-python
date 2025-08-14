@@ -127,8 +127,8 @@ class WorkerCronScheduler(Process):
 
                 # Execute cron job runs
                 result = self.dispatcher.execute_queued_cron_job_run()
-                while result and result == "executed":
-                    self.logger.info("Executed cron job run...")
+                while result and result.startswith("executed"):
+                    self.logger.info(f"Executed cron job run: {result}")
                     result = self.dispatcher.execute_queued_cron_job_run()
 
                 self._stop_event.wait(LOOP_RATE_SECONDS)
