@@ -20,7 +20,7 @@ class DurableTaskRun(BaseModel):
         default_factory=lambda: get_logger("durable_run", LogFeature.TASK_PROCESSING)
     )
 
-    def wait(self, timeout: float = 30.0, interval: float = 0.5) -> bool:
+    def wait(self, timeout: float = 120.0, interval: float = 1.0) -> bool:
         start = time.time()
         elapsed = 0
 
