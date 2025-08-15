@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-08-13T10:44:13.592839
+Generated on: 2025-08-15T14:34:50.730596
 """
 
 # Import all models
@@ -29,6 +29,11 @@ from ._17_create_hype_cron_job_run_details_table import Querier as _17_create_hy
 # Scheduler
 from .acquire_scheduler_lock import Querier as acquire_scheduler_lock_Querier, AsyncQuerier as acquire_scheduler_lock_AsyncQuerier
 from .release_scheduler_lock import Querier as release_scheduler_lock_Querier, AsyncQuerier as release_scheduler_lock_AsyncQuerier
+
+# Durability
+from .advance_stuck_workflows import Querier as advance_stuck_workflows_Querier, AsyncQuerier as advance_stuck_workflows_AsyncQuerier
+from .set_executor_to_lost_if_no_heartbeat import Querier as set_executor_to_lost_if_no_heartbeat_Querier, AsyncQuerier as set_executor_to_lost_if_no_heartbeat_AsyncQuerier
+from .set_orphaned_task_execution_to_lost_and_retry import Querier as set_orphaned_task_execution_to_lost_and_retry_Querier, AsyncQuerier as set_orphaned_task_execution_to_lost_and_retry_AsyncQuerier
 
 # Workflow Run
 from .advance_workflow_run_func import Querier as advance_workflow_run_func_Querier, AsyncQuerier as advance_workflow_run_func_AsyncQuerier
@@ -67,6 +72,7 @@ from .fetch_active_queue_names import Querier as fetch_active_queue_names_Querie
 from .fetch_result import Querier as fetch_result_Querier, AsyncQuerier as fetch_result_AsyncQuerier
 from .fetch_task import Querier as fetch_task_Querier, AsyncQuerier as fetch_task_AsyncQuerier
 from .fetch_task_with_concurrency_limit import Querier as fetch_task_with_concurrency_limit_Querier, AsyncQuerier as fetch_task_with_concurrency_limit_AsyncQuerier
+from .mark_running_tasks_lost import Querier as mark_running_tasks_lost_Querier, AsyncQuerier as mark_running_tasks_lost_AsyncQuerier
 from .save_result import Querier as save_result_Querier, AsyncQuerier as save_result_AsyncQuerier
 from .set_log_link import Querier as set_log_link_Querier, AsyncQuerier as set_log_link_AsyncQuerier
 from .transition_task_state import Querier as transition_task_state_Querier, AsyncQuerier as transition_task_state_AsyncQuerier
@@ -110,6 +116,7 @@ from .flush_all_data import Querier as flush_all_data_Querier, AsyncQuerier as f
 
 # Task Def
 from .get_all_task_defs import Querier as get_all_task_defs_Querier, AsyncQuerier as get_all_task_defs_AsyncQuerier
+from .get_distinct_task_def_names import Querier as get_distinct_task_def_names_Querier, AsyncQuerier as get_distinct_task_def_names_AsyncQuerier
 from .get_task_def import Querier as get_task_def_Querier, AsyncQuerier as get_task_def_AsyncQuerier
 from .register_task_def import Querier as register_task_def_Querier, AsyncQuerier as register_task_def_AsyncQuerier
 
@@ -144,10 +151,6 @@ from .register_app_info import Querier as register_app_info_Querier, AsyncQuerie
 
 # Workflow
 from .register_workflow import Querier as register_workflow_Querier, AsyncQuerier as register_workflow_AsyncQuerier
-
-# Durability
-from .set_executor_to_lost_if_no_heartbeat import Querier as set_executor_to_lost_if_no_heartbeat_Querier, AsyncQuerier as set_executor_to_lost_if_no_heartbeat_AsyncQuerier
-from .set_orphaned_task_execution_to_lost_and_retry import Querier as set_orphaned_task_execution_to_lost_and_retry_Querier, AsyncQuerier as set_orphaned_task_execution_to_lost_and_retry_AsyncQuerier
 
 # Generated wrapper functions for SQLC queries
 
@@ -257,6 +260,10 @@ def create_hype_cron_job_run_details_table_sync(client, *args, **kwargs):
 def acquire_scheduler_lock_sync(client, *args, **kwargs):
     querier = acquire_scheduler_lock_Querier(client)
     return querier.acquire_scheduler_lock(*args, **kwargs)
+
+def advance_stuck_workflows_sync(client, *args, **kwargs):
+    querier = advance_stuck_workflows_Querier(client)
+    return querier.advance_stuck_workflows(*args, **kwargs)
 
 def advance_workflow_run_func_sync(client, *args, **kwargs):
     querier = advance_workflow_run_func_Querier(client)
@@ -454,6 +461,10 @@ def get_cron_jobs_paginated_sync(client, *args, **kwargs):
     querier = get_cron_jobs_paginated_Querier(client)
     return querier.get_cron_jobs_paginated(*args, **kwargs)
 
+def get_distinct_task_def_names_sync(client, *args, **kwargs):
+    querier = get_distinct_task_def_names_Querier(client)
+    return querier.get_distinct_task_def_names(*args, **kwargs)
+
 def get_executor_by_id_sync(client, *args, **kwargs):
     querier = get_executor_by_id_Querier(client)
     return querier.get_executor_by_id(*args, **kwargs)
@@ -557,6 +568,10 @@ def set_value_sync(client, *args, **kwargs):
 def mark_lost_executors_sync(client, *args, **kwargs):
     querier = mark_lost_executors_Querier(client)
     return querier.mark_lost_executors(*args, **kwargs)
+
+def mark_running_tasks_lost_sync(client, *args, **kwargs):
+    querier = mark_running_tasks_lost_Querier(client)
+    return querier.mark_running_tasks_lost(*args, **kwargs)
 
 def pull_active_cron_expressions_sync(client, *args, **kwargs):
     querier = pull_active_cron_expressions_Querier(client)
@@ -762,6 +777,10 @@ async def acquire_scheduler_lock_async(client, *args, **kwargs):
     querier = acquire_scheduler_lock_AsyncQuerier(client)
     return await querier.acquire_scheduler_lock(*args, **kwargs)
 
+async def advance_stuck_workflows_async(client, *args, **kwargs):
+    querier = advance_stuck_workflows_AsyncQuerier(client)
+    return await querier.advance_stuck_workflows(*args, **kwargs)
+
 async def advance_workflow_run_func_async(client, *args, **kwargs):
     querier = advance_workflow_run_func_AsyncQuerier(client)
     return await querier.advance_workflow_run_func(*args, **kwargs)
@@ -958,6 +977,10 @@ async def get_cron_jobs_paginated_async(client, *args, **kwargs):
     querier = get_cron_jobs_paginated_AsyncQuerier(client)
     return await querier.get_cron_jobs_paginated(*args, **kwargs)
 
+async def get_distinct_task_def_names_async(client, *args, **kwargs):
+    querier = get_distinct_task_def_names_AsyncQuerier(client)
+    return await querier.get_distinct_task_def_names(*args, **kwargs)
+
 async def get_executor_by_id_async(client, *args, **kwargs):
     querier = get_executor_by_id_AsyncQuerier(client)
     return await querier.get_executor_by_id(*args, **kwargs)
@@ -1061,6 +1084,10 @@ async def set_value_async(client, *args, **kwargs):
 async def mark_lost_executors_async(client, *args, **kwargs):
     querier = mark_lost_executors_AsyncQuerier(client)
     return await querier.mark_lost_executors(*args, **kwargs)
+
+async def mark_running_tasks_lost_async(client, *args, **kwargs):
+    querier = mark_running_tasks_lost_AsyncQuerier(client)
+    return await querier.mark_running_tasks_lost(*args, **kwargs)
 
 async def pull_active_cron_expressions_async(client, *args, **kwargs):
     querier = pull_active_cron_expressions_AsyncQuerier(client)
@@ -1286,6 +1313,8 @@ __all__ = [
     # Query functions
     'acquire_scheduler_lock_async',
     'acquire_scheduler_lock_sync',
+    'advance_stuck_workflows_async',
+    'advance_stuck_workflows_sync',
     'advance_workflow_run_func_async',
     'advance_workflow_run_func_sync',
     'aggregate_dequeue_latency_by_minute_async',
@@ -1400,6 +1429,8 @@ __all__ = [
     'get_cron_job_run_details_sync',
     'get_cron_jobs_paginated_async',
     'get_cron_jobs_paginated_sync',
+    'get_distinct_task_def_names_async',
+    'get_distinct_task_def_names_sync',
     'get_executor_by_id_async',
     'get_executor_by_id_sync',
     'get_executor_statuses_async',
@@ -1452,6 +1483,8 @@ __all__ = [
     'kv_set_value_sync',
     'mark_lost_executors_async',
     'mark_lost_executors_sync',
+    'mark_running_tasks_lost_async',
+    'mark_running_tasks_lost_sync',
     'pull_active_cron_expressions_async',
     'pull_active_cron_expressions_sync',
     'register_app_info_async',

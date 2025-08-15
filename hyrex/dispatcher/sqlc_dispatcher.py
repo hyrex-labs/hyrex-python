@@ -43,6 +43,7 @@ from .sqlc import (
     get_task_run_by_id,
     register_executor,
     disconnect_executor,
+    mark_running_tasks_lost,
     batch_update_heartbeat_on_executors,
     update_executor_stats,
     batch_update_heartbeat_log,
@@ -81,6 +82,7 @@ from .sqlc import (
     get_task_run_by_id_sync,
     register_executor_sync,
     disconnect_executor_sync,
+    mark_running_tasks_lost_sync,
     batch_update_heartbeat_on_executors_sync,
     update_executor_stats_sync,
     batch_update_heartbeat_log_sync,
@@ -429,6 +431,23 @@ class SqlcDispatcher(Dispatcher):
                 conn,
                 disconnect_executor.DisconnectExecutorParams(
                     stats=None, id=executor_id  # No stats on disconnect
+                ),
+            )
+
+    def mark_running_tasks_lost(self, executor_id: UUID):
+        """Mark all running tasks for a specific executor as lost and create retry tasks if needed.
+        
+        This is typically called when an executor is detected as lost/disconnected.
+        Tasks that haven't exceeded max_retries will be automatically re-queued.
+        
+        Args:
+            executor_id: The ID of the executor whose tasks should be marked as lost
+        """
+        with self.transaction() as conn:
+            mark_running_tasks_lost_sync(
+                conn,
+                mark_running_tasks_lost.MarkRunningTasksLostParams(
+                    executor_id=executor_id
                 ),
             )
 

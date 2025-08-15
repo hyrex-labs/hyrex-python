@@ -75,6 +75,11 @@ BEGIN
                 FROM locked
                 WHERE trg.id = locked.id
                 RETURNING trg.id AS task_id, trg.status AS status, trg.workflow_run_id AS workflow_run_id;
+    
+    -- Update workflow last_heartbeat to indicate activity
+    UPDATE hyrex_workflow_run
+    SET last_heartbeat = CURRENT_TIMESTAMP
+    WHERE id = p_workflow_run_id;
 END;
 $$
 """

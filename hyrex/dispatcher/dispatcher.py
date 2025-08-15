@@ -247,3 +247,7 @@ class Dispatcher(ABC):
     @abstractmethod
     def kv_delete(self, key: str) -> None:
         pass
+
+    @abstractmethod
+    def mark_running_tasks_lost(self, executor_id: UUID):
+        pass
