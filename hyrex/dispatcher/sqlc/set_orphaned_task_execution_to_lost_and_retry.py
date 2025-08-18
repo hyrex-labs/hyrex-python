@@ -13,7 +13,8 @@ from . import models
 SET_ORPHANED_TASK_EXECUTION_TO_LOST_AND_RETRY = """-- name: set_orphaned_task_execution_to_lost_and_retry \\:exec
 WITH lost_tasks AS (
     UPDATE hyrex_task_run
-        SET status = 'LOST'\\:\\:task_run_status
+        SET status = 'LOST'\\:\\:task_run_status,
+            finished = CURRENT_TIMESTAMP
         WHERE status = 'RUNNING'\\:\\:task_run_status
             AND (
                   executor_id IS NULL
@@ -45,7 +46,7 @@ INSERT INTO hyrex_task_run (
     queued
 )
 SELECT
-    gen_random_uuid(),
+    uuid7(),
     durable_id,
     root_id,
     parent_id,

@@ -10,6 +10,7 @@ from hyrex.dispatcher.sqlc import (
 from hyrex.dispatcher.sqlc.fill_historical_task_status_counts_table import FILL_HISTORICAL_TASK_STATUS_COUNTS_TABLE
 from hyrex.dispatcher.sqlc.set_orphaned_task_execution_to_lost_and_retry import SET_ORPHANED_TASK_EXECUTION_TO_LOST_AND_RETRY
 from hyrex.dispatcher.sqlc.set_executor_to_lost_if_no_heartbeat import SET_EXECUTOR_TO_LOST_IF_NO_HEARTBEAT
+from hyrex.dispatcher.sqlc.advance_stuck_workflows import ADVANCE_STUCK_WORKFLOWS
 
 
 def init_postgres_db(conn_string):
@@ -78,6 +79,17 @@ def init_postgres_db(conn_string):
                 jobname="SetExecutorToLostIfNoHeartbeat",
                 schedule="* * * * *",  # Every minute
                 command=clean_sqlc_query(SET_EXECUTOR_TO_LOST_IF_NO_HEARTBEAT),
+                should_backfill=False,
+            ),
+        )
+
+        # 4. Advance stuck workflows every 2 minutes
+        create_cron_job_for_sql_query_sync(
+            conn,
+            create_cron_job_for_sql_query.CreateCronJobForSqlQueryParams(
+                jobname="AdvanceStuckWorkflows",
+                schedule="*/2 * * * *",  # Every 2 minutes
+                command=clean_sqlc_query(ADVANCE_STUCK_WORKFLOWS),
                 should_backfill=False,
             ),
         )

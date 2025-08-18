@@ -73,6 +73,7 @@ BEGIN
     )
     UPDATE hyrex_workflow_run w
     SET status   = ws.new_status,
+        last_heartbeat = CURRENT_TIMESTAMP,
         finished = CASE
                        WHEN ws.new_status IN ('SUCCESS', 'FAILED')
                            THEN CURRENT_TIMESTAMP
