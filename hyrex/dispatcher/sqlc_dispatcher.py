@@ -496,6 +496,7 @@ class SqlcDispatcher(Dispatcher):
         arg_schema: Type[BaseModel] | None,
         task_config: TaskConfig,
         cron: str = None,
+        backfill: bool = False,
         source_code: str = None,
     ):
         with self.transaction() as conn:
@@ -563,6 +564,7 @@ class SqlcDispatcher(Dispatcher):
                         schedule=cron,
                         command=insert_task_command,
                         jobname=cron_job_name,
+                        should_backfill=backfill,
                     ),
                 )
             else:
