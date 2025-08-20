@@ -1,7 +1,7 @@
 """
 Auto-generated file by generate-python-exports.py
 This file exports all SQLC generated query functions
-Generated on: 2025-08-15T14:34:50.730596
+Generated on: 2025-08-18T16:35:27.295883
 """
 
 # Import all models

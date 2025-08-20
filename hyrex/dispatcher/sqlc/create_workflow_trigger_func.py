@@ -96,7 +96,7 @@ BEGIN
                 SELECT value FROM jsonb_array_elements(v_workflow_record.dag_structure->'nodes')
             LOOP
                 -- Generate a new UUID for this task
-                v_task_id \\:= gen_random_uuid();
+                v_task_id \\:= uuid7();
 
                 -- Store the mapping from node ID to task UUID
                 v_node_id_map \\:= v_node_id_map || jsonb_build_object(v_node.value->>'id', v_task_id\\:\\:TEXT);

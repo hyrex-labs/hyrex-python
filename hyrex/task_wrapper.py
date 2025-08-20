@@ -67,8 +67,8 @@ class TaskWrapper(Generic[P, R]):
         func: Callable[P, R],
         dispatcher: Dispatcher,
         cron: str | None,
-        backfill: bool = False,
         task_config: TaskConfig,
+        backfill: bool = True,
         on_error: Callable = None,
         retry_backoff: int | Callable[[int], int] | None = None,
     ):

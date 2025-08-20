@@ -123,7 +123,7 @@ class Dispatcher(ABC):
         arg_schema: Type[BaseModel] | None,
         task_config: TaskConfig,
         cron: str = None,
-        backfill: bool = False,
+        backfill: bool = True,
         source_code: str = None,
     ):
         pass
