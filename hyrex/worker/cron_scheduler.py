@@ -74,7 +74,7 @@ class WorkerCronScheduler(Process):
         # Initialize logger in child process (multiprocessing requirement)
         self.logger = get_logger("cron_scheduler", LogFeature.CRON_SCHEDULING, level=self.log_level)
         
-        self.logger.info("Initializing cron scheduler.")
+        self.logger.info("Cron scheduler initialized.")
         self.dispatcher = get_dispatcher()
 
         # Ignore signals, let main process manage shutdown.

@@ -1,4 +1,6 @@
 import contextlib
+import logging
+import re
 import sys
 from functools import lru_cache
 from uuid import UUID
@@ -6,6 +8,14 @@ from uuid import UUID
 import boto3
 
 from hyrex.dispatcher.performance_dispatcher import PerformanceDispatcher
+
+# Compile regex once for performance
+ANSI_ESCAPE_PATTERN = re.compile(r'\x1b\[[0-9;]*m')
+
+
+def strip_ansi_codes(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return ANSI_ESCAPE_PATTERN.sub('', text)
 
 
 @lru_cache(maxsize=1)
@@ -86,6 +96,21 @@ async def write_task_logs_to_s3(
 
     log_url = f"s3://{bucket_name}/{get_s3_key(task_id=task_id)}"
 
+    # Only redirect logging if handlers exist (user is using logging module)
+    root_logger = logging.getLogger()
+    modified_handlers = []
+    
+    if root_logger.handlers:
+        for handler in root_logger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                # Save original stream and redirect to our capture
+                original_stream = handler.stream
+                modified_handlers.append((handler, original_stream))
+                if write_to_console:
+                    handler.stream = TeeIO(original_stream, log_capture)
+                else:
+                    handler.stream = log_capture
+
     try:
         if write_to_console:
             sys.stdout = TeeIO(original_stdout, log_capture)
@@ -98,9 +123,15 @@ async def write_task_logs_to_s3(
         # Restore original streams
         sys.stdout = original_stdout
         sys.stderr = original_stderr
+        
+        # Restore original handler streams
+        for handler, original_stream in modified_handlers:
+            handler.stream = original_stream
 
         # Upload logs if we captured anything
         content = log_capture.getvalue()
+        # Strip ANSI color codes before uploading
+        content = strip_ansi_codes(content)
         await _upload_to_s3_async(task_id, bucket_name, content)
 
 
@@ -122,6 +153,21 @@ async def write_task_logs_with_dispatcher(
     original_stdout = sys.stdout
     original_stderr = sys.stderr
 
+    # Only redirect logging if handlers exist (user is using logging module)
+    root_logger = logging.getLogger()
+    modified_handlers = []
+    
+    if root_logger.handlers:
+        for handler in root_logger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                # Save original stream and redirect to our capture
+                original_stream = handler.stream
+                modified_handlers.append((handler, original_stream))
+                if write_to_console:
+                    handler.stream = TeeIO(original_stream, log_capture)
+                else:
+                    handler.stream = log_capture
+
     try:
         if write_to_console:
             sys.stdout = TeeIO(original_stdout, log_capture)
@@ -134,7 +180,13 @@ async def write_task_logs_with_dispatcher(
         # Restore original streams
         sys.stdout = original_stdout
         sys.stderr = original_stderr
+        
+        # Restore original handler streams
+        for handler, original_stream in modified_handlers:
+            handler.stream = original_stream
 
         # Upload logs via dispatcher
         content = log_capture.getvalue()
+        # Strip ANSI color codes before uploading
+        content = strip_ansi_codes(content)
         dispatcher.write_s3_logs(task_id, content)
