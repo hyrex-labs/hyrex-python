@@ -32,7 +32,7 @@ class WorkerCronScheduler(Process):
             self._stop_event.set()
 
     def acquire_scheduler_lock(self) -> int | None:
-        self.logger.info("Acquiring cron scheduler lock...")
+        self.logger.debug("Acquiring cron scheduler lock...")
         result = self.dispatcher.acquire_scheduler_lock(self.worker_name)
         return result
 
@@ -101,7 +101,7 @@ class WorkerCronScheduler(Process):
                 self.logger.info("Stop event detected during lock acquisition.")
                 return
 
-            self.logger.info("Acquired lock.")
+            self.logger.debug("Acquired lock.")
 
             # Decide whether to backfill cron jobs
             cron_expressions = self.dispatcher.pull_cron_job_expressions()
@@ -119,7 +119,7 @@ class WorkerCronScheduler(Process):
 
                 # Queue cron job runs
                 for cron_job in cron_expressions:
-                    self.logger.info(
+                    self.logger.debug(
                         f"Got cron job {cron_job.jobname}, confirmed_until={cron_job.scheduled_jobs_confirmed_until}"
                     )
                     scheduled_jobs = self.impute_scheduled_cron_job_runs(cron_job)
@@ -138,7 +138,7 @@ class WorkerCronScheduler(Process):
     def stop(self):
         self.logger.info("Stopping cron scheduler.")
         if self.lock_id:
-            self.logger.info("Releasing scheduler lock...")
+            self.logger.debug("Releasing scheduler lock...")
             self.dispatcher.release_scheduler_lock(self.worker_name)
             self.lock_id = None
         self.dispatcher.stop()

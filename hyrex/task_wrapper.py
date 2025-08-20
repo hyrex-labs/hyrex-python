@@ -68,6 +68,7 @@ class TaskWrapper(Generic[P, R]):
         dispatcher: Dispatcher,
         cron: str | None,
         task_config: TaskConfig,
+        backfill: bool = True,
         on_error: Callable = None,
         retry_backoff: int | Callable[[int], int] | None = None,
     ):
@@ -80,6 +81,7 @@ class TaskWrapper(Generic[P, R]):
 
         # TODO: Validate cron
         self.cron = cron
+        self.backfill = backfill  # Only applies when cron is set
 
         self.task_config = task_config
 

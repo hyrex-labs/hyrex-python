@@ -12,14 +12,15 @@ from . import models
 
 
 CREATE_CRON_JOB_FOR_TASK = """-- name: create_cron_job_for_task \\:exec
-INSERT INTO hyrex_cron_job (schedule, command, jobname, job_source)
-VALUES (:p1, :p2, :p3, 'TASK')
-ON CONFLICT (jobname) 
-DO UPDATE SET 
+INSERT INTO hyrex_cron_job (schedule, command, jobname, job_source, should_backfill)
+VALUES (:p1, :p2, :p3, 'TASK', :p4)
+ON CONFLICT (jobname)
+DO UPDATE SET
     schedule = EXCLUDED.schedule,
     command = EXCLUDED.command,
     job_source = 'TASK',
-    active = true
+    active = true,
+    should_backfill = EXCLUDED.should_backfill
 """
 
 
@@ -28,6 +29,7 @@ class CreateCronJobForTaskParams:
     schedule: Optional[str]
     command: str
     jobname: str
+    should_backfill: Optional[bool]
 
 
 class Querier:
@@ -35,7 +37,12 @@ class Querier:
         self._conn = conn
 
     def create_cron_job_for_task(self, arg: CreateCronJobForTaskParams) -> None:
-        self._conn.execute(sqlalchemy.text(CREATE_CRON_JOB_FOR_TASK), {"p1": arg.schedule, "p2": arg.command, "p3": arg.jobname})
+        self._conn.execute(sqlalchemy.text(CREATE_CRON_JOB_FOR_TASK), {
+            "p1": arg.schedule,
+            "p2": arg.command,
+            "p3": arg.jobname,
+            "p4": arg.should_backfill,
+        })
 
 
 class AsyncQuerier:
@@ -43,4 +50,9 @@ class AsyncQuerier:
         self._conn = conn
 
     async def create_cron_job_for_task(self, arg: CreateCronJobForTaskParams) -> None:
-        await self._conn.execute(sqlalchemy.text(CREATE_CRON_JOB_FOR_TASK), {"p1": arg.schedule, "p2": arg.command, "p3": arg.jobname})
+        await self._conn.execute(sqlalchemy.text(CREATE_CRON_JOB_FOR_TASK), {
+            "p1": arg.schedule,
+            "p2": arg.command,
+            "p3": arg.jobname,
+            "p4": arg.should_backfill,
+        })

@@ -50,6 +50,7 @@ class HyrexRegistry:
                 arg_schema=task.get_arg_schema(),
                 task_config=task.task_config,
                 cron=task.cron,
+                backfill=task.backfill,
                 source_code=inspect.getsource(task.func),
             )
 
@@ -148,6 +149,7 @@ class HyrexRegistry:
         *,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         cron: str | None = None,
+        backfill: bool = True,
         max_retries: int = 0,
         timeout_seconds: int | None = None,
         priority: int = constants.DEFAULT_PRIORITY,
@@ -161,6 +163,7 @@ class HyrexRegistry:
         *,
         queue: str | HyrexQueue = constants.DEFAULT_QUEUE,
         cron: str | None = None,
+        backfill: bool = True,
         max_retries: int = 0,
         timeout_seconds: int | None = None,
         priority: int = constants.DEFAULT_PRIORITY,
@@ -186,6 +189,7 @@ class HyrexRegistry:
                 func=func,
                 cron=cron,
                 task_config=self.task_config.merge(decorated_task_config),
+                backfill=backfill,
                 dispatcher=self.dispatcher,
                 on_error=on_error,
                 retry_backoff=retry_backoff,
