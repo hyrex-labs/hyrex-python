@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import tempfile
 from datetime import datetime
+from importlib.metadata import version, PackageNotFoundError
 
 # To ensure consistency between MacOS and Linux
 try:
@@ -23,6 +24,14 @@ from hyrex import constants
 from hyrex.env_vars import EnvVars
 from hyrex.init_db import init_postgres_db
 from hyrex.worker.root_process import WorkerRootProcess
+
+
+def get_hyrex_version():
+    """Get the installed hyrex package version."""
+    try:
+        return version("hyrex")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def load_env_file():
@@ -148,6 +157,10 @@ def run_worker(
     """
     # Print ASCII logo as first action
     print(constants.ASCII_HYREX_LOGO)
+    
+    # Print hyrex version
+    hyrex_version = get_hyrex_version()
+    print(f"Hyrex version: {hyrex_version}\n")
     
     database_url = os.environ.get(EnvVars.DATABASE_URL)
 
