@@ -546,6 +546,7 @@ class PerformanceDispatcher(Dispatcher):
         arg_schema: Type[BaseModel] | None,
         task_config: TaskConfig,
         cron: str = None,
+        backfill: bool = True,
         source_code: str = None,
     ):
         # The proto structure has changed to use a Task message
