@@ -70,18 +70,30 @@ def create_box(lines, box_color="brightCyan", width=55, style="double"):
     for text, txt_color in lines:
         if text == "":
             line = chars["v"] + " " * width + chars["v"]
+            print(colorize("  " + line, box_color))
         else:
-            pad = width - len(text)
+            # Count emojis that take 2 columns in terminal
+            double_width_chars = ['🚀', '🌐', '👉', '👈', '✨', '●', '✓', '✗']
+            emoji_count = sum(text.count(emoji) for emoji in double_width_chars)
+            
+            # Calculate display width: regular chars + extra width for emojis
+            display_width = len(text) + emoji_count
+            
+            # Calculate padding based on display width
+            pad = width - display_width
             left = pad // 2
             right = pad - left
-            line = (
-                chars["v"]
-                + " " * left
-                + colorize(text, txt_color)
-                + " " * right
-                + chars["v"]
+            
+            # Build the complete line structure first
+            box_left = "  " + chars["v"] + " " * left
+            box_right = " " * right + chars["v"]
+            
+            # Print with proper coloring
+            print(
+                colorize(box_left, box_color)
+                + (colorize(text, txt_color) if txt_color else text)
+                + colorize(box_right, box_color)
             )
-        print(colorize("  " + line, box_color))
     print(colorize("  " + bottom, box_color))
 
 
