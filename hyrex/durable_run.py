@@ -2,7 +2,7 @@ import time
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, JsonValue, PrivateAttr
 
 from hyrex.dispatcher.dispatcher import Dispatcher
 from hyrex.dispatcher.dispatcher_provider import get_dispatcher
@@ -47,7 +47,7 @@ class DurableTaskRun(BaseModel):
             if elapsed > timeout:
                 raise TimeoutError("Waiting for durable task run timed out.")
 
-    def get_result(self):
+    def get_result(self) -> JsonValue | None:
         self.refresh()
         for task in self.task_runs:
             if task.status == TaskStatus.success and task.result is not None:

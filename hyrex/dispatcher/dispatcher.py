@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Type
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from hyrex import constants
 from hyrex.configs import TaskConfig
@@ -109,7 +109,7 @@ class Dispatcher(ABC):
 
     # TODO: Remove?
     @abstractmethod
-    def get_result(self, task_id: UUID) -> dict:
+    def get_result(self, task_id: UUID) -> JsonValue:
         pass
 
     @abstractmethod

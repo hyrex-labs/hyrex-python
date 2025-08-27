@@ -8,7 +8,7 @@ from typing import List, Type
 from uuid import UUID
 
 import sqlalchemy
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 from sqlalchemy import create_engine
 from uuid6 import uuid7
 
@@ -859,7 +859,7 @@ class SqlcDispatcher(Dispatcher):
                 ),
             )
 
-    def get_result(self, task_id: UUID) -> dict:
+    def get_result(self, task_id: UUID) -> JsonValue:
         with self.transaction() as conn:
             result = fetch_result_sync(
                 conn, fetch_result.FetchResultParams(task_id=task_id)

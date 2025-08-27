@@ -73,18 +73,27 @@ class HyrexWorkflow:
 
         return node_to_task_request.values()
 
-    def send(self, context: BaseModel):
-        # Runtime type checking to ensure context is the expected schema type
-        if not isinstance(context, self.workflow_arg_schema):
-            raise TypeError(
-                f"Expected context of type {self.workflow_arg_schema.__name__}, "
-                f"got {type(context).__name__} instead"
-            )
+    def send(self, context: BaseModel | None = None):
+        if self.workflow_arg_schema is None:
+            # No args expected
+            args = {}
+        else:
+            # Args expected
+            if context is None:
+                raise TypeError(
+                    f"Workflow '{self.name}' requires context of type {self.workflow_arg_schema.__name__}"
+                )
+            if not isinstance(context, self.workflow_arg_schema):
+                raise TypeError(
+                    f"Expected context of type {self.workflow_arg_schema.__name__}, "
+                    f"got {type(context).__name__} instead"
+                )
+            args = context.model_dump()
 
         workflow_run_request = WorkflowRunRequest(
             id=uuid7(),
             workflow_name=self.name,
-            args=context.model_dump(),
+            args=args,
             queue=self.workflow_config.queue,
             timeout_seconds=self.workflow_config.timeout_seconds,
             idempotency_key=self.workflow_config.idempotency_key,
