@@ -12,7 +12,7 @@ from functools import wraps
 import grpc
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf import empty_pb2
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -830,7 +830,7 @@ class PerformanceDispatcher(Dispatcher):
         )
 
     @with_grpc_retry
-    def get_result(self, task_id: UUID) -> dict:
+    def get_result(self, task_id: UUID) -> JsonValue:
         request_proto = requests_pb2.GetTaskRunResultRequest()
         request_proto.task_run_id = str(task_id)
 

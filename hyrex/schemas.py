@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 
 class QueuePattern(BaseModel):
@@ -69,7 +69,7 @@ class TaskRun(BaseModel):
     queued: datetime | None
     started: datetime | None
     finished: datetime | None
-    result: dict | None
+    result: JsonValue | None
 
 
 class WorkflowStatus(StrEnum):

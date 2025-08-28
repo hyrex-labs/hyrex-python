@@ -204,6 +204,8 @@ class HyrexRegistry:
 
     def workflow(
         self,
+        func=None,
+        *,
         queue: str | HyrexQueue = None,
         timeout_seconds: int | None = None,
         priority: int = None,
@@ -212,6 +214,10 @@ class HyrexRegistry:
     ):
         """
         A decorator to register a workflow.
+        Can be used with or without parentheses:
+        - @hy.workflow
+        - @hy.workflow()
+        - @hy.workflow(queue="my-queue")
         """
 
         def decorator(func):
@@ -248,4 +254,9 @@ class HyrexRegistry:
                 self.register_workflow(workflow)
             return workflow
 
+        # If func is provided, it means the decorator was used without parentheses
+        if func is not None:
+            return decorator(func)
+        
+        # Otherwise, return the decorator to be applied
         return decorator
