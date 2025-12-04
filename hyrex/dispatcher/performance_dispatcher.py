@@ -145,9 +145,8 @@ class PerformanceDispatcher(Dispatcher):
             self.channel = grpc.secure_channel(server_address, channel_credentials)
         self.gateway_stub = gateway_pb2_grpc.GatewayServiceStub(self.channel)
 
-        # OLD ASYNC LOGIC (preserved for potential rollback):
         # TODO: Consider setting max workers specifically here.
-        # self.enqueue_executor = ThreadPoolExecutor()
+        self.enqueue_executor = ThreadPoolExecutor()
         self.running = True
 
         self.register_shutdown_handlers()
@@ -215,39 +214,27 @@ class PerformanceDispatcher(Dispatcher):
         )
         return response
 
-    # OLD ASYNC LOGIC (preserved for potential rollback):
-    # def _send_grpc_enqueue_callback(self, future):
-    #     """
-    #     Callback function to handle the result of an async gRPC request.
-    #     """
-    #     try:
-    #         result = future.result()
-    #         # Log success or process result as needed
-    #         self.logger.debug(f"Enqueue request completed successfully")
-    #     except Exception as e:
-    #         # Log the error but don't re-raise to avoid crashing the executor
-    #         self.logger.error(f"Enqueue request failed: {e}")
+    def _send_grpc_enqueue_callback(self, future):
+        """
+        Callback function to handle the result of an async gRPC request.
+        """
+        try:
+            result = future.result()
+            # Log success or process result as needed
+            self.logger.debug(f"Enqueue request completed successfully")
+        except Exception as e:
+            # Log the error but don't re-raise to avoid crashing the executor
+            self.logger.error(f"Enqueue request failed: {e}")
 
     def enqueue(self, tasks: list[EnqueueTaskRequest]):
-        # Send tasks synchronously
         for task in tasks:
             proto_task = self._convert_enqueue_request_to_proto(task)
-            try:
-                self._send_grpc_enqueue_request(proto_task)
-                self.logger.debug(f"Task {task.id} enqueued successfully")
-            except Exception as e:
-                self.logger.error(f"Failed to enqueue task {task.id}: {e}")
-                raise
-        
-        # OLD ASYNC LOGIC (preserved for potential rollback):
-        # for task in tasks:
-        #     proto_task = self._convert_enqueue_request_to_proto(task)
-        #     # Submit the gRPC request to the thread pool for async execution
-        #     future = self.enqueue_executor.submit(
-        #         self._send_grpc_enqueue_request, proto_task
-        #     )
-        #     # Add callback to handle the result
-        #     future.add_done_callback(self._send_grpc_enqueue_callback)
+            # Submit the gRPC request to the thread pool for async execution
+            future = self.enqueue_executor.submit(
+                self._send_grpc_enqueue_request, proto_task
+            )
+            # Add callback to handle the result
+            future.add_done_callback(self._send_grpc_enqueue_callback)
 
     @with_grpc_retry
     def dequeue(
@@ -378,7 +365,7 @@ class PerformanceDispatcher(Dispatcher):
 
     def stop(self):
         """
-        Stops the dispatcher and cleans up resources.
+        Stops the batching process and flushes remaining tasks.
         """
         # Check if already stopping/stopped
         if not self.running:
@@ -386,10 +373,7 @@ class PerformanceDispatcher(Dispatcher):
 
         self.logger.debug("Stopping dispatcher...")
         self.running = False
-        
-        # OLD ASYNC LOGIC (preserved for potential rollback):
-        # self.enqueue_executor.shutdown(wait=True)
-        
+        self.enqueue_executor.shutdown(wait=True)
         if self.channel:
             self.channel.close()
         self.logger.debug("Dispatcher stopped successfully!")

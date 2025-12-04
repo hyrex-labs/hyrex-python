@@ -148,12 +148,12 @@ class SqlcDispatcher(Dispatcher):
             },
         )
 
-        # OLD ASYNC BATCHING LOGIC (preserved for potential rollback):
-        # self.local_queue = Queue()
-        # self.batch_size = batch_size
-        # self.flush_interval = flush_interval
-        # self.thread = threading.Thread(target=self._batch_enqueue, daemon=True)
-        # self.thread.start()
+        self.local_queue = Queue()
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+
+        self.thread = threading.Thread(target=self._batch_enqueue, daemon=True)
+        self.thread.start()
         self.stopping = False
 
         self.register_shutdown_handlers()
@@ -289,57 +289,46 @@ class SqlcDispatcher(Dispatcher):
             return
         if self.stopping:
             self.logger.warning("Task enqueued during shutdown. May not be processed.")
-        
-        # Send tasks synchronously
-        try:
-            self._enqueue_tasks(tasks)
-            self.logger.debug(f"Successfully enqueued {len(tasks)} tasks")
-        except Exception as e:
-            self.logger.error(f"Failed to enqueue tasks: {e}")
-            raise
-        
-        # OLD ASYNC BATCHING LOGIC (preserved for potential rollback):
-        # for task in tasks:
-        #     self.local_queue.put(task)
+        for task in tasks:
+            self.local_queue.put(task)
 
-    # OLD ASYNC BATCHING LOGIC (preserved for potential rollback):
-    # def _batch_enqueue(self):
-    #     tasks = []
-    #     last_flush_time = time.monotonic()
-    # 
-    #     while True:
-    #         try:
-    #             task = self.local_queue.get(timeout=self.flush_interval)
-    #             if task is None:  # Stop signal
-    #                 break
-    # 
-    #             tasks.append(task)
-    #             # Drain queue without blocking
-    #             while len(tasks) < self.batch_size:
-    #                 try:
-    #                     task = self.local_queue.get_nowait()
-    #                     if task is None:
-    #                         break
-    #                     tasks.append(task)
-    #                 except Empty:
-    #                     break
-    # 
-    #             # Check if we should flush
-    #             current_time = time.monotonic()
-    #             if (current_time - last_flush_time >= self.flush_interval) or len(
-    #                 tasks
-    #             ) >= self.batch_size:
-    #                 if tasks:
-    #                     self._enqueue_tasks(tasks)
-    #                     tasks = []
-    #                 last_flush_time = current_time
-    # 
-    #         except Empty:
-    #             # Flush on timeout if we have tasks
-    #             if tasks:
-    #                 self._enqueue_tasks(tasks)
-    #                 tasks = []
-    #             last_flush_time = time.monotonic()
+    def _batch_enqueue(self):
+        tasks = []
+        last_flush_time = time.monotonic()
+
+        while True:
+            try:
+                task = self.local_queue.get(timeout=self.flush_interval)
+                if task is None:  # Stop signal
+                    break
+
+                tasks.append(task)
+                # Drain queue without blocking
+                while len(tasks) < self.batch_size:
+                    try:
+                        task = self.local_queue.get_nowait()
+                        if task is None:
+                            break
+                        tasks.append(task)
+                    except Empty:
+                        break
+
+                # Check if we should flush
+                current_time = time.monotonic()
+                if (current_time - last_flush_time >= self.flush_interval) or len(
+                    tasks
+                ) >= self.batch_size:
+                    if tasks:
+                        self._enqueue_tasks(tasks)
+                        tasks = []
+                    last_flush_time = current_time
+
+            except Empty:
+                # Flush on timeout if we have tasks
+                if tasks:
+                    self._enqueue_tasks(tasks)
+                    tasks = []
+                last_flush_time = time.monotonic()
 
     def _enqueue_tasks(self, tasks: List[EnqueueTaskRequest]):
         """Inserts a batch of tasks into the database using SQLC."""
@@ -386,31 +375,26 @@ class SqlcDispatcher(Dispatcher):
         self.logger.debug("Stopping dispatcher...")
         self.stopping = True
 
-        # OLD ASYNC BATCHING LOGIC (preserved for potential rollback):
         # Signal the batch thread to stop and wait with timeout
-        # self.local_queue.put(None)
-        # self.thread.join(timeout=timeout)
-        # clean_shutdown = not self.thread.is_alive()
+        self.local_queue.put(None)
+        self.thread.join(timeout=timeout)
+
+        clean_shutdown = not self.thread.is_alive()
 
         # Close the engine
-        self.engine.dispose()
-        self.logger.debug("Dispatcher stopped successfully.")
-        return True
-        
-        # OLD ASYNC BATCHING LOGIC (preserved for potential rollback):
-        # if clean_shutdown:
-        #     self.engine.dispose()
-        # else:
-        #     self.logger.warning(
-        #         "Batch thread did not stop cleanly, forcing engine to close"
-        #     )
-        #     self.engine.dispose()
-        # 
-        # self.logger.debug(
-        #     "Dispatcher stopped %s.",
-        #     "successfully" if clean_shutdown else "with timeout",
-        # )
-        # return clean_shutdown
+        if clean_shutdown:
+            self.engine.dispose()
+        else:
+            self.logger.warning(
+                "Batch thread did not stop cleanly, forcing engine to close"
+            )
+            self.engine.dispose()
+
+        self.logger.debug(
+            "Dispatcher stopped %s.",
+            "successfully" if clean_shutdown else "with timeout",
+        )
+        return clean_shutdown
 
     def get_task_status(self, task_id: UUID) -> TaskStatus:
         with self.transaction() as conn:
