@@ -64,6 +64,7 @@ SELECT
     NOW()
 FROM lost_tasks
 WHERE attempt_number < max_retries
+ON CONFLICT (task_name, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
 """
 
 
