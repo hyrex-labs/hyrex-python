@@ -1,4 +1,5 @@
 import time
+from collections import deque
 
 from pydantic import BaseModel
 
@@ -13,9 +14,17 @@ class MinuteAverage(BaseModel):
     average: float
 
 
+# Bound the per-averager ring buffer. The executor poll loop submits to these
+# averagers on every iteration and previously never pruned, which leaked ~40
+# MB/min per worker under an idle busy-poll. 10k entries is enough to hold
+# several minutes of stats at realistic submit rates while capping worst-case
+# memory at ~2 MB per averager.
+_MAX_DATA_POINTS = 10_000
+
+
 class TimeSeriesAverager:
     def __init__(self):
-        self.data_points: list[DataPoint] = []
+        self.data_points: deque[DataPoint] = deque(maxlen=_MAX_DATA_POINTS)
 
     def _get_minute_timestamp(self, timestamp: int) -> int:
         # Round down to nearest minute
@@ -71,9 +80,10 @@ class TimeSeriesAverager:
         return result
 
     def clear(self) -> None:
-        self.data_points = []
+        self.data_points.clear()
 
     def prune_data_older_than(self, timestamp: int) -> None:
-        self.data_points = [
-            point for point in self.data_points if point.timestamp >= timestamp
-        ]
+        self.data_points = deque(
+            (point for point in self.data_points if point.timestamp >= timestamp),
+            maxlen=_MAX_DATA_POINTS,
+        )
