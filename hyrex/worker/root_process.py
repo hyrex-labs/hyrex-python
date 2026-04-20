@@ -227,7 +227,9 @@ class WorkerRootProcess:
         )
 
     def run(self):
-        self.message_listener_thread = threading.Thread(target=self._message_listener)
+        self.message_listener_thread = threading.Thread(
+            target=self._message_listener, daemon=True
+        )
         self.message_listener_thread.start()
         self.logger.info("Incoming message queue now active...")
 
@@ -332,8 +334,7 @@ class WorkerRootProcess:
             self.message_listener_thread.join(timeout=5.0)
             if self.message_listener_thread.is_alive():
                 self.logger.warning("Message listener thread did not exit cleanly within timeout.")
-                # Force terminate the thread by setting it as daemon and exiting
-                # Python will clean it up on process exit
+                # Thread is a daemon, so the interpreter will terminate it on process exit.
             else:
                 self.logger.info("Message listener thread closed successfully.")
 
